@@ -1,0 +1,21 @@
+# Normaliza quebras de linha: evita o repo inteiro aparecer como "modificado"
+# quando alguem do grupo esta no Windows e outro no Mac/Linux.
+* text=auto eol=lf
+
+# Arquivos que precisam de CRLF no Windows
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Binarios: nao mexer
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary
+*.woff binary
+*.woff2 binary
+*.mp4  binary

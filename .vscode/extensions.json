@@ -1,0 +1,13 @@
+{
+  "// leia-me": "Ao abrir a pasta, o VSCode sugere instalar estas extensoes para todo o grupo.",
+  "recommendations": [
+    "ms-vsliveshare.vsliveshare",
+    "eamodio.gitlens",
+    "editorconfig.editorconfig",
+    "esbenp.prettier-vscode",
+    "streetsidesoftware.code-spell-checker-portuguese-brazilian",
+    "usernamehw.errorlens",
+    "christian-kohler.path-intellisense"
+  ],
+  "unwantedRecommendations": []
+}
