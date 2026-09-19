@@ -12,6 +12,7 @@ on:
     branches: [main]
     paths:
       - "supabase/**"
+      - ".github/workflows/deploy-supabase.yml"
   workflow_dispatch:
 
 # Se duas pessoas enviarem ao mesmo tempo, os deploys rodam em fila, nunca juntos.
@@ -30,7 +31,7 @@ jobs:
 
     steps:
       - name: Baixar o codigo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Instalar a CLI do Supabase
         uses: supabase/setup-cli@v1
