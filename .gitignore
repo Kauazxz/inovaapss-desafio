@@ -65,3 +65,6 @@ temp/
 coverage/
 .eslintcache
 apps/web/.vite
+
+# ===== Ferramentas locais do editor (worktrees temporarios etc.) =====
+.claude/
