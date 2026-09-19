@@ -6,7 +6,7 @@ import { AlertsPage } from '@/features/alerts/AlertsPage';
 import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { CalibrationPage } from '@/features/calibration/CalibrationPage';
-import { ClientDetailPage } from '@/features/clients/ClientDetailPage';
+import { ClientDetailPage } from '@/features/client-detail/ClientDetailPage';
 import { ClientsPage } from '@/features/clients/ClientsPage';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { DocumentsPage } from '@/features/documents/DocumentsPage';
