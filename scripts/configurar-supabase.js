@@ -33,8 +33,8 @@ function perguntaOculta(texto) {
     const aoDigitar = (pedaco) => {
       for (const ch of pedaco) {
         if (ch === '\r' || ch === '\n') return fim();
-        if (ch === '') { process.stdout.write('\n'); process.exit(1); }         // Ctrl+C
-        if (ch === '' || ch === '\b') { valor = valor.slice(0, -1); continue; } // Backspace
+        if (ch === '\u0003') { process.stdout.write('\n'); process.exit(1); }         // Ctrl+C
+        if (ch === '\u007f' || ch === '\b') { valor = valor.slice(0, -1); continue; } // Backspace
         valor += ch;
       }
     };
