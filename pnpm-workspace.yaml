@@ -1,0 +1,12 @@
+# Monorepo: cada pasta em apps/ e packages/ e um pacote do workspace.
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# O pnpm nao roda scripts de pos-instalacao de dependencias sem aprovacao explicita.
+#   supabase      -> baixa o binario da CLI
+#   unrs-resolver -> resolvedor nativo usado pelo eslint-plugin-import-x
+# Se o install acusar "Ignored build scripts: <pacote>", acrescente o pacote aqui com true.
+allowBuilds:
+  supabase: true
+  unrs-resolver: true

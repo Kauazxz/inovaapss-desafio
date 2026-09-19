@@ -6,12 +6,19 @@ Guia para entrar no projeto do zero. Se voce acabou de ser chamado para o time, 
 
 ## Parte 1 — Instalar (so uma vez)
 
-| O que | Onde | Conferir se deu certo |
-|---|---|---|
-| **Git** | https://git-scm.com/download/win | `git --version` |
-| **Node.js** (LTS) | https://nodejs.org | `node --version` |
-| **VSCode** | https://code.visualstudio.com | abrir o programa |
-| **GitHub CLI** | https://cli.github.com | `gh --version` |
+| O que                | Onde                                               | Conferir se deu certo                        |
+| -------------------- | -------------------------------------------------- | -------------------------------------------- |
+| **Git**              | https://git-scm.com/download/win                   | `git --version`                              |
+| **Node.js 22** (LTS) | https://nodejs.org                                 | `node --version` (tem que comecar com `v22`) |
+| **pnpm**             | no terminal, depois do Node: `npm install -g pnpm` | `pnpm --version`                             |
+| **VSCode**           | https://code.visualstudio.com                      | abrir o programa                             |
+| **GitHub CLI**       | https://cli.github.com                             | `gh --version`                               |
+
+> **PowerShell reclamou que "pnpm.ps1 nao pode ser carregado"?** Rode uma vez e feche/abra o terminal:
+>
+> ```powershell
+> Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+> ```
 
 > **Atencao:** se voce ja tinha VSCode instalado ha muito tempo, confira a versao em
 > **Help → About**. Precisa ser 1.100 ou maior. Versoes antigas nao rodam Live Share.
@@ -23,24 +30,29 @@ Abra o terminal (PowerShell) e rode:
 ```powershell
 cd ~/Documents
 git clone https://github.com/Kauazxz/inovaapss-desafio.git
-cd inovaapss
-npm install
+cd inovaapss-desafio
+pnpm install
 code .
 ```
 
-O `npm install` baixa a CLI do Supabase, que faz o deploy do banco. Leva um minuto.
+O `pnpm install` baixa tudo de uma vez: a API, o site, os pacotes compartilhados e a CLI do Supabase.
+Leva alguns minutos na primeira vez.
 
 Quando o VSCode abrir, vai aparecer um aviso no canto inferior direito perguntando se
 voce quer instalar as extensoes recomendadas. **Clique em "Install".**
 
-## Parte 3 — Dizer ao Git quem voce e
+## Parte 3 — Dizer ao Git quem assina os commits
 
-Isso e o que faz seu nome aparecer nos commits. Use o **mesmo e-mail da sua conta do GitHub**:
+Regra do time: **todo commit deste projeto sai como Kauazxz**, um unico autor (ajuste A6 da spec).
+Configure **dentro da pasta do projeto, sem `--global`** — assim nao muda nada nos seus outros
+repositorios:
 
 ```powershell
-git config --global user.name "Seu Nome"
-git config --global user.email "seu-email@exemplo.com"
+git config user.name "Kauazxz"
+git config user.email "122256165+Kauazxz@users.noreply.github.com"
 ```
+
+Confira com `git config user.name` (tem que responder `Kauazxz`).
 
 ## Parte 4 — Conectar ao GitHub
 
@@ -59,12 +71,22 @@ gh auth setup-git
 Teste se funcionou:
 
 ```powershell
-npm run sync
+pnpm sync
 ```
 
 Se aparecer "Tudo sincronizado", esta tudo certo.
 
-## Parte 4b — Supabase
+## Parte 4b — As regras de commit (3 linhas)
+
+1. **Mensagem no padrao Conventional Commits**: `tipo(escopo): o que foi feito`, primeira linha em
+   ingles — ex.: `feat(auth): add login page`. A tabela de tipos esta em
+   [COMO-TRABALHAR.md, secao 3](COMO-TRABALHAR.md#3-padrao-de-mensagem-de-commit).
+2. **Um unico autor**: todo commit sai como **Kauazxz** (Parte 3). Sem `Co-Authored-By` nem outros
+   trailers no fim da mensagem.
+3. **O hook confere**: mensagem fora do padrao ou com trailer e rejeitada na hora. Nao e erro seu —
+   e so escrever de novo no formato certo. Nunca use `--no-verify`.
+
+## Parte 4c — Supabase
 
 **Voce nao precisa configurar nada.** O deploy do banco e automatico: quando alguem envia
 um commit que mexe em `supabase/`, o GitHub Actions aplica no Supabase sozinho.
@@ -84,10 +106,12 @@ Use quando estiverem **resolvendo o mesmo problema** ou quando um esta ensinando
 Os dois digitam no mesmo arquivo ao mesmo tempo, como no Google Docs.
 
 **Quem hospeda** (escolham 1 pessoa):
+
 1. `Ctrl+Shift+P` → **Live Share: Start Collaboration Session**
 2. O link e copiado sozinho. Cole no WhatsApp/Discord do grupo.
 
 **Quem entra:**
+
 1. Clique no link que recebeu.
 
 ### A regra que salva o trabalho de voces
@@ -115,11 +139,11 @@ Aqui cada um tem sua propria copia dos arquivos, e o Git junta tudo.
 3. DEPOIS de terminar   ->  Ctrl+Shift+B   (envia o que voce fez)
 ```
 
-`Ctrl+Shift+B` roda o [`sync.js`](.npm run sync), que faz tudo na ordem segura:
+`Ctrl+Shift+B` roda o [`sync.js`](../sync.js), que faz tudo na ordem segura:
 commita o seu → puxa o do colega → envia o seu.
 Nessa ordem, **ninguem sobrescreve ninguem**.
 
-> Prefere o terminal? E o mesmo que rodar `npm run sync`.
+> Prefere o terminal? E o mesmo que rodar `pnpm sync`.
 
 ### Antes de dividir tarefas, combinem os arquivos
 
@@ -127,21 +151,25 @@ Como voces commitam direto na `main`, a maior fonte de dor de cabeca e
 **duas pessoas editando o mesmo arquivo ao mesmo tempo, cada uma na sua maquina**.
 
 Combinem no chat:
-- "eu mexo em `login.js`"
-- "eu mexo em `banco.py`"
+
+- "eu mexo em `apps/web/src/features/auth/`"
+- "eu mexo em `apps/api/src/modules/metrics/`"
 
 Arquivos diferentes = zero conflito. Mesmo arquivo = melhor chamar no Live Share.
+
+A divisao oficial e por **etapa**: cada etapa tem a lista de pastas que possui em
+**[ETAPAS.md](ETAPAS.md)**. Pegou uma etapa, marca la e mexe so naquelas pastas.
 
 ---
 
 ## Qual modo usar?
 
-| Situacao | Modo |
-|---|---|
-| Travamos no mesmo bug | Live Share |
-| Um esta ensinando o outro | Live Share |
-| Vamos mexer no mesmo arquivo | Live Share |
-| Dividimos tarefas diferentes | Cada um na sua + `Ctrl+Shift+B` |
+| Situacao                                   | Modo                            |
+| ------------------------------------------ | ------------------------------- |
+| Travamos no mesmo bug                      | Live Share                      |
+| Um esta ensinando o outro                  | Live Share                      |
+| Vamos mexer no mesmo arquivo               | Live Share                      |
+| Dividimos tarefas diferentes               | Cada um na sua + `Ctrl+Shift+B` |
 | Estou codando de madrugada e o outro dorme | Cada um na sua + `Ctrl+Shift+B` |
 
 ---

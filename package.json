@@ -2,8 +2,20 @@
   "name": "inovaapss",
   "version": "0.1.0",
   "private": true,
-  "description": "Projeto do grupo para o desafio",
+  "description": "Motor configuravel de saude, risco e prioridade de clientes (desafio INOVAAPPS)",
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky",
     "sync": "node sync.js",
     "status": "git status && git --no-pager log --oneline -n 10",
     "configurar-supabase": "node scripts/configurar-supabase.js",
@@ -11,6 +23,20 @@
     "deploy:functions": "supabase functions deploy"
   },
   "devDependencies": {
-    "supabase": "^2.117.0"
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.4",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import-x": "^4.17.1",
+    "globals": "^17.12.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.9.8",
+    "supabase": "^2.117.0",
+    "turbo": "^2.11.2",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.70.0",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
   }
 }

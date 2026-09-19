@@ -1,0 +1,15 @@
+# Gerados / dependencias
+pnpm-lock.yaml
+node_modules
+dist
+coverage
+.turbo
+supabase/migrations
+supabase/.temp
+
+# Scripts legados da raiz, mantidos como estao (nao reformatar em massa)
+sync.js
+scripts/configurar-supabase.js
+
+# O VSCode formata os proprios arquivos de configuracao
+.vscode

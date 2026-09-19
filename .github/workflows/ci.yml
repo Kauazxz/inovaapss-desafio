@@ -1,0 +1,61 @@
+# Validacao continua: a cada push na main e a cada pull request roda
+# lint, typecheck, testes e build do monorepo, e confere o nome das migrations.
+# O deploy no Supabase continua no workflow deploy-supabase.yml.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validar:
+    name: Lint, typecheck, testes e build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o codigo
+        uses: actions/checkout@v5
+
+      - name: Instalar o pnpm (versao do campo packageManager)
+        uses: pnpm/action-setup@v6
+
+      - name: Instalar o Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Testes
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  migrations:
+    name: Nome das migrations
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o codigo
+        uses: actions/checkout@v5
+
+      - name: Instalar o Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Conferir supabase/migrations/
+        run: node scripts/verificar-migrations.js

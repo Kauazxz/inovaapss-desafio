@@ -5,6 +5,8 @@
     "eamodio.gitlens",
     "editorconfig.editorconfig",
     "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "bradlc.vscode-tailwindcss",
     "streetsidesoftware.code-spell-checker-portuguese-brazilian",
     "usernamehw.errorlens",
     "christian-kohler.path-intellisense"

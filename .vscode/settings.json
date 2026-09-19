@@ -5,11 +5,35 @@
   "files.autoSave": "afterDelay",
   "files.autoSaveDelay": 1000,
   "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
   "editor.tabSize": 2,
   "editor.rulers": [
     100
   ],
   "editor.bracketPairColorization.enabled": true,
+  "// eslint": "Um unico eslint.config.mjs na raiz vale para apps/ e packages/",
+  "eslint.useFlatConfig": true,
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "tailwindCSS.experimental.classRegex": [
+    [
+      "cva\\(([^)]*)\\)",
+      "[\"'`]([^\"'`]*).*?[\"'`]"
+    ],
+    [
+      "cn\\(([^)]*)\\)",
+      "[\"'`]([^\"'`]*).*?[\"'`]"
+    ]
+  ],
   "// git": "Puxa o trabalho do grupo automaticamente e sempre com rebase, para nao criar merge sujo na main",
   "git.autofetch": true,
   "git.autofetchPeriod": 60,
@@ -21,12 +45,18 @@
     "**/node_modules": true,
     "**/.venv": true,
     "**/dist": true,
-    "**/build": true
+    "**/build": true,
+    "**/.turbo": true,
+    "pnpm-lock.yaml": true
   },
   "cSpell.language": "en,pt,pt_BR",
   "// liveshare": "Sessao do grupo: quem entra logado no GitHub ja e admitido; convidado pode rodar tasks (Ctrl+Shift+B) e usar o terminal",
   "liveshare.presence": true,
   "liveshare.showInStatusBar": "always",
+
+
+
+
   "liveshare.focusBehavior": "prompt",
   "liveshare.guestApprovalRequired": false,
   "liveshare.anonymousGuestApproval": "prompt",
@@ -34,9 +64,5 @@
   "liveshare.allowGuestDebugControl": true,
   "liveshare.autoShareTerminals": true,
   "liveshare.shareExternalFiles": true,
-  "liveshare.excludedFiles": [
-    ".env",
-    ".env.*",
-    "!.env.example"
-  ]
+  "liveshare.excludedFiles": [".env", ".env.*", "!.env.example"]
 }

@@ -57,3 +57,11 @@ logs/
 *.log
 tmp/
 temp/
+
+# ===== Monorepo / build (pnpm + turbo + vite) =====
+.turbo/
+**/dist/
+*.tsbuildinfo
+coverage/
+.eslintcache
+apps/web/.vite

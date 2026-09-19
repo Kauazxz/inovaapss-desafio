@@ -5,71 +5,106 @@
       "label": "Sincronizar com o grupo",
       "detail": "Commita o que voce fez, puxa o trabalho do colega e envia o seu (Ctrl+Shift+B). Se mexeu em supabase/, o deploy sai sozinho.",
       "type": "shell",
-      "command": "npm",
-      "args": [
-        "run",
-        "sync"
-      ],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true,
-        "focus": true
-      },
+      "command": "pnpm",
+      "windows": { "command": "pnpm.cmd" },
+      "args": ["run", "sync"],
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Rodar o app (dev)",
+      "detail": "Sobe a API (porta 3001) e o site (porta 5173) juntos. Ctrl+C no terminal para parar.",
+      "type": "shell",
+      "command": "pnpm",
+      "windows": { "command": "pnpm.cmd" },
+      "args": ["run", "dev"],
+      "isBackground": true,
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Validar tudo",
+      "detail": "Roda lint, typecheck, testes e build, na ordem. E o mesmo que o CI faz no GitHub.",
+      "dependsOrder": "sequential",
+      "dependsOn": ["Validar: lint", "Validar: typecheck", "Validar: test", "Validar: build"],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Validar: lint",
+      "type": "shell",
+      "command": "pnpm",
+      "windows": { "command": "pnpm.cmd" },
+      "args": ["run", "lint"],
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Validar: typecheck",
+      "type": "shell",
+      "command": "pnpm",
+      "windows": { "command": "pnpm.cmd" },
+      "args": ["run", "typecheck"],
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Validar: test",
+      "type": "shell",
+      "command": "pnpm",
+      "windows": { "command": "pnpm.cmd" },
+      "args": ["run", "test"],
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Validar: build",
+      "type": "shell",
+      "command": "pnpm",
+      "windows": { "command": "pnpm.cmd" },
+      "args": ["run", "build"],
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Instalar dependencias",
+      "detail": "Rode depois de clonar ou quando alguem adicionar um pacote (pnpm install).",
+      "type": "shell",
+      "command": "pnpm",
+      "windows": { "command": "pnpm.cmd" },
+      "args": ["install"],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
       "problemMatcher": []
     },
     {
       "label": "Configurar Supabase (uma vez)",
       "detail": "Pede os 3 segredos do Supabase (sem mostrar na tela), salva no GitHub e testa o deploy",
       "type": "shell",
-      "command": "npm",
-      "args": [
-        "run",
-        "configurar-supabase"
-      ],
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true,
-        "focus": true
-      },
+      "command": "pnpm",
+      "windows": { "command": "pnpm.cmd" },
+      "args": ["run", "configurar-supabase"],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "focus": true },
       "problemMatcher": []
     },
     {
       "label": "Ver o que mudou",
       "detail": "Mostra os arquivos alterados e os ultimos commits do grupo",
       "type": "shell",
-      "command": "npm",
-      "args": [
-        "run",
-        "status"
-      ],
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true
-      },
+      "command": "pnpm",
+      "windows": { "command": "pnpm.cmd" },
+      "args": ["run", "status"],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
       "problemMatcher": []
     },
     {
       "label": "Deploy manual no Supabase",
       "detail": "Normalmente NAO precisa: o push ja faz o deploy pela aba Actions. Use so em emergencia (exige npx supabase login + link).",
       "type": "shell",
-      "command": "npm",
-      "args": [
-        "run",
-        "deploy"
-      ],
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true,
-        "focus": true
-      },
+      "command": "pnpm",
+      "windows": { "command": "pnpm.cmd" },
+      "args": ["run", "deploy"],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "focus": true },
       "problemMatcher": []
     }
   ]

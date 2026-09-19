@@ -1,0 +1,8 @@
+/**
+ * @inovaapss/validation — schemas Zod reutilizados pela API (entrada de rotas, env)
+ * e pelo front (formulários, env do Vite).
+ */
+
+export * from './common.js';
+export * from './domain.js';
+export * from './env.js';
