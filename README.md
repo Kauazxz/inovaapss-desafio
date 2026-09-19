@@ -1,5 +1,7 @@
 # inovaapss
 
+[![Deploy no Supabase](https://github.com/Kauazxz/inovaapss-desafio/actions/workflows/deploy-supabase.yml/badge.svg)](https://github.com/Kauazxz/inovaapss-desafio/actions/workflows/deploy-supabase.yml)
+
 Projeto do grupo para o desafio.
 
 > **Status:** aguardando o briefing oficial do desafio.
@@ -29,8 +31,8 @@ Projeto do grupo para o desafio.
 - **Front-end:** _a definir depois do briefing_
 - **Hospedagem do front-end:** _a definir_
 
-O deploy do banco e feito pela CLI do Supabase, que ja vem instalada com `npm install`.
-Guia completo em **[docs/SUPABASE.md](docs/SUPABASE.md)**.
+O deploy do banco e **automatico**: todo push que mexe em `supabase/` e aplicado pelo
+GitHub Actions. Guia completo em **[docs/SUPABASE.md](docs/SUPABASE.md)**.
 
 ---
 
@@ -48,12 +50,12 @@ Dois modos, para situacoes diferentes:
 | Resolver o mesmo problema juntos, ao vivo | **Live Share** (`Ctrl+Shift+P` → *Live Share: Start Collaboration Session*) |
 | Tarefas divididas, horarios diferentes | Cada um na sua maquina + **`Ctrl+Shift+B`** para sincronizar |
 
-**`Ctrl+Shift+B`** roda o [`sync.ps1`](sync.ps1): commita o seu trabalho, puxa o do
+**`Ctrl+Shift+B`** roda o [`sync.js`](sync.js): commita o seu trabalho, puxa o do
 colega e envia o seu — nessa ordem, para ninguem sobrescrever ninguem.
 Rode **antes de comecar** e **depois de terminar**.
 
-**Deploy no Supabase:** `Ctrl+Shift+P` → *Tasks: Run Task* → **Deploy no Supabase**
-(ou `npm run deploy`). Aplica as migrations de `supabase/migrations/` no projeto hospedado.
+**Deploy no Supabase:** nao existe passo de deploy. Mexeu em `supabase/` e apertou
+`Ctrl+Shift+B`? O GitHub Actions aplica no banco sozinho. Acompanhe na aba **Actions**.
 
 Commitamos direto na `main`, sem branch por pessoa. As regras completas
 (padrao de commit, o que fazer no conflito, comandos de emergencia) estao em

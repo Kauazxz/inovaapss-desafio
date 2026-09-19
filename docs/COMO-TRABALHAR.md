@@ -35,7 +35,7 @@ O Git **nao** serve para digitar junto. Quem faz isso e o Live Share.
 Antes de escrever a primeira linha do dia:
 
 ```powershell
-./sync.ps1
+npm run sync
 ```
 
 Isso puxa o que os outros fizeram. Pular esse passo e a causa n1 de conflito.
@@ -51,7 +51,7 @@ git commit -m "feat: adiciona tela de login"
 
 ### Regra 3 — SEMPRE sincronize antes de enviar
 ```powershell
-./sync.ps1
+npm run sync
 ```
 
 O script puxa o trabalho dos outros **e depois** envia o seu. Nessa ordem, ninguem sobrescreve ninguem.

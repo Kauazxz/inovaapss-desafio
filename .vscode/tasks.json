@@ -3,29 +3,11 @@
   "tasks": [
     {
       "label": "Sincronizar com o grupo",
-      "detail": "Commita o que voce fez, puxa o trabalho do colega e envia o seu (Ctrl+Shift+B)",
-      "type": "shell",
-      "command": "powershell",
-      "args": [
-        "-NoProfile",
-        "-ExecutionPolicy", "Bypass",
-        "-File", "${workspaceFolder}/sync.ps1"
-      ],
-      "group": { "kind": "build", "isDefault": true },
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true,
-        "focus": true
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Deploy no Supabase",
-      "detail": "Aplica as migrations do banco no projeto hospedado (npm run deploy)",
+      "detail": "Commita o que voce fez, puxa o trabalho do colega e envia o seu (Ctrl+Shift+B). Se mexeu em supabase/, o deploy sai sozinho.",
       "type": "shell",
       "command": "npm",
-      "args": ["run", "deploy"],
+      "args": ["run", "sync"],
+      "group": { "kind": "build", "isDefault": true },
       "presentation": {
         "reveal": "always",
         "panel": "dedicated",
@@ -38,13 +20,18 @@
       "label": "Ver o que mudou",
       "detail": "Mostra os arquivos alterados e os ultimos commits do grupo",
       "type": "shell",
-      "command": "powershell",
-      "args": [
-        "-NoProfile",
-        "-ExecutionPolicy", "Bypass",
-        "-Command", "git status; Write-Host ''; git --no-pager log --oneline -n 10"
-      ],
+      "command": "npm",
+      "args": ["run", "status"],
       "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Deploy manual no Supabase",
+      "detail": "Normalmente NAO precisa: o push ja faz o deploy pela aba Actions. Use so em emergencia (exige npx supabase login + link).",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "deploy"],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "focus": true },
       "problemMatcher": []
     }
   ]

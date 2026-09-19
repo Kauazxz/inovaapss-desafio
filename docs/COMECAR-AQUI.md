@@ -22,7 +22,7 @@ Abra o terminal (PowerShell) e rode:
 
 ```powershell
 cd ~/Documents
-git clone https://github.com/Kauazxz/inovaapss.git
+git clone https://github.com/Kauazxz/inovaapss-desafio.git
 cd inovaapss
 npm install
 code .
@@ -59,16 +59,18 @@ gh auth setup-git
 Teste se funcionou:
 
 ```powershell
-./sync.ps1
+npm run sync
 ```
 
 Se aparecer "Tudo sincronizado", esta tudo certo.
 
-## Parte 4b — Supabase (so quem faz deploy)
+## Parte 4b — Supabase
 
-So **uma** pessoa precisa disso: quem vai mandar as mudancas do banco para o Supabase.
-O passo a passo (criar projeto, `npx supabase login`, `npx supabase link`) esta em
-**[SUPABASE.md](SUPABASE.md)**.
+**Voce nao precisa configurar nada.** O deploy do banco e automatico: quando alguem envia
+um commit que mexe em `supabase/`, o GitHub Actions aplica no Supabase sozinho.
+
+So **uma** pessoa do time configura isso, **uma vez** (criar o projeto e guardar 3 segredos
+no GitHub). O passo a passo esta em **[SUPABASE.md](SUPABASE.md)**.
 
 ---
 
@@ -113,11 +115,11 @@ Aqui cada um tem sua propria copia dos arquivos, e o Git junta tudo.
 3. DEPOIS de terminar   ->  Ctrl+Shift+B   (envia o que voce fez)
 ```
 
-`Ctrl+Shift+B` roda o [`sync.ps1`](../sync.ps1), que faz tudo na ordem segura:
+`Ctrl+Shift+B` roda o [`sync.js`](.npm run sync), que faz tudo na ordem segura:
 commita o seu → puxa o do colega → envia o seu.
 Nessa ordem, **ninguem sobrescreve ninguem**.
 
-> Prefere o terminal? E o mesmo que rodar `./sync.ps1`.
+> Prefere o terminal? E o mesmo que rodar `npm run sync`.
 
 ### Antes de dividir tarefas, combinem os arquivos
 

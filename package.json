@@ -4,6 +4,8 @@
   "private": true,
   "description": "Projeto do grupo para o desafio",
   "scripts": {
+    "sync": "node sync.js",
+    "status": "git status && git --no-pager log --oneline -n 10",
     "deploy": "supabase db push",
     "deploy:functions": "supabase functions deploy"
   },
