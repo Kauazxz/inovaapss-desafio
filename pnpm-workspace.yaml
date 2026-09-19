@@ -10,6 +10,10 @@ packages:
 allowBuilds:
   supabase: true
   unrs-resolver: true
+  # esbuild (tsx, drizzle-kit, vite) funciona sem o pos-instalacao; @scarf/scarf e
+  # telemetria do swagger-ui-dist. Negados de proposito.
+  esbuild: false
+  '@scarf/scarf': false
 
 # pnpm 12 recusa pacotes publicados ha menos de 24 h (protecao de supply chain).
 # Excecoes pontuais para versoes ja no lockfile e publicadas dentro dessa janela;

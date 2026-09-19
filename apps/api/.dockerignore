@@ -1,0 +1,18 @@
+# O Docker le o .dockerignore da RAIZ do contexto de build (a raiz do monorepo).
+# Este arquivo documenta o que deve ficar fora; para valer, o mesmo conteudo precisa estar
+# em /.dockerignore ou em apps/api/Dockerfile.dockerignore (BuildKit).
+**/node_modules
+**/dist
+**/coverage
+**/.turbo
+**/.vite
+**/*.log
+.git
+.github
+.husky
+.vscode
+docs
+supabase
+.env
+.env.*
+!.env.example
