@@ -21,6 +21,20 @@
       "problemMatcher": []
     },
     {
+      "label": "Deploy no Supabase",
+      "detail": "Aplica as migrations do banco no projeto hospedado (npm run deploy)",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "deploy"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": true
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Ver o que mudou",
       "detail": "Mostra os arquivos alterados e os ultimos commits do grupo",
       "type": "shell",

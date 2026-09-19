@@ -9,6 +9,7 @@ Guia para entrar no projeto do zero. Se voce acabou de ser chamado para o time, 
 | O que | Onde | Conferir se deu certo |
 |---|---|---|
 | **Git** | https://git-scm.com/download/win | `git --version` |
+| **Node.js** (LTS) | https://nodejs.org | `node --version` |
 | **VSCode** | https://code.visualstudio.com | abrir o programa |
 | **GitHub CLI** | https://cli.github.com | `gh --version` |
 
@@ -23,8 +24,11 @@ Abra o terminal (PowerShell) e rode:
 cd ~/Documents
 git clone https://github.com/Kauazxz/inovaapss.git
 cd inovaapss
+npm install
 code .
 ```
+
+O `npm install` baixa a CLI do Supabase, que faz o deploy do banco. Leva um minuto.
 
 Quando o VSCode abrir, vai aparecer um aviso no canto inferior direito perguntando se
 voce quer instalar as extensoes recomendadas. **Clique em "Install".**
@@ -59,6 +63,12 @@ Teste se funcionou:
 ```
 
 Se aparecer "Tudo sincronizado", esta tudo certo.
+
+## Parte 4b — Supabase (so quem faz deploy)
+
+So **uma** pessoa precisa disso: quem vai mandar as mudancas do banco para o Supabase.
+O passo a passo (criar projeto, `npx supabase login`, `npx supabase link`) esta em
+**[SUPABASE.md](SUPABASE.md)**.
 
 ---
 

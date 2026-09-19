@@ -1,0 +1,13 @@
+{
+  "name": "inovaapss",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Projeto do grupo para o desafio",
+  "scripts": {
+    "deploy": "supabase db push",
+    "deploy:functions": "supabase functions deploy"
+  },
+  "devDependencies": {
+    "supabase": "^2.117.0"
+  }
+}

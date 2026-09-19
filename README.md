@@ -25,11 +25,12 @@ Projeto do grupo para o desafio.
 
 ## Stack
 
-Ainda nao definida — sera escolhida junto com o time depois do briefing.
+- **Back-end / banco de dados:** [Supabase](https://supabase.com) (Postgres + API + Auth) — **definido**
+- **Front-end:** _a definir depois do briefing_
+- **Hospedagem do front-end:** _a definir_
 
-- **Linguagem / framework:** _a definir_
-- **Banco de dados:** _a definir_
-- **Hospedagem:** _a definir_
+O deploy do banco e feito pela CLI do Supabase, que ja vem instalada com `npm install`.
+Guia completo em **[docs/SUPABASE.md](docs/SUPABASE.md)**.
 
 ---
 
@@ -50,6 +51,9 @@ Dois modos, para situacoes diferentes:
 **`Ctrl+Shift+B`** roda o [`sync.ps1`](sync.ps1): commita o seu trabalho, puxa o do
 colega e envia o seu — nessa ordem, para ninguem sobrescrever ninguem.
 Rode **antes de comecar** e **depois de terminar**.
+
+**Deploy no Supabase:** `Ctrl+Shift+P` → *Tasks: Run Task* → **Deploy no Supabase**
+(ou `npm run deploy`). Aplica as migrations de `supabase/migrations/` no projeto hospedado.
 
 Commitamos direto na `main`, sem branch por pessoa. As regras completas
 (padrao de commit, o que fazer no conflito, comandos de emergencia) estao em
