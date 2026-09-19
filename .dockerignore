@@ -1,0 +1,20 @@
+# Contexto de build do Docker = RAIZ do monorepo (docker build -f apps/api/Dockerfile .).
+# O Docker so le o .dockerignore da raiz do contexto, por isso ele fica aqui e nao em apps/api.
+# Tudo o que esta listado NUNCA entra na imagem: dependencias, builds locais e, principalmente,
+# qualquer .env com segredo (a API le process.cwd()/.env em runtime — um .env copiado por
+# engano seria carregado).
+**/node_modules
+**/dist
+**/coverage
+**/.turbo
+**/.vite
+**/*.log
+.git
+.github
+.husky
+.vscode
+docs
+supabase
+.env
+.env.*
+!.env.example

@@ -4,6 +4,9 @@
   "private": true,
   "description": "API Express do motor de saude, risco e prioridade de clientes",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": ">=22"
   },

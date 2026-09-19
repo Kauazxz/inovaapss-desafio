@@ -1,6 +1,7 @@
 # Imagem da API (@inovaapss/api). Contexto de build = RAIZ do monorepo:
 #   docker build -f apps/api/Dockerfile -t inovaapss-api .
 # (Render/Railway: "Dockerfile path" = apps/api/Dockerfile, "root directory" = raiz do repo.)
+# O que fica fora da imagem esta em /.dockerignore (na raiz — o Docker so le o da raiz do contexto).
 #
 # Etapas:
 #   1. deps   - instala só o que @inovaapss/api e os packages que ela usa precisam
@@ -54,6 +55,6 @@ USER node
 EXPOSE 3001
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:3001/health || exit 1
+  CMD wget -qO- "http://127.0.0.1:${PORT:-3001}/health" || exit 1
 
 CMD ["node", "dist/server.js"]

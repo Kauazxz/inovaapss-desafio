@@ -115,6 +115,34 @@ describe('cabeçalhos de segurança', () => {
   });
 });
 
+describe('rate limit', () => {
+  const limitedApp = createApp(
+    parseApiEnv({ NODE_ENV: 'test', RATE_LIMIT_MAX: '2', RATE_LIMIT_WINDOW_MS: '60000' }),
+  );
+
+  it('responde 429 com code RATE_LIMITED depois do limite', async () => {
+    const primeira = await request(limitedApp).get('/api/v1');
+    expect(primeira.status).toBe(200);
+    expect(primeira.headers['ratelimit']).toBeDefined();
+    expect(primeira.headers['x-ratelimit-limit']).toBeUndefined();
+
+    const segunda = await request(limitedApp).get('/api/v1');
+    expect(segunda.status).toBe(200);
+
+    const terceira = await request(limitedApp).get('/api/v1');
+    expect(terceira.status).toBe(429);
+    expect(terceira.body.error.code).toBe('RATE_LIMITED');
+    expect(terceira.body.error.requestId).toBe(terceira.headers['x-request-id']);
+  });
+
+  it('não conta /health e /ready no limite', async () => {
+    for (let i = 0; i < 3; i += 1) {
+      expect((await request(limitedApp).get('/health')).status).toBe(200);
+      expect((await request(limitedApp).get('/ready')).status).toBe(200);
+    }
+  });
+});
+
 describe('corpo da requisição', () => {
   it('rejeita JSON inválido com 400', async () => {
     const res = await request(app)
