@@ -43,21 +43,33 @@ O GitHub Actions precisa de 3 informacoes para entrar no projeto. Elas ficam gua
 | `SUPABASE_PROJECT_ID` | O codigo na URL do painel: `supabase.com/dashboard/project/`**`abcdefghijklmnop`** |
 | `SUPABASE_DB_PASSWORD` | A senha do banco escolhida no passo 1 |
 
-No terminal, dentro da pasta do projeto. Cada comando pede o valor e **esconde o que voce digita**:
+Com os 3 valores em maos, no VSCode: `Ctrl+Shift+P` → **Tasks: Run Task** → **Configurar Supabase (uma vez)**.
+Ou no terminal, dentro da pasta do projeto:
+
+```powershell
+npm run configurar-supabase
+```
+
+Ele pede os 3 valores **sem mostrar na tela**, salva cada um como segredo criptografado no GitHub,
+dispara o deploy e acompanha ate ficar verde. Se algum valor estiver errado, ele avisa na hora.
+
+> Nunca cole esses valores em chat, commit ou arquivo do projeto. Se vazar, gere outro no painel.
+
+<details>
+<summary>Prefere fazer na mao?</summary>
 
 ```powershell
 gh secret set SUPABASE_ACCESS_TOKEN
 gh secret set SUPABASE_PROJECT_ID
 gh secret set SUPABASE_DB_PASSWORD
 ```
-
 Ou pelo site: repositorio → **Settings → Secrets and variables → Actions → New repository secret**.
+Depois teste: aba **Actions** → **Deploy no Supabase** → **Run workflow**.
+</details>
 
-> Nunca cole esses valores em chat, commit ou arquivo do projeto. Se vazar, gere outro no painel.
-
-### 3. Testar
-No GitHub: aba **Actions** → **Deploy no Supabase** → **Run workflow** → **Run workflow**.
-Em ~1 minuto tem que ficar **verde**. Se ficar vermelho, clique nele: a mensagem diz o que falta.
+### 3. Conferir depois
+A qualquer momento: `npm run configurar-supabase -- --verificar` confere se os 3 segredos existem
+e roda um deploy de teste.
 
 ### 4. Chaves para o front-end
 Copie `.env.example` para `.env` e preencha com o que esta em

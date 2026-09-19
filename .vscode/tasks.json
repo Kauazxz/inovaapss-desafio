@@ -6,8 +6,31 @@
       "detail": "Commita o que voce fez, puxa o trabalho do colega e envia o seu (Ctrl+Shift+B). Se mexeu em supabase/, o deploy sai sozinho.",
       "type": "shell",
       "command": "npm",
-      "args": ["run", "sync"],
-      "group": { "kind": "build", "isDefault": true },
+      "args": [
+        "run",
+        "sync"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Configurar Supabase (uma vez)",
+      "detail": "Pede os 3 segredos do Supabase (sem mostrar na tela), salva no GitHub e testa o deploy",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "run",
+        "configurar-supabase"
+      ],
       "presentation": {
         "reveal": "always",
         "panel": "dedicated",
@@ -21,8 +44,15 @@
       "detail": "Mostra os arquivos alterados e os ultimos commits do grupo",
       "type": "shell",
       "command": "npm",
-      "args": ["run", "status"],
-      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "args": [
+        "run",
+        "status"
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
       "problemMatcher": []
     },
     {
@@ -30,8 +60,16 @@
       "detail": "Normalmente NAO precisa: o push ja faz o deploy pela aba Actions. Use so em emergencia (exige npx supabase login + link).",
       "type": "shell",
       "command": "npm",
-      "args": ["run", "deploy"],
-      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "focus": true },
+      "args": [
+        "run",
+        "deploy"
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": true
+      },
       "problemMatcher": []
     }
   ]
