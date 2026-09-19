@@ -2,6 +2,7 @@ import { LogOut } from 'lucide-react';
 import { NavLink, Outlet, useLocation } from 'react-router';
 
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/features/auth/use-auth';
 import { cn } from '@/lib/utils';
 import { findNavItem, NAV_ITEMS } from '@/routes/nav';
 
@@ -16,6 +17,7 @@ const linkActive = 'bg-sidebar-accent text-sidebar-accent-foreground';
 export function PrivateLayout() {
   const { pathname } = useLocation();
   const current = findNavItem(pathname);
+  const { me, user, signOut } = useAuth();
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -53,10 +55,19 @@ export function PrivateLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 items-center justify-between gap-4 border-b border-border px-4 md:px-6">
           <h1 className="truncate text-base font-semibold">{current?.label ?? 'INOVAAPPS'}</h1>
-          <div className="flex items-center gap-3">
-            {/* TODO (Etapa 1): nome da organização e do usuário vindos da sessão. */}
-            <span className="hidden text-sm text-muted-foreground sm:inline">Organização</span>
-            <Button variant="ghost" size="sm" disabled title="Disponível na Etapa 1 (auth)">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="hidden min-w-0 text-right sm:block">
+              <p className="truncate text-sm font-medium" data-testid="organization-name">
+                {me?.organization?.name ?? '—'}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">{user?.email ?? ''}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void signOut()}
+              title="Encerrar a sessão"
+            >
               <LogOut aria-hidden="true" />
               Sair
             </Button>

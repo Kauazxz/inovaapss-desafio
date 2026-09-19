@@ -1,1 +1,13 @@
-{"version":"7","dialect":"postgresql","entries":[]}
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789851299463,
+      "tag": "20260919205459_auth_organizations",
+      "breakpoints": true
+    }
+  ]
+}

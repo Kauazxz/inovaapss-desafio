@@ -1,19 +1,46 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useId, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Link } from 'react-router';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getSupabaseClient } from '@/lib/supabase';
 
+import { ResetPasswordForm } from './ResetPasswordForm';
 import { type LoginInput, loginSchema } from './schemas';
+import { useAuth } from './use-auth';
+
+/** Mensagens amigáveis para os erros mais comuns do Supabase Auth. */
+function friendlyAuthError(code: string | undefined, message: string): string {
+  switch (code) {
+    case 'invalid_credentials':
+      return 'E-mail ou senha incorretos.';
+    case 'email_not_confirmed':
+      return 'Confirme seu e-mail antes de entrar (veja a caixa de entrada).';
+    case 'over_request_rate_limit':
+      return 'Muitas tentativas. Aguarde um instante e tente de novo.';
+    default:
+      return message || 'Não foi possível entrar. Tente novamente.';
+  }
+}
+
+/** Rota de origem guardada pelo RequireAuth (state.from), ou /dashboard. */
+function useReturnTo(): string {
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from;
+  return from && from.startsWith('/') ? from : '/dashboard';
+}
 
 export function LoginPage() {
   const emailId = useId();
   const passwordId = useId();
-  const [status, setStatus] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const returnTo = useReturnTo();
+  const { status, configError, passwordRecovery } = useAuth();
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -21,10 +48,31 @@ export function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
 
-  // TODO (Etapa 1 — feat(auth)): chamar getSupabaseClient().auth.signInWithPassword(values),
-  // tratar erro de credencial e redirecionar para a rota de origem ou /dashboard.
-  const onSubmit = (values: LoginInput) => {
-    setStatus(`Formulário válido para ${values.email}. A autenticação entra na Etapa 1.`);
+  if (status === 'signed_in' && passwordRecovery) {
+    return <ResetPasswordForm />;
+  }
+  if (status === 'signed_in') {
+    return <Navigate to={returnTo} replace />;
+  }
+
+  const onSubmit = async (values: LoginInput) => {
+    setSubmitError(null);
+    let client;
+    try {
+      client = getSupabaseClient();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Supabase não configurado.');
+      return;
+    }
+    const { error } = await client.auth.signInWithPassword({
+      email: values.email,
+      password: values.password,
+    });
+    if (error) {
+      setSubmitError(friendlyAuthError(error.code, error.message));
+      return;
+    }
+    navigate(returnTo, { replace: true });
   };
 
   return (
@@ -82,13 +130,17 @@ export function LoginPage() {
             ) : null}
           </div>
 
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            Entrar
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isSubmitting || status === 'unconfigured'}
+          >
+            {isSubmitting ? 'Entrando…' : 'Entrar'}
           </Button>
 
-          {status ? (
-            <p role="status" className="text-sm text-muted-foreground">
-              {status}
+          {(submitError ?? configError) ? (
+            <p role="alert" className="text-sm text-destructive">
+              {submitError ?? configError}
             </p>
           ) : null}
         </form>

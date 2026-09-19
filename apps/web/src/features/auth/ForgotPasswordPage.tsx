@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getSupabaseClient } from '@/lib/supabase';
 
 import { type ForgotPasswordInput, forgotPasswordSchema } from './schemas';
 
 export function ForgotPasswordPage() {
   const emailId = useId();
   const [status, setStatus] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -20,11 +22,26 @@ export function ForgotPasswordPage() {
     formState: { errors, isSubmitting },
   } = useForm<ForgotPasswordInput>({ resolver: zodResolver(forgotPasswordSchema) });
 
-  // TODO (Etapa 1 — feat(auth)): chamar getSupabaseClient().auth.resetPasswordForEmail(email,
-  // { redirectTo }) e mostrar a mesma mensagem neutra exista o e-mail ou não.
-  const onSubmit = (values: ForgotPasswordInput) => {
+  const onSubmit = async (values: ForgotPasswordInput) => {
+    setStatus(null);
+    setSubmitError(null);
+    try {
+      // O link do e-mail volta para /login; lá o evento PASSWORD_RECOVERY abre o formulário
+      // de nova senha. A URL precisa estar na lista de Redirect URLs do Supabase (docs/AUTH.md).
+      const { error } = await getSupabaseClient().auth.resetPasswordForEmail(values.email, {
+        redirectTo: `${window.location.origin}/login`,
+      });
+      if (error) {
+        setSubmitError(error.message || 'Não foi possível enviar o e-mail. Tente de novo.');
+        return;
+      }
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Supabase não configurado.');
+      return;
+    }
+    // Mesma mensagem exista o e-mail ou não, para não revelar quem está cadastrado.
     setStatus(
-      `Se ${values.email} estiver cadastrado, você receberá um link para redefinir a senha. (Envio entra na Etapa 1.)`,
+      `Se ${values.email} estiver cadastrado, você receberá um link para redefinir a senha.`,
     );
   };
 
@@ -59,12 +76,17 @@ export function ForgotPasswordPage() {
           </div>
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
-            Enviar link
+            {isSubmitting ? 'Enviando…' : 'Enviar link'}
           </Button>
 
           {status ? (
             <p role="status" className="text-sm text-muted-foreground">
               {status}
+            </p>
+          ) : null}
+          {submitError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {submitError}
             </p>
           ) : null}
 

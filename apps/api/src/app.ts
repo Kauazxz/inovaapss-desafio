@@ -14,10 +14,11 @@ import { pinoHttp } from 'pino-http';
 import { API_VERSION } from './config/version.js';
 import { createDbClient, type DbClient } from './infrastructure/db/index.js';
 import { createLogger, type Logger } from './infrastructure/logger.js';
+import { createSupabaseClients, type SupabaseClients } from './infrastructure/supabase.js';
 import { createErrorHandler } from './middleware/error-handler.js';
 import { notFound } from './middleware/not-found.js';
 import { requestId } from './middleware/request-id.js';
-import { API_V1_PREFIX, createApiV1Router } from './routes/api-v1.js';
+import { type ApiV1Dependencies, API_V1_PREFIX, createApiV1Router } from './routes/api-v1.js';
 import { createDocsRouter } from './routes/docs.js';
 import { createHealthRouter } from './routes/health.js';
 import { getRequestId } from './shared/request.js';
@@ -27,6 +28,9 @@ import type { ApiEnv } from './config/env.js';
 export interface AppDependencies {
   logger?: Logger;
   db?: DbClient;
+  supabase?: SupabaseClients;
+  /** Testes: dublês de auth/persistência para o /api/v1 (ver routes/api-v1.ts). */
+  apiV1?: Pick<ApiV1Dependencies, 'getUser' | 'organizationsRepository'>;
 }
 
 const HEALTH_PATHS = new Set(['/health', '/ready']);
@@ -34,6 +38,7 @@ const HEALTH_PATHS = new Set(['/health', '/ready']);
 export function createApp(env: ApiEnv, deps: AppDependencies = {}): Express {
   const logger = deps.logger ?? createLogger(env);
   const db = deps.db ?? createDbClient(env.DATABASE_URL);
+  const supabase = deps.supabase ?? createSupabaseClients(env);
   const isProduction = env.NODE_ENV === 'production';
 
   const app = express();
@@ -92,7 +97,7 @@ export function createApp(env: ApiEnv, deps: AppDependencies = {}): Express {
     createHealthRouter({ db, version: API_VERSION, readyTimeoutMs: env.DB_READY_TIMEOUT_MS }),
   );
   app.use('/api', createDocsRouter({ enableUi: !isProduction }));
-  app.use(API_V1_PREFIX, createApiV1Router());
+  app.use(API_V1_PREFIX, createApiV1Router({ db, supabase, ...deps.apiV1 }));
 
   app.use(notFound);
   app.use(createErrorHandler({ exposeDetails: !isProduction }));

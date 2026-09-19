@@ -220,6 +220,9 @@ importers:
       '@inovaapss/validation':
         specifier: workspace:*
         version: link:../../packages/validation
+      '@supabase/supabase-js':
+        specifier: ^2.116.0
+        version: 2.116.0
       cors:
         specifier: ^2.8.6
         version: 2.8.6

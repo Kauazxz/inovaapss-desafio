@@ -3,8 +3,10 @@ import { Navigate, Route, Routes } from 'react-router';
 import { PrivateLayout } from '@/components/layout/PrivateLayout';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { AlertsPage } from '@/features/alerts/AlertsPage';
+import { AuthProvider } from '@/features/auth/AuthProvider';
 import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
 import { LoginPage } from '@/features/auth/LoginPage';
+import { OnboardingPage } from '@/features/auth/OnboardingPage';
 import { CalibrationPage } from '@/features/calibration/CalibrationPage';
 import { ClientDetailPage } from '@/features/client-detail/ClientDetailPage';
 import { ClientsPage } from '@/features/clients/ClientsPage';
@@ -19,41 +21,54 @@ import { SettingsPage } from '@/features/settings/SettingsPage';
 
 import { NotFoundPage } from './NotFoundPage';
 import { RequireAuth } from './RequireAuth';
+import { RequireOrganization } from './RequireOrganization';
 
 /**
  * Mapa de rotas (§38). Só o registro fica aqui; cada tela vive na sua feature
  * (apps/web/src/features/<feature>/), como manda o ETAPAS.md.
+ *
+ * O AuthProvider envolve as rotas (e fica dentro do QueryClientProvider do App) para /login
+ * saber se já há sessão e as privadas passarem por RequireAuth → RequireOrganization.
  */
 export function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+    <AuthProvider>
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-      {/* Públicas */}
-      <Route element={<PublicLayout />}>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      </Route>
-
-      {/* Privadas: passam pelo guard e pelo layout com sidebar */}
-      <Route element={<RequireAuth />}>
-        <Route element={<PrivateLayout />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/clients" element={<ClientsPage />} />
-          <Route path="/clients/:id" element={<ClientDetailPage />} />
-          <Route path="/metrics" element={<MetricsPage />} />
-          <Route path="/metrics/:id" element={<MetricDetailPage />} />
-          <Route path="/metric-models" element={<MetricModelsPage />} />
-          <Route path="/metric-models/:id" element={<MetricModelDetailPage />} />
-          <Route path="/import" element={<ImportPage />} />
-          <Route path="/documents" element={<DocumentsPage />} />
-          <Route path="/alerts" element={<AlertsPage />} />
-          <Route path="/calibration" element={<CalibrationPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+        {/* Públicas */}
+        <Route element={<PublicLayout />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         </Route>
-      </Route>
 
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+        <Route element={<RequireAuth />}>
+          {/* Logado, mas ainda sem organização */}
+          <Route element={<PublicLayout />}>
+            <Route path="/onboarding" element={<OnboardingPage />} />
+          </Route>
+
+          {/* Privadas: precisam de sessão e organização; layout com sidebar */}
+          <Route element={<RequireOrganization />}>
+            <Route element={<PrivateLayout />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/clients" element={<ClientsPage />} />
+              <Route path="/clients/:id" element={<ClientDetailPage />} />
+              <Route path="/metrics" element={<MetricsPage />} />
+              <Route path="/metrics/:id" element={<MetricDetailPage />} />
+              <Route path="/metric-models" element={<MetricModelsPage />} />
+              <Route path="/metric-models/:id" element={<MetricModelDetailPage />} />
+              <Route path="/import" element={<ImportPage />} />
+              <Route path="/documents" element={<DocumentsPage />} />
+              <Route path="/alerts" element={<AlertsPage />} />
+              <Route path="/calibration" element={<CalibrationPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Route>
+          </Route>
+        </Route>
+
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </AuthProvider>
   );
 }

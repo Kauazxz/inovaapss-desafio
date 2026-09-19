@@ -3,6 +3,10 @@
  *
  * Erros da API chegam no formato `{ error: { code, message, requestId } }` e viram `ApiError`,
  * para as telas mostrarem a mensagem e o requestId (que o suporte procura no log).
+ *
+ * Autenticação: o AuthProvider registra, via `configureApiAuth`, de onde vem o access_token da
+ * sessão e o que fazer num 401 (encerrar a sessão e voltar para /login). Assim este módulo não
+ * depende do Supabase e continua testável sem `.env`.
  */
 import { clientEnvSchema } from '@inovaapss/validation';
 
@@ -44,15 +48,29 @@ function isApiErrorBody(value: unknown): value is ApiErrorBody {
   );
 }
 
+export interface ApiAuthHooks {
+  /** access_token da sessão atual, ou null quando não há sessão. */
+  getToken(): Promise<string | null>;
+  /** Chamado quando a API responde 401 com o token da sessão (sessão inválida/expirada). */
+  onUnauthorized?: () => void;
+}
+
+let authHooks: ApiAuthHooks | null = null;
+
+/** Liga (ou desliga, com null) a sessão ao cliente HTTP. Chamado pelo AuthProvider. */
+export function configureApiAuth(hooks: ApiAuthHooks | null): void {
+  authHooks = hooks;
+}
+
 export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
   /** Corpo serializado como JSON (define Content-Type sozinho). */
   json?: unknown;
-  /** Token de sessão do Supabase (Authorization: Bearer). A Etapa 1 passa a preencher. */
+  /** Token explícito (Authorization: Bearer). Sem ele, usa o da sessão via configureApiAuth. */
   token?: string;
 }
 
 /**
- * `apiFetch<T>('/clients')` → faz a requisição, valida o status e devolve o JSON tipado.
+ * `apiFetch<T>('/api/v1/clients')` → faz a requisição, valida o status e devolve o JSON tipado.
  * Lança `ApiError` para respostas de erro no formato da API e `Error` para falhas de rede.
  */
 export async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
@@ -60,7 +78,10 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
   const finalHeaders = new Headers(headers);
   finalHeaders.set('Accept', 'application/json');
   if (json !== undefined) finalHeaders.set('Content-Type', 'application/json');
-  if (token) finalHeaders.set('Authorization', `Bearer ${token}`);
+
+  const usingSessionToken = token === undefined && authHooks !== null;
+  const bearer = token ?? (authHooks ? await authHooks.getToken() : null);
+  if (bearer) finalHeaders.set('Authorization', `Bearer ${bearer}`);
 
   let response: Response;
   try {
@@ -91,6 +112,9 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
   }
 
   if (!response.ok) {
+    if (response.status === 401 && usingSessionToken && bearer) {
+      authHooks?.onUnauthorized?.();
+    }
     if (isApiErrorBody(payload)) throw new ApiError(response.status, payload.error);
     throw new ApiError(response.status, {
       code: 'HTTP_ERROR',
