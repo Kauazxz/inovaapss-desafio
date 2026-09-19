@@ -4,12 +4,12 @@
   "files.insertFinalNewline": true,
   "files.autoSave": "afterDelay",
   "files.autoSaveDelay": 1000,
-
   "editor.formatOnSave": true,
   "editor.tabSize": 2,
-  "editor.rulers": [100],
+  "editor.rulers": [
+    100
+  ],
   "editor.bracketPairColorization.enabled": true,
-
   "// git": "Puxa o trabalho do grupo automaticamente e sempre com rebase, para nao criar merge sujo na main",
   "git.autofetch": true,
   "git.autofetchPeriod": 60,
@@ -17,18 +17,26 @@
   "git.enableSmartCommit": false,
   "git.confirmSync": false,
   "git.branchProtection": [],
-
-  "// liveshare": "Mostra quem esta editando o que, em tempo real",
-  "liveshare.presence": true,
-  "liveshare.showInStatusBar": "always",
-  "liveshare.focusBehavior": "prompt",
-
   "search.exclude": {
     "**/node_modules": true,
     "**/.venv": true,
     "**/dist": true,
     "**/build": true
   },
-
-  "cSpell.language": "en,pt,pt_BR"
+  "cSpell.language": "en,pt,pt_BR",
+  "// liveshare": "Sessao do grupo: quem entra logado no GitHub ja e admitido; convidado pode rodar tasks (Ctrl+Shift+B) e usar o terminal",
+  "liveshare.presence": true,
+  "liveshare.showInStatusBar": "always",
+  "liveshare.focusBehavior": "prompt",
+  "liveshare.guestApprovalRequired": false,
+  "liveshare.anonymousGuestApproval": "prompt",
+  "liveshare.allowGuestTaskControl": true,
+  "liveshare.allowGuestDebugControl": true,
+  "liveshare.autoShareTerminals": true,
+  "liveshare.shareExternalFiles": true,
+  "liveshare.excludedFiles": [
+    ".env",
+    ".env.*",
+    "!.env.example"
+  ]
 }
