@@ -4,23 +4,17 @@ import {
   classifyHealth,
   classifyPriority,
   clampScore,
+  isWorseHealthClass,
   type ClassBand,
+  type ForecastChartData,
+  type ForecastRow,
   type HealthClass,
   type PriorityClass,
+  type ProjectionConfidence,
 } from '@inovaapss/shared';
 
 import { EngineConfigError } from '../shared/errors.js';
 import { isFiniteNumber, linearSlope, round } from '../shared/math.js';
-
-import type { ForecastChartData, ForecastRow, ProjectionConfidence } from './types.js';
-
-/** Ordem de gravidade: quanto maior, pior. */
-const CLASS_SEVERITY: Readonly<Record<HealthClass, number>> = {
-  NORMAL: 0,
-  ATTENTION: 1,
-  RISK: 2,
-  CRITICAL: 3,
-};
 
 export interface ForecastConfig {
   /** Janela N de períodos (padrão 3, §10). */
@@ -123,7 +117,7 @@ export function buildForecastRow(
   const crossesDown =
     projectedClass !== null &&
     crossingClasses.includes(projectedClass) &&
-    CLASS_SEVERITY[projectedClass] > CLASS_SEVERITY[currentClass];
+    isWorseHealthClass(projectedClass, currentClass);
 
   return {
     clientId: input.clientId,

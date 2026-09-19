@@ -467,36 +467,14 @@ export interface EvidenceDriver {
 // Forecast (DATAVIZ.md §5)
 // ---------------------------------------------------------------------------
 
-export type ProjectionConfidence = 'low' | 'medium' | 'high';
-
-export interface ForecastRow {
-  clientId: string;
-  clientName: string;
-  mrr: number;
-  currency: string;
-  priorityScore: number;
-  priorityClass: PriorityClass;
-  healthCurrent: number;
-  currentClass: HealthClass;
-  healthProjected: number | null;
-  projectedClass: HealthClass | null;
-  slopePerPeriod: number | null;
-  trendWindow: number;
-  periodsAvailable: number;
-  confidence: number;
-  projectionConfidence: ProjectionConfidence;
-  crossesDown: boolean;
-  topEvidence: string;
-  periodEnd: string;
-}
-
-export interface ForecastChartData {
-  rows: ForecastRow[];
-  thresholds: { attention: number; risk: number; critical: number };
-  trendWindow: number;
-  periodLabel: string;
-  crossingCount: number;
-}
+// Os contratos do gráfico de forecast são de packages/shared (fonte única, DATAVIZ.md §5.4):
+// API, web e engine leem o mesmo tipo. Reexportados aqui para quem importa só do engine.
+export type {
+  ForecastChartData,
+  ForecastRow,
+  HealthThresholds,
+  ProjectionConfidence,
+} from '@inovaapss/shared';
 
 // ---------------------------------------------------------------------------
 // Score completo do cliente (orquestração de §8–§29)
