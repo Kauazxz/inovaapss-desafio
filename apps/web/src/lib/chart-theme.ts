@@ -1,5 +1,6 @@
 /**
- * Tokens de visualização de dados — materialização de docs/DATAVIZ.md (seção 2) para o Recharts.
+ * Tokens de visualização de dados — materialização de docs/DATAVIZ.md (seção 2) para o Recharts
+ * e para os gráficos em SVG próprio.
  *
  * Regra: este arquivo é a ÚNICA fonte de cor dos gráficos. Nenhum componente em
  * src/components/charts escreve hex direto. Mudou um valor aqui? Refaça a validação de cor
@@ -7,7 +8,15 @@
  */
 import { useSyncExternalStore } from 'react';
 
-import type { HealthClass } from '@inovaapss/shared';
+import {
+  classifyHealth,
+  HEALTH_CLASS_LABELS,
+  HEALTH_CLASSES,
+  type ClassBand,
+  type HealthClass,
+  type HealthThresholds,
+  type ProjectionConfidence,
+} from '@inovaapss/shared';
 
 export type ChartMode = 'light' | 'dark';
 
@@ -105,10 +114,23 @@ export const CHART_MARKS = {
   bandFillOpacity: 0.08,
   /** área sob linha: cor da série a 10 % */
   areaOpacity: 0.1,
+  /** ao recarregar dados, o gráfico anterior fica a 60 % (nunca piscar um skeleton — §2.4) */
+  reloadingOpacity: 0.6,
+  /** espessura do segmento do dumbbell (atual → projetado) */
+  dumbbellStroke: 3,
+  /** tamanho da ponta de seta do dumbbell */
+  arrowSize: 6,
 } as const;
 
 /** Linhas de referência padrão do eixo de health (§7 — thresholds podem vir da organização). */
-export const DEFAULT_HEALTH_THRESHOLDS = { attention: 80, risk: 60, critical: 40 } as const;
+export const DEFAULT_HEALTH_THRESHOLDS: HealthThresholds = {
+  attention: 80,
+  risk: 60,
+  critical: 40,
+};
+
+/** Faixa-alvo padrão das barras por dimensão (Normal: 80–100). */
+export const DEFAULT_TARGET_BAND = { min: 80, max: 100 } as const;
 
 /** Converte `#rrggbb` em `rgba(r, g, b, alpha)` — usado para `band.fill` e áreas. */
 export function withOpacity(hex: string, alpha: number): string {
@@ -124,6 +146,53 @@ export function withOpacity(hex: string, alpha: number): string {
 export function bandFill(palette: ChartPalette, healthClass: HealthClass): string {
   return withOpacity(palette.classes[healthClass], CHART_MARKS.bandFillOpacity);
 }
+
+/** Nome da classe em texto — a cor de classe nunca vai sozinha (DATAVIZ.md §1.4). */
+export function healthClassLabel(healthClass: HealthClass): string {
+  return HEALTH_CLASS_LABELS[healthClass];
+}
+
+/** Rótulo em português da confiança da projeção (DATAVIZ.md §5.2). */
+export const PROJECTION_CONFIDENCE_TEXT: Readonly<Record<ProjectionConfidence, string>> = {
+  low: 'confiança baixa',
+  medium: 'confiança média',
+  high: 'confiança alta',
+};
+
+/** Uma faixa de classe no eixo de health: de `from` (inclusive) até `to`. */
+export interface HealthBand {
+  healthClass: HealthClass;
+  from: number;
+  to: number;
+}
+
+/** Faixas do eixo 0–100 a partir dos thresholds vigentes, de Crítico a Normal (esquerda → direita). */
+export function healthBandsFromThresholds(thresholds: HealthThresholds): HealthBand[] {
+  return [
+    { healthClass: 'CRITICAL', from: 0, to: thresholds.critical },
+    { healthClass: 'RISK', from: thresholds.critical, to: thresholds.risk },
+    { healthClass: 'ATTENTION', from: thresholds.risk, to: thresholds.attention },
+    { healthClass: 'NORMAL', from: thresholds.attention, to: 100 },
+  ];
+}
+
+/** Thresholds no formato de faixas do `classifyHealth` (§7). */
+export function bandsFromThresholds(thresholds: HealthThresholds): ClassBand<HealthClass>[] {
+  return [
+    { class: 'NORMAL', min: thresholds.attention },
+    { class: 'ATTENTION', min: thresholds.risk },
+    { class: 'RISK', min: thresholds.critical },
+    { class: 'CRITICAL', min: 0 },
+  ];
+}
+
+/** Classe de um health pelos thresholds vigentes (não os padrões). */
+export function classifyHealthWith(health: number, thresholds: HealthThresholds): HealthClass {
+  return classifyHealth(health, bandsFromThresholds(thresholds));
+}
+
+/** Ordem de exibição das classes em rankings de distribuição: Crítico no topo (DATAVIZ.md §4.2). */
+export const HEALTH_CLASSES_WORST_FIRST: readonly HealthClass[] = [...HEALTH_CLASSES].reverse();
 
 // ---------- Modo claro/escuro ----------
 
