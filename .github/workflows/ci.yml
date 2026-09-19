@@ -1,13 +1,17 @@
-# Validacao continua: a cada push na main e a cada pull request roda
-# lint, typecheck, testes e build do monorepo, e confere o nome das migrations.
+# Validacao continua: a cada push (qualquer branch) e a cada pull request roda
+# lint, typecheck, testes e build do monorepo, confere se as migrations batem com o
+# schema Drizzle (drizzle-kit check) e se o nome delas segue o padrao da CLI do Supabase.
 # O deploy no Supabase continua no workflow deploy-supabase.yml.
 
 name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
+
+# O token do workflow so precisa ler o repositorio; nenhum job escreve nada.
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -44,6 +48,9 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Migrations x schema Drizzle (drizzle-kit check)
+        run: pnpm --filter @inovaapss/api db:check
 
   migrations:
     name: Nome das migrations
