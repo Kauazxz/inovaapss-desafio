@@ -10,3 +10,12 @@ packages:
 allowBuilds:
   supabase: true
   unrs-resolver: true
+
+# pnpm 12 recusa pacotes publicados ha menos de 24 h (protecao de supply chain).
+# Excecoes pontuais para versoes ja no lockfile e publicadas dentro dessa janela;
+# podem ser removidas depois que a versao completar 24 h.
+minimumReleaseAgeExclude:
+  - turbo@2.11.2
+  - '@turbo/*'
+  - '@types/node@22.20.4'
+  - eslint@10.11.0
