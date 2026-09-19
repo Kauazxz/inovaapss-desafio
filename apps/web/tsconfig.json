@@ -1,0 +1,10 @@
+{
+  "// leia-me": "Projeto composto: src/ (navegador) e as configs do Vite/Vitest (Node). `tsc -b` confere os dois. O alias @/* aqui é lido pela CLI do shadcn; o que vale para o tsc está em tsconfig.app.json.",
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }],
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
