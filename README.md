@@ -35,15 +35,22 @@ Ainda nao definida — sera escolhida junto com o time depois do briefing.
 
 ## Comecando
 
-```bash
-git clone https://github.com/Kauazxz/inovaapss.git
-cd inovaapss
-code .
-```
+Primeira vez no projeto? Siga o **[docs/COMECAR-AQUI.md](docs/COMECAR-AQUI.md)** —
+instalacao, clone, conexao com o GitHub e como a gente programa junto.
 
-Ao abrir no VSCode, aceite instalar as extensoes recomendadas (aparece um aviso no canto inferior direito). Elas ja vem configuradas em [`.vscode/extensions.json`](.vscode/extensions.json).
+## Como a gente trabalha
 
-## Como trabalhar em grupo
+Dois modos, para situacoes diferentes:
 
-Leia **[docs/COMO-TRABALHAR.md](docs/COMO-TRABALHAR.md)** antes do primeiro commit.
-Resumo: usamos **Live Share** para programar juntos em tempo real e commitamos direto na `main` — por isso **sempre** rode `./sync.ps1` antes de comecar e antes de enviar.
+| Situacao | Como |
+|---|---|
+| Resolver o mesmo problema juntos, ao vivo | **Live Share** (`Ctrl+Shift+P` → *Live Share: Start Collaboration Session*) |
+| Tarefas divididas, horarios diferentes | Cada um na sua maquina + **`Ctrl+Shift+B`** para sincronizar |
+
+**`Ctrl+Shift+B`** roda o [`sync.ps1`](sync.ps1): commita o seu trabalho, puxa o do
+colega e envia o seu — nessa ordem, para ninguem sobrescrever ninguem.
+Rode **antes de comecar** e **depois de terminar**.
+
+Commitamos direto na `main`, sem branch por pessoa. As regras completas
+(padrao de commit, o que fazer no conflito, comandos de emergencia) estao em
+**[docs/COMO-TRABALHAR.md](docs/COMO-TRABALHAR.md)**.
