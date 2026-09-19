@@ -6,7 +6,9 @@ Regras de negócio na [SPEC.md](../../docs/SPEC.md); "onde fica o quê" na
 
 ## Como rodar
 
-Na raiz do repositório (uma vez): `pnpm install` e copie `.env.example` para `.env`.
+Na raiz do repositório (uma vez): `pnpm install`, copie `.env.example` para `.env` e rode `pnpm build`
+(compila `packages/shared` e `packages/validation`, de que a API depende — o `pnpm dev` da raiz faz
+isso sozinho; o `--filter` abaixo não).
 
 ```bash
 pnpm --filter @inovaapss/api dev        # tsx watch, porta 3001
@@ -61,7 +63,9 @@ pnpm --filter @inovaapss/api db:check      # drizzle-kit check
 ## Docker
 
 Build a partir da **raiz** do monorepo: `docker build -f apps/api/Dockerfile -t inovaapss-api .`
-Imagem final: `node:22-alpine`, usuário `node`, só `dist/` e dependências de produção, porta 3001.
+Imagem final: `node:22-alpine`, usuário `node`, só `dist/` e dependências de produção (campo `files`
+do `package.json` + `.dockerignore` da raiz), porta 3001 — o `HEALTHCHECK` segue a `PORT` que a
+plataforma injetar.
 
 ## Estrutura
 

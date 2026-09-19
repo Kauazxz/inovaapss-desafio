@@ -20,13 +20,13 @@ Nada disso precisa ser refeito.
 
 ## 2. O que falta
 
-| Parte                                                      | Ferramenta                                                  | Quem faz                                                              | Quando                                         |
-| ---------------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------- |
-| CI (lint, typecheck, test, build, nome das migrations)     | GitHub Actions `ci.yml`                                     | agente (Etapa 0) — **já criado**, entra no ar com o commit da Etapa 0 | agora                                          |
-| Web em produção com preview por push                       | **Vercel**                                                  | **pessoa**                                                            | agora (seção 3)                                |
-| API em produção                                            | **Render** ou **Railway**, com o `Dockerfile` de `apps/api` | **pessoa**                                                            | assim que o esqueleto da API existir (seção 4) |
-| Variáveis de ambiente em cada serviço                      | painel de cada um                                           | **pessoa**                                                            | junto com os passos acima                      |
-| Seed de demonstração, OpenAPI em `/api/docs`, README final | —                                                           | agente (Etapa 14)                                                     | fim                                            |
+| Parte                                                  | Ferramenta                                                  | Quem faz             | Quando                                         |
+| ------------------------------------------------------ | ----------------------------------------------------------- | -------------------- | ---------------------------------------------- |
+| CI (lint, typecheck, test, build, migrations × schema) | GitHub Actions `ci.yml`                                     | **pronto** (Etapa 0) | —                                              |
+| Web em produção com preview por push                   | **Vercel**                                                  | **pessoa**           | agora (seção 3)                                |
+| API em produção                                        | **Render** ou **Railway**, com o `Dockerfile` de `apps/api` | **pessoa**           | agora — o esqueleto da API já existe (seção 4) |
+| Variáveis de ambiente em cada serviço                  | painel de cada um                                           | **pessoa**           | junto com os passos acima                      |
+| Seed de demonstração, README final                     | —                                                           | agente (Etapa 14)    | fim                                            |
 
 Enquanto a API não estiver no ar, o web na Vercel pode apontar `VITE_API_URL` para uma URL
 temporária; nada quebra no build.
@@ -50,8 +50,8 @@ Você precisa: conta no GitHub com acesso ao repositório `Kauazxz/inovaapss-des
    - **Install Command**: deixe o padrão — a Vercel detecta o `pnpm-lock.yaml` da raiz e usa pnpm.
    - Abra **Environment Variables** e adicione as três da seção 5 (web).
 5. Clique em **Deploy**. O primeiro build leva 1–3 minutos.
-6. Deu verde? A URL aparece na tela (algo como `inovaapss-desafio.vercel.app`). Anote — ela vira o
-   `CORS_ORIGIN` da API.
+6. Deu verde? A URL aparece na tela (algo como `inovaapss-desafio.vercel.app`). Anote — ela entra
+   em `CORS_ORIGINS` da API (aceita várias origens separadas por vírgula, ex.: produção + preview).
 7. Confira em **Settings → Git** que **Production Branch** é `main`. A partir daqui:
    - push na `main` → produção atualiza sozinha;
    - qualquer outra branch ou PR → **Preview Deployment** com URL própria (é o "preview deploy"
@@ -65,7 +65,10 @@ Você precisa: conta no GitHub com acesso ao repositório `Kauazxz/inovaapss-des
 
 ## 4. Passo a passo — API (Render, com Railway como alternativa)
 
-Escolha **um** dos dois. Os dois fazem deploy automático a partir do GitHub usando o `Dockerfile`.
+Escolha **um** dos dois. Os dois fazem deploy automático a partir do GitHub usando o `Dockerfile`,
+com a **raiz do repositório** como contexto de build (o equivalente local é
+`docker build -f apps/api/Dockerfile .`). O `.dockerignore` da raiz deixa `.env`, `node_modules`
+e builds locais fora da imagem, que leva só `dist/` e as dependências de produção da API.
 O Render tem plano gratuito simples de configurar (o serviço "dorme" depois de 15 min sem uso e leva
 ~30 s para acordar — para o hackathon, basta abrir a URL da API um minuto antes da demo). O Railway
 não dorme, mas usa crédito de teste.
@@ -114,17 +117,17 @@ arquivo do repositório, chat ou commit. O `.env.example` da raiz lista os nomes
 
 ### API (Render ou Railway)
 
-| Variável                    | Onde pegar                                                                     | Obrigatória? |
-| --------------------------- | ------------------------------------------------------------------------------ | ------------ |
-| `NODE_ENV`                  | `production`                                                                   | sim          |
-| `PORT`                      | Render: `10000` · Railway: injeta sozinho                                      | sim          |
-| `SUPABASE_URL`              | Supabase → Project Settings → API → Project URL                                | sim          |
-| `SUPABASE_ANON_KEY`         | Supabase → Project Settings → API → `anon` `public`                            | sim          |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API → `service_role` (**só aqui, nunca no web**) | sim          |
-| `DATABASE_URL`              | Supabase → Project Settings → Database → Connection string (URI, via pooler)   | sim          |
-| `CORS_ORIGIN`               | a URL do web na Vercel (previsto: a API usa para liberar o CORS)               | sim          |
-| `ANTHROPIC_API_KEY`         | só quando o provider de extração por IA entrar (ajuste A5 — depois)            | não          |
-| `SENTRY_DSN`                | só se ligar o Sentry                                                           | não          |
+| Variável                    | Onde pegar                                                                                                               | Obrigatória? |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------ |
+| `NODE_ENV`                  | `production`                                                                                                             | sim          |
+| `PORT`                      | Render: `10000` · Railway: injeta sozinho                                                                                | sim          |
+| `SUPABASE_URL`              | Supabase → Project Settings → API → Project URL                                                                          | sim          |
+| `SUPABASE_ANON_KEY`         | Supabase → Project Settings → API → `anon` `public`                                                                      | sim          |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API → `service_role` (**só aqui, nunca no web**)                                           | sim          |
+| `DATABASE_URL`              | Supabase → Project Settings → Database → Connection string (URI, via pooler)                                             | sim          |
+| `CORS_ORIGINS`              | URL do web na Vercel; várias separadas por vírgula (produção + preview). Sem ela a API só libera `http://localhost:5173` | sim          |
+| `ANTHROPIC_API_KEY`         | só quando o provider de extração por IA entrar (ajuste A5 — depois)                                                      | não          |
+| `SENTRY_DSN`                | só se ligar o Sentry                                                                                                     | não          |
 
 ### Web (Vercel)
 
@@ -152,7 +155,7 @@ push / pull_request
  → pnpm typecheck
  → pnpm test
  → pnpm build
- → migration check  (node scripts/verificar-migrations.js hoje; pnpm --filter @inovaapss/api db:check quando a API existir)
+ → migration check  (pnpm --filter @inovaapss/api db:check + node scripts/verificar-migrations.js)
    │
    ├─ push na main que mexe em supabase/  ──► deploy-supabase.yml ──► supabase db push   (já existe)
    ├─ Render/Railway (integração nativa) ──► build do Dockerfile ──► API no ar
@@ -165,10 +168,10 @@ projeto — opcional para o hackathon).
 
 ## 7. Como saber que está tudo no ar
 
-| Onde                     | O que ver                                |
-| ------------------------ | ---------------------------------------- |
-| GitHub → Actions         | `ci.yml` e `Deploy no Supabase` verdes   |
-| Vercel → Deployments     | último deploy "Ready"                    |
-| `https://<api>/health`   | responde `{"status":"ok"}`               |
-| `https://<api>/api/docs` | Swagger da API (previsto — Etapa 14)     |
-| `https://<web>/login`    | tela de login abre e consegue autenticar |
+| Onde                          | O que ver                                                                    |
+| ----------------------------- | ---------------------------------------------------------------------------- |
+| GitHub → Actions              | `ci.yml` e `Deploy no Supabase` verdes                                       |
+| Vercel → Deployments          | último deploy "Ready"                                                        |
+| `https://<api>/health`        | responde `{"status":"ok"}`                                                   |
+| `https://<api>/api/docs.json` | documento OpenAPI (o Swagger UI em `/api/docs` só responde fora de produção) |
+| `https://<web>/login`         | tela de login abre e consegue autenticar                                     |

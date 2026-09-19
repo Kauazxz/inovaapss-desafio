@@ -13,8 +13,8 @@ Gerenciador: **pnpm** (ajuste A9) com workspaces. Orquestração: **Turborepo**.
 ```text
 /
 ├─ apps/
-│  ├─ api/        @inovaapss/api  — Express + Drizzle + Zod + Pino (previsto: esqueleto na Etapa 0)
-│  └─ web/        @inovaapss/web  — React + Vite + Tailwind + shadcn/ui + Recharts (previsto: esqueleto na Etapa 0)
+│  ├─ api/        @inovaapss/api  — Express + Drizzle + Zod + Pino (esqueleto pronto: /health, /ready, /api/docs, Dockerfile)
+│  └─ web/        @inovaapss/web  — React + Vite + Tailwind + shadcn/ui + Recharts (esqueleto pronto: rotas §38, dashboard com mock)
 ├─ packages/
 │  ├─ config/     @inovaapss/config     — tsconfig, eslint e prettier compartilhados
 │  ├─ shared/     @inovaapss/shared     — tipos, enums e constantes de domínio (HealthClass, MetricType, direções...)
@@ -28,13 +28,15 @@ Gerenciador: **pnpm** (ajuste A9) com workspaces. Orquestração: **Turborepo**.
 ├─ .husky/                   — pre-commit (lint-staged) e commit-msg
 ├─ .github/workflows/
 │  ├─ deploy-supabase.yml    — já existe: aplica migrations a cada push na main
-│  └─ ci.yml                 — criado na Etapa 0: lint → typecheck → test → build + nome das migrations
+│  └─ ci.yml                 — lint → typecheck → test → build → drizzle-kit check + nome das migrations
 ├─ scripts/
 │  ├─ configurar-supabase.js — já existia
-│  ├─ verificar-commit.js    — hook commit-msg (Conventional Commits em inglês, sem trailers)
+│  ├─ verificar-commit.js    — hook commit-msg (Conventional Commits em inglês, sem trailers nem menção a ferramenta de IA)
+│  ├─ verificar-autor.js     — hook pre-commit (o commit sai sempre como Kauazxz — ajuste A6)
 │  └─ verificar-migrations.js — confere o nome dos .sql em supabase/migrations (usado no CI)
 ├─ sync.js                   — já existe: commita, puxa e envia (Ctrl+Shift+B)
 ├─ pnpm-workspace.yaml · turbo.json · package.json (raiz)
+├─ .dockerignore             — o que fica fora da imagem da API (o Docker só lê o da raiz do contexto)
 └─ .env.example
 ```
 
@@ -157,9 +159,11 @@ Estado de servidor com TanStack Query; formulários com React Hook Form + Zod (s
 - O **deploy já existe**: o workflow `deploy-supabase.yml` roda `supabase db push` a cada push na
   `main` que toque em `supabase/`. Ou seja, gerar a migration e apertar `Ctrl+Shift+B` é o deploy.
 - Migrations commitadas não são editadas: precisa mudar, gera outra.
-- O CI já confere o **nome** de cada migration (`scripts/verificar-migrations.js`: `YYYYMMDDHHMMSS_nome.sql`).
-  O `db:check` (drizzle-kit check), que confere o **conteúdo** contra o schema, entra no CI quando a
-  API existir (previsto) — juntos são o "migration check" do pipeline §50.
+- O CI confere o **nome** de cada migration (`scripts/verificar-migrations.js`: `YYYYMMDDHHMMSS_nome.sql`)
+  e roda o `db:check` (drizzle-kit check), que confere o **conteúdo** contra o schema — juntos são o
+  "migration check" do pipeline §50.
+- A pasta `supabase/migrations/meta/` (journal e snapshots do Drizzle) é commitada junto com os `.sql`
+  e nunca é editada à mão: é por ela que o próximo `db:generate` sabe o que já existe.
 - SQL manual (RLS, policies, funções) continua possível com `npx supabase migration new nome` —
   ver [SUPABASE.md](SUPABASE.md).
 

@@ -6,7 +6,8 @@ Projeto do grupo para o desafio INOVAAPPS: um **motor configurável de saúde, r
 clientes** — uma plataforma SaaS multiempresa em que cada organização configura as próprias métricas,
 enxerga quais clientes estão se deteriorando, entende as evidências e sabe em que ordem agir.
 
-> **Status:** Etapa 0 (fundação) em andamento. Acompanhe em **[docs/ETAPAS.md](docs/ETAPAS.md)**.
+> **Status:** Etapa 0 (fundação) concluída; as próximas etapas rodam em paralelo por trilhas.
+> Acompanhe em **[docs/ETAPAS.md](docs/ETAPAS.md)**.
 
 ---
 
@@ -33,9 +34,9 @@ vencem o resto em caso de conflito).
 
 | Camada                 | Tecnologia                                                                                                   | Estado                                                 |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
-| Monorepo               | **pnpm** workspaces + **Turborepo**, TypeScript, ESLint, Prettier, Husky + lint-staged                       | em montagem (Etapa 0)                                  |
-| API                    | **Express** + **Drizzle ORM** + Zod + Pino, Vitest + Supertest, OpenAPI                                      | em montagem                                            |
-| Web                    | **React** + **Vite** + **Tailwind** + **shadcn/ui**, React Router, TanStack Query, React Hook Form, Recharts | em montagem                                            |
+| Monorepo               | **pnpm** workspaces + **Turborepo**, TypeScript, ESLint, Prettier, Husky + lint-staged                       | **pronto** (Etapa 0)                                   |
+| API                    | **Express** + **Drizzle ORM** + Zod + Pino, Vitest + Supertest, OpenAPI                                      | esqueleto pronto (`/health`, `/ready`, `/api/docs`)    |
+| Web                    | **React** + **Vite** + **Tailwind** + **shadcn/ui**, React Router, TanStack Query, React Hook Form, Recharts | esqueleto pronto (rotas §38, dashboard com mock)       |
 | Banco / Auth / Storage | **Supabase** (Postgres, Auth, Storage), migrations geradas pelo Drizzle em `supabase/migrations/`            | **funcionando** — deploy automático por GitHub Actions |
 | Hospedagem web         | **Vercel**                                                                                                   | a conectar — [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)  |
 | Hospedagem API         | **Railway ou Render** (Dockerfile)                                                                           | a conectar — [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)  |
@@ -59,6 +60,10 @@ copy .env.example .env            # no Mac/Linux: cp .env.example .env — depoi
 pnpm dev                          # sobe a API em http://localhost:3001 e o web em http://localhost:5173
 ```
 
+O `pnpm dev` compila `packages/shared` e `packages/validation` antes de subir a API e o web (Turbo),
+então funciona num clone recém-instalado. Para rodar um pacote sozinho (`pnpm --filter @inovaapss/api dev`),
+rode `pnpm build` na raiz uma vez antes — e de novo sempre que alguém mexer em `packages/`.
+
 Antes de commitar (e o CI roda o mesmo):
 
 ```powershell
@@ -69,7 +74,9 @@ pnpm build
 ```
 
 Outros comandos da raiz: `pnpm sync` (sincroniza com o grupo), `pnpm status`, `pnpm format`,
-`pnpm --filter @inovaapss/api db:generate` (gera migration a partir do schema Drizzle).
+`pnpm --filter @inovaapss/api db:generate` (gera migration a partir do schema Drizzle — commite também
+`supabase/migrations/meta/`) e `pnpm --filter @inovaapss/api db:check` (confere migrations × schema, o
+mesmo que o CI roda).
 
 ## Documentação
 
@@ -108,6 +115,6 @@ Rode **antes de começar** e **depois de terminar**.
 `Ctrl+Shift+B`? O GitHub Actions aplica no banco sozinho. Acompanhe na aba **Actions**.
 
 Commitamos direto na `main`, sem branch por pessoa, sempre pela conta **Kauazxz** (um único autor,
-sem trailers — o hook `commit-msg` confere). As regras completas (padrão de commit, o que fazer no
+sem trailers — os hooks `pre-commit` e `commit-msg` conferem). As regras completas (padrão de commit, o que fazer no
 conflito, comandos de emergência) estão em **[docs/COMO-TRABALHAR.md](docs/COMO-TRABALHAR.md)**.
 Para dividir trabalho por etapa sem conflito, use o **[docs/ETAPAS.md](docs/ETAPAS.md)**.

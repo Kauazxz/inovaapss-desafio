@@ -52,7 +52,8 @@ git config user.name "Kauazxz"
 git config user.email "122256165+Kauazxz@users.noreply.github.com"
 ```
 
-Confira com `git config user.name` (tem que responder `Kauazxz`).
+Confira com `git config user.name` (tem que responder `Kauazxz`). Se esquecer, o hook `pre-commit`
+recusa o commit e mostra estes dois comandos — e so rodar e commitar de novo.
 
 ## Parte 4 — Conectar ao GitHub
 

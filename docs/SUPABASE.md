@@ -72,7 +72,7 @@ Depois teste: aba **Actions** → **Deploy no Supabase** → **Run workflow**.
 
 ### 3. Conferir depois
 
-A qualquer momento: `pnpm configurar-supabase -- --verificar` confere se os 3 segredos existem
+A qualquer momento: `pnpm configurar-supabase --verificar` confere se os 3 segredos existem
 e roda um deploy de teste.
 
 ### 4. Chaves para o front-end
@@ -119,7 +119,12 @@ pnpm --filter @inovaapss/api db:generate
 
 Gera `supabase/migrations/20260919120000_<nome>.sql` — o nome ja sai no formato que a CLI do
 Supabase entende (ajuste A8 da spec). Para dar um nome melhor:
-`pnpm --filter @inovaapss/api db:generate -- --name add_plans`.
+`pnpm --filter @inovaapss/api db:generate --name add_plans` (sem `--` no meio: o pnpm repassa o
+`--` literalmente e o drizzle-kit recusa).
+
+Junto com o `.sql`, o drizzle-kit atualiza `supabase/migrations/meta/` (journal e snapshots).
+**Commite essa pasta tambem** e nunca edite nem apague o que esta nela: e por ela que o proximo
+`db:generate` (seu ou de um colega) sabe o que ja existe no banco.
 
 ### 3. Revisar o SQL
 

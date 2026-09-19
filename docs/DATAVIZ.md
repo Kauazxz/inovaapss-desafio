@@ -99,8 +99,9 @@ o primeiro da lista é o primeiro a ligar.
 ## 2. Tokens de design
 
 Os valores abaixo são a **única** fonte de cor dos gráficos. O arquivo
-`apps/web/src/lib/chart-theme.ts` deve materializar estes tokens para o Recharts (e o
-`tailwind.config` os expõe para o resto da UI). Ninguém escreve hex direto num componente de gráfico.
+`apps/web/src/lib/chart-theme.ts` deve materializar estes tokens para o Recharts (e
+`apps/web/src/index.css` — Tailwind 4, bloco `@theme`/`:root`, sem `tailwind.config` — os expõe para o
+resto da UI). Ninguém escreve hex direto num componente de gráfico.
 
 ### 2.1 Paleta
 
@@ -329,11 +330,13 @@ e MRR alto). Delta melhora: seta para a direita, cinza. Ômega não tem históri
 
 ### 5.4 Estrutura de dados esperada
 
-Fica em `packages/shared/src/dashboard/forecast.ts` (tipos) e é o retorno de `GET /dashboard/risk`
-no campo `forecast`. O cálculo da projeção é puro e vive em `packages/engine/src/scoring/forecast.ts`.
+Fica em `packages/shared/src/forecast.ts` (tipos; o pacote usa um arquivo plano por domínio,
+reexportado em `index.ts`) e é o retorno de `GET /dashboard/risk` no campo `forecast`. O cálculo da
+projeção é puro e vive em `packages/engine/src/forecast/` (Etapa 8 — a Etapa 4 fica com
+`packages/engine/src/scoring/`).
 
 ```ts
-import type { HealthClass, PriorityClass } from '../scoring/classes';
+import type { HealthClass, PriorityClass } from './scoring.js';
 
 /** Uma linha do gráfico de forecast priorizado (um cliente). */
 export interface ForecastRow {
@@ -386,8 +389,10 @@ export interface ForecastChartData {
 }
 ```
 
-`HealthClass` = `"normal" | "attention" | "risk" | "critical"` e `PriorityClass` =
-`"P0" | "P1" | "P2" | "P3"`, ambos em `packages/shared`.
+`HealthClass` = `"NORMAL" | "ATTENTION" | "RISK" | "CRITICAL"` (maiúsculas, como `HEALTH_CLASSES` em
+`packages/shared/src/scoring.ts`) e `PriorityClass` = `"P0" | "P1" | "P2" | "P3"`, ambos em
+`packages/shared`. `crossesDown` compara as classes pela ordem NORMAL < ATTENTION < RISK < CRITICAL
+(como `apps/web/src/lib/mock/dashboard.ts` já faz) — nunca por string.
 
 ### 5.5 Checklist antes de dar o gráfico por pronto
 

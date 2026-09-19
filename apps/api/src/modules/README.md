@@ -21,4 +21,5 @@ Para ligar um módulo:
 4. gere a migration: `pnpm --filter @inovaapss/api db:generate`.
 
 Módulos previstos: `auth`, `organizations`, `portfolio-clients`, `contracts`, `metrics`, `scoring`,
-`sla`, `imports`, `documents`, `alerts`, `recommendations`, `calibration`, `dashboard`.
+`sla`, `imports`, `documents`, `alerts`, `recommendations`, `calibration`, `dashboard`,
+`client-health` (rotas `/clients/:id/history`, `/scores`, `/evidence`, `/recommendations` — Etapa 9).
