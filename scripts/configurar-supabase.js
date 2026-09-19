@@ -6,8 +6,8 @@
   GitHub, dispara o workflow "Deploy no Supabase" e acompanha ate ficar verde.
   Nada do que voce cola fica salvo neste computador.
 
-  Uso:  npm run configurar-supabase
-        npm run configurar-supabase -- --verificar   (so confere os segredos e roda o deploy)
+  Uso:  pnpm configurar-supabase
+        pnpm configurar-supabase --verificar   (so confere os segredos e roda o deploy)
 */
 'use strict';
 const { spawnSync } = require('child_process');
@@ -82,7 +82,7 @@ async function main() {
     const faltam = SEGREDOS.map((s) => s.nome).filter((n) => !existentes.has(n));
     if (faltam.length) {
       diga(`Faltam segredos no GitHub: ${faltam.join(', ')}`, cor.vermelho);
-      diga('Rode:  npm run configurar-supabase', cor.cinza);
+      diga('Rode:  pnpm configurar-supabase', cor.cinza);
       return 1;
     }
     diga('Os 3 segredos existem no GitHub.', cor.verde);
@@ -137,7 +137,7 @@ async function main() {
   spawnSync('gh', ['run', 'view', id, '--log-failed'], { stdio: 'inherit' });
   console.log('');
   diga('Causas mais comuns: senha do banco errada, token errado, ou o projeto ainda esta sendo criado (espere 2 min).', cor.amarelo);
-  diga('Corrigiu? Rode de novo:  npm run configurar-supabase', cor.cinza);
+  diga('Corrigiu? Rode de novo:  pnpm configurar-supabase', cor.cinza);
   return 1;
 }
 

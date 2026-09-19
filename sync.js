@@ -7,8 +7,8 @@
   Fazer nessa ordem e o que impede um de sobrescrever o outro.
   Funciona em Windows, Mac e Linux. Precisa so do Git e do Node.
 
-  Uso:  npm run sync
-        npm run sync -- "feat: tela de login"
+  Uso:  pnpm sync
+        pnpm sync "feat: tela de login"
 */
 'use strict';
 const { spawnSync } = require('child_process');
@@ -55,7 +55,7 @@ async function main() {
     if (!msg) msg = await pergunta('Descreva o que voce fez (ex: feat: tela de login): ');
     if (!msg) {
       diga('Commit cancelado: a mensagem esta vazia. Nada foi enviado.', cor.vermelho);
-      diga('Dica: npm run sync -- "feat: o que voce fez"', cor.cinza);
+      diga('Dica: pnpm sync "feat: o que voce fez"', cor.cinza);
       return 1;
     }
     roda(['add', '-A']);
@@ -78,7 +78,7 @@ async function main() {
     console.log('  1. Abra no VSCode os arquivos marcados com conflito');
     console.log('  2. Fale com quem escreveu a outra parte antes de apagar algo');
     console.log('  3. Resolva, e entao rode:  git add .   e depois   git rebase --continue');
-    console.log('  4. Por fim, rode  npm run sync  de novo');
+    console.log('  4. Por fim, rode  pnpm sync  de novo');
     console.log('');
     console.log('  Quer desistir e voltar tudo como estava?  git rebase --abort');
     console.log('');

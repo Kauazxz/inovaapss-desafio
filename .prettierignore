@@ -13,3 +13,6 @@ scripts/configurar-supabase.js
 
 # O VSCode formata os proprios arquivos de configuracao
 .vscode
+
+# Checkouts temporarios (worktrees) que ferramentas do editor criam dentro da pasta do projeto
+**/worktrees/

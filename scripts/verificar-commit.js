@@ -7,8 +7,9 @@
          tipo(escopo): descricao        ex.: feat(auth): add login page
        Tipos aceitos: feat fix chore docs style refactor perf test build ci revert
        Tambem aceita linhas que comecam com "Merge ", "Revert ", "fixup! " ou "squash! ".
-    2. Um unico autor. Nenhuma linha pode comecar com "Co-Authored-By:" ou
-       "Signed-off-by:", nem conter "Generated with" ou o emoji de robo.
+    2. Um unico autor. Nenhuma linha pode conter "Co-Authored-By:" ou "Signed-off-by:"
+       (em qualquer posicao), "Generated with", o emoji de robo nem mencao a ferramenta
+       de IA (a lista MENCAO_IA abaixo; ela existe so para bloquear essas palavras).
 
   Uso: node scripts/verificar-commit.js <arquivo-com-a-mensagem>
 */
@@ -21,11 +22,17 @@ const PRIMEIRA_LINHA =
   /^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)(\([a-z0-9._/-]+\))?!?: .{3,}$/;
 const EXCECOES = /^(Merge |Revert |fixup! |squash! )/;
 
+// Palavras que denunciam ferramenta de IA na mensagem. Sem ancora e sem diferenciar caixa;
+// \b evita falso positivo em nomes de variavel como ANTHROPIC_API_KEY (o "_" e caractere de palavra).
+const MENCAO_IA =
+  /\b(claude|anthropic|copilot|codex|chatgpt|openai|gpt-?\d|gemini|llm|assistente de ia|ai assistant)\b/i;
+
 const TRAILERS_PROIBIDOS = [
-  { teste: (l) => /^co-authored-by:/i.test(l), nome: 'Co-Authored-By' },
-  { teste: (l) => /^signed-off-by:/i.test(l), nome: 'Signed-off-by' },
+  { teste: (l) => /co-authored-by:/i.test(l), nome: 'Co-Authored-By' },
+  { teste: (l) => /signed-off-by:/i.test(l), nome: 'Signed-off-by' },
   { teste: (l) => /generated with/i.test(l), nome: '"Generated with"' },
   { teste: (l) => l.includes('\u{1F916}'), nome: 'emoji de robo' },
+  { teste: (l) => MENCAO_IA.test(l), nome: 'mencao a ferramenta de IA' },
 ];
 
 function falha(motivo, linha) {
