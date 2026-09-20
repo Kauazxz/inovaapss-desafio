@@ -66,35 +66,6 @@ describe('aba Em risco', () => {
   );
 
   it(
-    'explica saúde atual, saúde projetada e risco de cancelamento sem tratá-lo como porcentagem',
-    async () => {
-      renderWithProviders(<RiskTab />);
-
-      const guideTitle = await screen.findByRole(
-        'heading',
-        { name: 'Como ler esta tela' },
-        LAZY_TIMEOUT,
-      );
-      const guide = guideTitle.closest('section')!;
-      expect(within(guide).getByRole('heading', { name: 'Saúde atual' })).toBeInTheDocument();
-      expect(within(guide).getByRole('heading', { name: 'Saúde projetada' })).toBeInTheDocument();
-      expect(
-        within(guide).getByRole('heading', { name: 'Sinal de risco de cancelamento' }),
-      ).toBeInTheDocument();
-      expect(
-        within(guide).getByText(/não significa .*% de chance de cancelar/),
-      ).toBeInTheDocument();
-      expect(within(guide).getByText(/saúde .* \+ risco .* = 100/)).toBeInTheDocument();
-      expect(
-        within(guide).getByRole('heading', { name: 'Prioridade de atendimento' }),
-      ).toBeInTheDocument();
-      expect(within(guide).getByText(/Confiança dos dados:/)).toBeInTheDocument();
-      expect(within(guide).getByText(/Confiança da projeção:/)).toBeInTheDocument();
-    },
-    TEST_TIMEOUT,
-  );
-
-  it(
     'desenha o forecast com as 10 primeiras linhas ordenadas por prioridade e o título dinâmico',
     async () => {
       renderWithProviders(<RiskTab />);

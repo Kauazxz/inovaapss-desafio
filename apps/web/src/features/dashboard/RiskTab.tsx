@@ -8,7 +8,6 @@ import { DashboardEmpty, DashboardError, DashboardLoading } from './DashboardSta
 import { criticalBandHint, formatCountDelta, formatCurrencyDelta, riskBandHint } from './format';
 import { KpiRow } from './KpiRow';
 import { RankingTable } from './RankingTable';
-import { ScoreGuide } from './ScoreGuide';
 
 /**
  * Aba "Em risco" (§39): responde com quem falar, por quê, em que ordem e o que fazer.
@@ -65,8 +64,6 @@ export function RiskTab() {
         <DashboardEmpty filtered={false} />
       ) : (
         <>
-          <ScoreGuide example={data.ranking[0]!} priorityWeights={data.priorityWeights} />
-
           {/* Gráfico não mora em card nem leva borda em volta (DATAVIZ.md §1.3): no celular
               cada pixel de largura é escala do dumbbell. */}
           <ForecastDumbbellChart data={data.forecast} onSelect={openClient} />

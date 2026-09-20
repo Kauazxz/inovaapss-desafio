@@ -164,15 +164,10 @@ describe('aba Visão geral', () => {
   );
 
   it(
-    'lista recomendações com playbook e status, e reserva a seção de contratos',
+    'reserva a seção de contratos na visão geral',
     async () => {
       renderAt('/clients/mock-alfa');
-      const list = await screen.findByRole('list', { name: 'Recomendações' }, LAZY_TIMEOUT);
-      const first = within(list).getAllByRole('listitem')[0]!;
-      expect(first).toHaveTextContent(
-        'Abrir sala de crise com o time técnico e revisar os chamados críticos',
-      );
-      expect(first).toHaveTextContent('Pendente');
+      await screen.findByRole('tablist', { name: 'Seções do cliente' }, LAZY_TIMEOUT);
       expect(document.querySelector('section#contratos')).not.toBeNull();
     },
     TEST_TIMEOUT,

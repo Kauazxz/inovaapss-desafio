@@ -1,28 +1,17 @@
-import { CircleCheck, CircleDashed, CircleX, Loader } from 'lucide-react';
-
 import {
   buildHealthSummaryLines,
   HEALTH_CLASS_LABELS,
-  RECOMMENDATION_STATUS_LABELS,
   type ClientHealthOverview,
   type EvidenceDto,
   type MetricScoreDto,
-  type RecommendationDto,
-  type RecommendationStatus,
 } from '@inovaapss/shared';
 
 import { RankedBarChart, type RankedBarDatum } from '@/components/charts/ranked-bar-chart';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ContractsPanel } from '@/features/contracts';
 import { formatInteger } from '@/lib/format';
 
-import {
-  CLIENT_DETAIL_DATA_SOURCE,
-  useClientEvidence,
-  useClientRecommendations,
-  useClientScores,
-} from '../api';
+import { CLIENT_DETAIL_DATA_SOURCE, useClientEvidence, useClientScores } from '../api';
 import { formatDecimal, formatMetricValue, formatSignedDelta, formatWeight } from '../format';
 import { SectionTitle } from '../SectionTitle';
 import { metricScoresTitle } from '../titles';
@@ -142,47 +131,6 @@ function EvidenceList({ items }: { items: EvidenceDto[] }) {
   );
 }
 
-const STATUS_ICON: Readonly<Record<RecommendationStatus, typeof CircleCheck>> = {
-  PENDING: CircleDashed,
-  IN_PROGRESS: Loader,
-  DONE: CircleCheck,
-  DISMISSED: CircleX,
-};
-
-function RecommendationList({ items }: { items: RecommendationDto[] }) {
-  return (
-    <ol aria-label="Recomendações" className="space-y-4">
-      {items.map((item) => {
-        const Icon = STATUS_ICON[item.status];
-        return (
-          <li key={item.id} className="flex gap-3">
-            <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            <div className="min-w-0 space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-medium">{item.title}</p>
-                <Badge variant={item.status === 'DONE' ? 'secondary' : 'outline'}>
-                  {RECOMMENDATION_STATUS_LABELS[item.status]}
-                </Badge>
-                {item.triggerType === 'CRITICAL_TRIGGER' ? (
-                  <Badge variant="destructive">gatilho crítico</Badge>
-                ) : null}
-              </div>
-              <p className="text-sm text-muted-foreground">{item.description}</p>
-              <p className="text-xs text-muted-foreground">
-                {item.metricName ? `${item.metricName} · ` : ''}
-                {item.evidence ? `por quê: ${item.evidence}` : ''}
-                {item.completedAt
-                  ? ` · concluída em ${new Date(item.completedAt).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}`
-                  : ''}
-              </p>
-            </div>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
 /**
  * Aba "Visão geral" (§40): resumo §58 em texto, os 10 scores em barras (§29), a lista de
  * evidências, as recomendações com playbook (§30) e o espaço dos contratos (Etapa 2).
@@ -190,7 +138,6 @@ function RecommendationList({ items }: { items: RecommendationDto[] }) {
 export function OverviewTab({ overview }: { overview: ClientHealthOverview }) {
   const scores = useClientScores(overview.client.id);
   const evidence = useClientEvidence(overview.client.id);
-  const recommendations = useClientRecommendations(overview.client.id);
   const lines = buildHealthSummaryLines(overview.score, overview.topDrivers);
 
   return (
@@ -261,26 +208,6 @@ export function OverviewTab({ overview }: { overview: ClientHealthOverview }) {
           // gráficos ficam soltos no fundo da página.
           <div className="rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5">
             <EvidenceList items={evidence.data.items} />
-          </div>
-        )}
-      </section>
-
-      <section aria-labelledby="recomendacoes-title" className="space-y-3">
-        <SectionTitle
-          id="recomendacoes-title"
-          hint="Playbook de cada métrica (§30): o que fazer, em ordem, e o status de cada ação."
-        >
-          Recomendações
-        </SectionTitle>
-        {recommendations.isPending ? (
-          <Skeleton className="h-40 w-full" aria-label="Carregando as recomendações" />
-        ) : recommendations.isError ? (
-          <p role="alert" className="text-sm text-destructive">
-            Não foi possível carregar as recomendações.
-          </p>
-        ) : (
-          <div className="rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5">
-            <RecommendationList items={recommendations.data.items} />
           </div>
         )}
       </section>

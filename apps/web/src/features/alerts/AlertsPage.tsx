@@ -4,7 +4,7 @@
  * Peso e gatilho são coisas diferentes: o peso entra no cálculo da saúde, o gatilho pede ação
  * imediata. Por isso esta tela é uma fila de trabalho, não um painel.
  */
-import { AlertTriangle, BellOff, Check, Info, Mail, TriangleAlert } from 'lucide-react';
+import { AlertTriangle, BellOff, Check, Eye, Info, Mail, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 
@@ -24,6 +24,8 @@ import { cn } from '@/lib/utils';
 
 import { useAlerts, useSendDigest, useUpdateAlertStatus, type DigestSendResult } from './api';
 
+import type React from 'react';
+
 const SEVERITY_STYLE: Readonly<Record<AlertSeverity, { dot: string; icon: typeof Info }>> = {
   CRITICAL: { dot: 'bg-class-critical', icon: TriangleAlert },
   WARNING: { dot: 'bg-class-risk', icon: AlertTriangle },
@@ -33,17 +35,15 @@ const SEVERITY_STYLE: Readonly<Record<AlertSeverity, { dot: string; icon: typeof
 function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="min-w-0">
-      <div className="text-sm text-muted-foreground">{label}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
       {/* Igual ao KpiRow: figuras proporcionais (DATAVIZ.md §2.2) e sem quebra no meio. */}
-      <div className="mt-1 text-xl font-semibold tracking-tight whitespace-nowrap sm:text-3xl">
-        {value}
-      </div>
+      <div className="mt-0.5 text-2xl font-semibold tracking-tight whitespace-nowrap">{value}</div>
       {hint ? <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div> : null}
     </div>
   );
 }
 
-function AlertCard({
+function AlertRow({
   alert,
   onOpenClient,
   onStatus,
@@ -55,90 +55,92 @@ function AlertCard({
   saving: boolean;
 }) {
   const style = SEVERITY_STYLE[alert.severity];
-  const Icon = style.icon;
   const tratado = alert.status !== 'open';
 
   return (
     <li
-      className={cn(
-        'rounded-xl bg-card p-4 shadow-soft ring-1 ring-foreground/5 sm:p-5',
-        tratado && 'opacity-60',
-        alert.severity === 'CRITICAL' && !tratado && 'border-l-4 border-l-class-critical',
-      )}
+      className={cn('flex items-start gap-3 px-4 py-3 sm:px-5', tratado && 'opacity-55')}
       data-alert-id={alert.id}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-            <span className="font-medium">{alert.clientName}</span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-xs">
-              <span aria-hidden="true" className={cn('size-1.5 rounded-full', style.dot)} />
-              {ALERT_SEVERITY_LABELS[alert.severity]}
-            </span>
-            {tratado ? (
-              <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                {ALERT_STATUS_LABELS[alert.status]}
-              </span>
-            ) : null}
-            <span className="text-xs text-muted-foreground">
-              saúde {alert.healthScore === null ? '—' : `${formatInteger(alert.healthScore)}/100`}
-              {alert.priorityClass ? ` · ${alert.priorityClass}` : ''} · {formatCurrency(alert.mrr)}
-              /mês
-            </span>
-          </div>
+      {/* A cor diz a severidade; o nome dela vem escrito ao lado, nunca só a cor. */}
+      <span aria-hidden="true" className={cn('mt-1.5 size-2 shrink-0 rounded-full', style.dot)} />
 
-          <p className="mt-2 text-sm">{alert.description}</p>
-          {alert.suggestedAction ? (
-            <p className="mt-1 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">O que fazer:</span>{' '}
-              {alert.suggestedAction}
-            </p>
-          ) : null}
-          <p className="mt-1 text-xs text-muted-foreground">
-            {alert.title}
-            {alert.metricName ? ` · métrica: ${alert.metricName}` : ''} · período {alert.periodEnd}
-            {alert.priorityFloor === null
-              ? ''
-              : ` · prioridade mínima ${formatInteger(alert.priorityFloor)} por gatilho`}
-          </p>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <span className="truncate font-medium">{alert.clientName}</span>
+          <span className="text-xs text-muted-foreground">
+            {ALERT_SEVERITY_LABELS[alert.severity]}
+            {tratado ? ` · ${ALERT_STATUS_LABELS[alert.status]}` : ''}
+          </span>
         </div>
+        <p className="truncate text-sm text-muted-foreground" title={alert.description}>
+          {alert.description}
+        </p>
+        {alert.suggestedAction ? (
+          <p className="truncate text-xs text-muted-foreground" title={alert.suggestedAction}>
+            <span className="text-foreground">O que fazer:</span> {alert.suggestedAction}
+          </p>
+        ) : null}
+        {/* No celular o valor não cabe na coluna da direita: ele vem aqui embaixo. */}
+        <p className="mt-0.5 text-xs text-muted-foreground tabular-nums md:hidden">
+          {formatCurrency(alert.mrr)}/mês · saúde{' '}
+          {alert.healthScore === null ? '—' : formatInteger(alert.healthScore)}
+        </p>
+      </div>
 
-        {/* No celular as ações ganham a linha inteira; a partir de sm voltam para o canto. */}
-        <div className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onOpenClient(alert.clientId)}
-          >
-            Analisar
-          </Button>
-          {alert.status === 'open' ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={saving}
-              onClick={() => onStatus(alert.id, 'acknowledged')}
-            >
-              Reconhecer
-            </Button>
-          ) : null}
-          {alert.status !== 'resolved' ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={saving}
-              onClick={() => onStatus(alert.id, 'resolved')}
-            >
-              <Check aria-hidden="true" className="size-3.5" /> Resolver
-            </Button>
-          ) : null}
+      <div className="hidden shrink-0 text-right md:block">
+        <div className="text-sm tabular-nums">{formatCurrency(alert.mrr)}/mês</div>
+        <div className="text-xs text-muted-foreground tabular-nums">
+          saúde {alert.healthScore === null ? '—' : `${formatInteger(alert.healthScore)}/100`}
         </div>
       </div>
+
+      <div className="flex shrink-0 items-center gap-0.5">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => onOpenClient(alert.clientId)}
+        >
+          Analisar
+        </Button>
+        {alert.status === 'open' ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            disabled={saving}
+            title="Reconhecer"
+            aria-label={`Reconhecer o alerta de ${alert.clientName}`}
+            onClick={() => onStatus(alert.id, 'acknowledged')}
+          >
+            <Eye aria-hidden="true" />
+          </Button>
+        ) : null}
+        {alert.status !== 'resolved' ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            disabled={saving}
+            title="Resolver"
+            aria-label={`Resolver o alerta de ${alert.clientName}`}
+            onClick={() => onStatus(alert.id, 'resolved')}
+          >
+            <Check aria-hidden="true" />
+          </Button>
+        ) : null}
+      </div>
     </li>
+  );
+}
+
+/** A fila inteira numa superfície só, com um fio separando as linhas. */
+function AlertQueue({ children }: { children: React.ReactNode }) {
+  return (
+    <ul className="divide-y divide-border overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+      {children}
+    </ul>
   );
 }
 
@@ -165,9 +167,9 @@ export function AlertsPage() {
             ))}
           </div>
           <div className="space-y-3">
-            <Skeleton className="h-28 rounded-xl" />
-            <Skeleton className="h-28 rounded-xl" />
-            <Skeleton className="h-28 rounded-xl" />
+            <Skeleton className="h-16 rounded-xl" />
+            <Skeleton className="h-16 rounded-xl" />
+            <Skeleton className="h-16 rounded-xl" />
           </div>
         </div>
       </>
@@ -293,9 +295,9 @@ export function AlertsPage() {
             description="Nenhum gatilho crítico disparou no último período."
           />
         ) : (
-          <ul className="space-y-3">
+          <AlertQueue>
             {abertos.map((alerta) => (
-              <AlertCard
+              <AlertRow
                 key={alerta.id}
                 alert={alerta}
                 saving={atualizar.isPending}
@@ -303,7 +305,7 @@ export function AlertsPage() {
                 onStatus={(id, status) => atualizar.mutate({ id, status })}
               />
             ))}
-          </ul>
+          </AlertQueue>
         )}
 
         {/* Agrupamento semântico: sem caixa em volta, senão ficaria card dentro de card. */}
@@ -312,9 +314,9 @@ export function AlertsPage() {
             <summary className="cursor-pointer rounded-lg py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
               {tratados.length} já tratado{tratados.length === 1 ? '' : 's'}
             </summary>
-            <ul className="mt-3 space-y-3">
+            <AlertQueue>
               {tratados.map((alerta) => (
-                <AlertCard
+                <AlertRow
                   key={alerta.id}
                   alert={alerta}
                   saving={atualizar.isPending}
@@ -322,7 +324,7 @@ export function AlertsPage() {
                   onStatus={(id, status) => atualizar.mutate({ id, status })}
                 />
               ))}
-            </ul>
+            </AlertQueue>
           </details>
         ) : null}
       </section>
