@@ -5,6 +5,8 @@
  *   PATCH /organizations/current         só owner/admin
  *   GET   /organizations/current/users   membros e papéis
  *   POST  /organizations/current/users   só owner/admin — convida ou cria um usuário
+ *   PATCH  /organizations/current/users/:authUserId  só owner/admin — muda o papel
+ *   DELETE /organizations/current/users/:authUserId  só owner/admin — remove o acesso
  */
 import { Router } from 'express';
 
@@ -35,6 +37,8 @@ export function createOrganizationsRouter({
   router.patch('/current', requireTenant, manager, controller.updateCurrent);
   router.get('/current/users', requireTenant, controller.listMembers);
   router.post('/current/users', requireTenant, manager, controller.inviteMember);
+  router.patch('/current/users/:authUserId', requireTenant, manager, controller.updateMemberRole);
+  router.delete('/current/users/:authUserId', requireTenant, manager, controller.removeMember);
 
   return router;
 }

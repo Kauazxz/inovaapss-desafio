@@ -8,7 +8,7 @@
  * Recebe `getDb` (e não a instância) para a conexão só abrir na primeira consulta: sem
  * DATABASE_URL a API sobe, e as rotas autenticadas respondem 503 DATABASE_NOT_CONFIGURED.
  */
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, count, eq, sql } from 'drizzle-orm';
 
 import type { OrganizationRole } from '@inovaapss/shared';
 
@@ -39,6 +39,16 @@ export interface OrganizationsRepository {
     authUserId: string;
     role: OrganizationRole;
   }): Promise<OrganizationMember>;
+  /** Troca o papel de um membro; null quando o vínculo não existe nesta organização. */
+  updateMemberRole(
+    organizationId: string,
+    authUserId: string,
+    role: OrganizationRole,
+  ): Promise<OrganizationMember | null>;
+  /** Apaga o vínculo; false quando ele não existia. */
+  removeMember(organizationId: string, authUserId: string): Promise<boolean>;
+  /** Quantos owners a organização tem (para nunca ficar sem nenhum). */
+  countOwners(organizationId: string): Promise<number>;
   /** Procura um usuário em auth.users pelo e-mail (sem diferenciar maiúsculas). */
   findAuthUserIdByEmail(email: string): Promise<string | null>;
 }
@@ -173,6 +183,45 @@ export function createOrganizationsRepository(getDb: () => Database): Organizati
         throw new Error('Falha ao registrar o vínculo do usuário com a organização.');
       }
       return member;
+    },
+
+    async updateMemberRole(organizationId, authUserId, role) {
+      await getDb()
+        .update(organizationUsers)
+        .set({ role })
+        .where(
+          and(
+            eq(organizationUsers.organizationId, organizationId),
+            eq(organizationUsers.authUserId, authUserId),
+          ),
+        );
+      return repository.findMember(organizationId, authUserId);
+    },
+
+    async removeMember(organizationId, authUserId) {
+      const rows = await getDb()
+        .delete(organizationUsers)
+        .where(
+          and(
+            eq(organizationUsers.organizationId, organizationId),
+            eq(organizationUsers.authUserId, authUserId),
+          ),
+        )
+        .returning({ id: organizationUsers.id });
+      return rows.length > 0;
+    },
+
+    async countOwners(organizationId) {
+      const rows = await getDb()
+        .select({ total: count() })
+        .from(organizationUsers)
+        .where(
+          and(
+            eq(organizationUsers.organizationId, organizationId),
+            eq(organizationUsers.role, 'owner'),
+          ),
+        );
+      return Number(rows[0]?.total ?? 0);
     },
 
     async findAuthUserIdByEmail(email) {

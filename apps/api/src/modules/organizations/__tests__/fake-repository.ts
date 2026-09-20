@@ -125,6 +125,29 @@ export function createFakeOrganizationsRepository(
       return withEmail(member);
     },
 
+    async updateMemberRole(organizationId, authUserId, role) {
+      const member = members.find(
+        (m) => m.organizationId === organizationId && m.authUserId === authUserId,
+      );
+      if (!member) return null;
+      member.role = role;
+      return withEmail(member);
+    },
+
+    async removeMember(organizationId, authUserId) {
+      const index = members.findIndex(
+        (m) => m.organizationId === organizationId && m.authUserId === authUserId,
+      );
+      if (index < 0) return false;
+      members.splice(index, 1);
+      return true;
+    },
+
+    async countOwners(organizationId) {
+      return members.filter((m) => m.organizationId === organizationId && m.role === 'owner')
+        .length;
+    },
+
     async findAuthUserIdByEmail(email) {
       return authUsers.find((u) => u.email.toLowerCase() === email.toLowerCase())?.id ?? null;
     },

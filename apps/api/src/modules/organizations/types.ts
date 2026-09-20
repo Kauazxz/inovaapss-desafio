@@ -40,3 +40,7 @@ export interface InviteMemberInput {
 export interface InviteMemberResult {
   member: OrganizationMember;
 }
+
+export interface UpdateMemberRoleInput {
+  role: OrganizationRole;
+}

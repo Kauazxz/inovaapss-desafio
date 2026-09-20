@@ -5,6 +5,8 @@
 import {
   createOrganizationSchema,
   inviteMemberSchema,
+  memberParamsSchema,
+  updateMemberRoleSchema,
   updateOrganizationSchema,
 } from './schema.js';
 import { getAuthUser } from '../../middleware/auth.js';
@@ -19,6 +21,8 @@ export interface OrganizationsController {
   updateCurrent: RequestHandler;
   listMembers: RequestHandler;
   inviteMember: RequestHandler;
+  updateMemberRole: RequestHandler;
+  removeMember: RequestHandler;
 }
 
 export function createOrganizationsController(
@@ -56,6 +60,21 @@ export function createOrganizationsController(
       const tenant = getTenant(req);
       const result = await service.inviteMember(tenant, body);
       res.status(201).json(result);
+    },
+
+    async updateMemberRole(req, res) {
+      const { authUserId } = memberParamsSchema.parse(req.params);
+      const body = updateMemberRoleSchema.parse(req.body);
+      const tenant = getTenant(req);
+      const member = await service.updateMemberRole(tenant, authUserId, body);
+      res.json({ member });
+    },
+
+    async removeMember(req, res) {
+      const { authUserId } = memberParamsSchema.parse(req.params);
+      const tenant = getTenant(req);
+      await service.removeMember(tenant, authUserId);
+      res.status(204).end();
     },
   };
 }

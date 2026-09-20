@@ -12,6 +12,7 @@ import type {
   InviteMemberResult,
   Organization,
   OrganizationMember,
+  UpdateMemberRoleInput,
   UpdateOrganizationInput,
 } from './types.js';
 import type { SupabaseClients } from '../../infrastructure/supabase.js';
@@ -23,6 +24,12 @@ export interface OrganizationsService {
   updateCurrent(tenant: TenantContext, patch: UpdateOrganizationInput): Promise<Organization>;
   listMembers(tenant: TenantContext): Promise<OrganizationMember[]>;
   inviteMember(tenant: TenantContext, input: InviteMemberInput): Promise<InviteMemberResult>;
+  updateMemberRole(
+    tenant: TenantContext,
+    authUserId: string,
+    input: UpdateMemberRoleInput,
+  ): Promise<OrganizationMember>;
+  removeMember(tenant: TenantContext, authUserId: string): Promise<void>;
 }
 
 /** Código do Postgres para violação de unique (slug repetido numa corrida). */
@@ -38,6 +45,25 @@ function slugTaken(): ConflictError {
   return new ConflictError('Já existe uma organização com este slug.', 'SLUG_TAKEN');
 }
 
+/**
+ * Proteções de §4/§5 para qualquer mexida em um vínculo já existente:
+ *   - só o owner promove alguém a owner e só o owner mexe no papel de outro owner;
+ *   - ninguém remove o próprio acesso (quem sai é removido por outra pessoa);
+ *   - a organização nunca fica sem nenhum owner — nem quando o próprio owner se rebaixa.
+ * Ficam no service, não na tela: a API é quem garante.
+ */
+function assertNotSelf(tenant: TenantContext, authUserId: string, message: string): void {
+  if (tenant.userId === authUserId) {
+    throw new ForbiddenError(message, 'CANNOT_CHANGE_SELF');
+  }
+}
+
+function assertOwnerOnly(tenant: TenantContext, message: string): void {
+  if (tenant.role !== 'owner') {
+    throw new ForbiddenError(message);
+  }
+}
+
 export interface OrganizationsServiceDeps {
   repository: OrganizationsRepository;
   supabase: SupabaseClients;
@@ -47,7 +73,7 @@ export function createOrganizationsService({
   repository,
   supabase,
 }: OrganizationsServiceDeps): OrganizationsService {
-  return {
+  const service: OrganizationsService = {
     async createForUser(authUserId, input) {
       const existing = await repository.findMembershipByUser(authUserId);
       if (existing !== null) {
@@ -143,5 +169,66 @@ export function createOrganizationsService({
         throw err;
       }
     },
+
+    async updateMemberRole(tenant, authUserId, input) {
+      const member = await repository.findMember(tenant.organizationId, authUserId);
+      if (member === null) {
+        throw new NotFoundError('Este usuário não faz parte da organização.');
+      }
+      if (input.role === 'owner') {
+        assertOwnerOnly(tenant, 'Somente o owner pode atribuir o papel "owner".');
+      }
+      if (member.role === 'owner') {
+        assertOwnerOnly(tenant, 'Somente o owner pode mudar o papel de outro owner.');
+        if (input.role !== 'owner') {
+          await assertNotLastOwner(tenant.organizationId);
+        }
+      }
+      if (member.role === input.role) {
+        return member;
+      }
+      const updated = await repository.updateMemberRole(
+        tenant.organizationId,
+        authUserId,
+        input.role,
+      );
+      if (updated === null) {
+        throw new NotFoundError('Este usuário não faz parte da organização.');
+      }
+      return updated;
+    },
+
+    async removeMember(tenant, authUserId) {
+      assertNotSelf(
+        tenant,
+        authUserId,
+        'Você não pode remover o seu próprio acesso. Peça a outro owner ou admin.',
+      );
+      const member = await repository.findMember(tenant.organizationId, authUserId);
+      if (member === null) {
+        throw new NotFoundError('Este usuário não faz parte da organização.');
+      }
+      if (member.role === 'owner') {
+        assertOwnerOnly(tenant, 'Somente o owner pode remover outro owner.');
+        await assertNotLastOwner(tenant.organizationId);
+      }
+      const removed = await repository.removeMember(tenant.organizationId, authUserId);
+      if (!removed) {
+        throw new NotFoundError('Este usuário não faz parte da organização.');
+      }
+    },
   };
+
+  /** Impede que o último owner perca a posse: a organização ficaria sem quem a administra. */
+  async function assertNotLastOwner(organizationId: string): Promise<void> {
+    const owners = await repository.countOwners(organizationId);
+    if (owners <= 1) {
+      throw new ConflictError(
+        'A organização precisa de pelo menos um owner. Promova outra pessoa a owner antes.',
+        'LAST_OWNER',
+      );
+    }
+  }
+
+  return service;
 }

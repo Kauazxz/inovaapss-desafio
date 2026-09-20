@@ -138,6 +138,16 @@ export const ROUTES: readonly RouteDescriptor[] = [
     description: 'Convida ou cria um usuário na organização (owner ou admin)',
   },
   {
+    method: 'PATCH',
+    path: `${API_V1_PREFIX}/organizations/current/users/:authUserId`,
+    description: 'Muda o papel de um usuário da organização (owner ou admin)',
+  },
+  {
+    method: 'DELETE',
+    path: `${API_V1_PREFIX}/organizations/current/users/:authUserId`,
+    description: 'Remove o acesso de um usuário à organização (owner ou admin)',
+  },
+  {
     method: 'GET',
     path: `${API_V1_PREFIX}/dashboard/risk`,
     description: 'Aba Em risco: KPIs, forecast priorizado e ranking com evidências',

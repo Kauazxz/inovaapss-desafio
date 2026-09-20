@@ -5,6 +5,8 @@
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { OrganizationRole } from '@inovaapss/shared';
+
 import {
   createFakeOrganizationsRepository,
   type FakeOrganizationsRepository,
@@ -69,6 +71,27 @@ beforeEach(() => {
   inviteUserByEmail.mockReset();
   createUser.mockReset();
 });
+
+/** Ana faz o onboarding (vira owner) e cada extra entra na organização com o papel pedido. */
+async function withOrg(extra: { user: AuthUser; role: OrganizationRole }[] = []) {
+  const a = app();
+  await request(a)
+    .post('/api/v1/organizations')
+    .set(as('ana'))
+    .send({ name: 'Alfa', slug: 'alfa' });
+  const org = repository.organizations[0]!;
+  for (const { user, role } of extra) {
+    repository.members.push({
+      id: `m-${user.userId}`,
+      organizationId: org.id,
+      authUserId: user.userId,
+      email: null,
+      role,
+      createdAt: new Date().toISOString(),
+    });
+  }
+  return a;
+}
 
 describe('GET /api/v1/me', () => {
   it('responde 401 sem token', async () => {
@@ -354,6 +377,171 @@ describe('POST /api/v1/organizations/current/users', () => {
       .send({ email: 'bia@example.com' });
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+});
+
+describe('PATCH /api/v1/organizations/current/users/:authUserId', () => {
+  it('o owner promove um viewer a analyst', async () => {
+    const a = await withOrg([{ user: BIA, role: 'viewer' }]);
+    const res = await request(a)
+      .patch(`/api/v1/organizations/current/users/${BIA.userId}`)
+      .set(as('ana'))
+      .send({ role: 'analyst' });
+    expect(res.status).toBe(200);
+    expect(res.body.member).toMatchObject({ authUserId: BIA.userId, role: 'analyst' });
+  });
+
+  it('só o owner atribui o papel owner', async () => {
+    const a = await withOrg([
+      { user: CAIO, role: 'admin' },
+      { user: BIA, role: 'viewer' },
+    ]);
+    const res = await request(a)
+      .patch(`/api/v1/organizations/current/users/${BIA.userId}`)
+      .set(as('caio'))
+      .send({ role: 'owner' });
+    expect(res.status).toBe(403);
+    expect(repository.members.find((m) => m.authUserId === BIA.userId)?.role).toBe('viewer');
+  });
+
+  it('admin não rebaixa um owner', async () => {
+    const a = await withOrg([{ user: CAIO, role: 'admin' }]);
+    const res = await request(a)
+      .patch(`/api/v1/organizations/current/users/${ANA.userId}`)
+      .set(as('caio'))
+      .send({ role: 'viewer' });
+    expect(res.status).toBe(403);
+    expect(repository.members.find((m) => m.authUserId === ANA.userId)?.role).toBe('owner');
+  });
+
+  it('o último owner não consegue abrir mão do papel (LAST_OWNER)', async () => {
+    const a = await withOrg();
+    const res = await request(a)
+      .patch(`/api/v1/organizations/current/users/${ANA.userId}`)
+      .set(as('ana'))
+      .send({ role: 'admin' });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('LAST_OWNER');
+    expect(repository.members.find((m) => m.authUserId === ANA.userId)?.role).toBe('owner');
+  });
+
+  it('com dois owners, um deles pode se rebaixar', async () => {
+    const a = await withOrg([{ user: BIA, role: 'owner' }]);
+    const res = await request(a)
+      .patch(`/api/v1/organizations/current/users/${ANA.userId}`)
+      .set(as('ana'))
+      .send({ role: 'admin' });
+    expect(res.status).toBe(200);
+    expect(repository.members.find((m) => m.authUserId === ANA.userId)?.role).toBe('admin');
+  });
+
+  it('responde 404 para quem não é da organização', async () => {
+    const a = await withOrg();
+    const res = await request(a)
+      .patch(`/api/v1/organizations/current/users/${BIA.userId}`)
+      .set(as('ana'))
+      .send({ role: 'admin' });
+    expect(res.status).toBe(404);
+  });
+
+  it('valida o papel e o id com 400', async () => {
+    const a = await withOrg([{ user: BIA, role: 'viewer' }]);
+    const papel = await request(a)
+      .patch(`/api/v1/organizations/current/users/${BIA.userId}`)
+      .set(as('ana'))
+      .send({ role: 'chefe' });
+    expect(papel.status).toBe(400);
+    const id = await request(a)
+      .patch('/api/v1/organizations/current/users/nao-e-uuid')
+      .set(as('ana'))
+      .send({ role: 'admin' });
+    expect(id.status).toBe(400);
+  });
+
+  it('viewer não muda o papel de ninguém (403 FORBIDDEN)', async () => {
+    const a = await withOrg([
+      { user: CAIO, role: 'viewer' },
+      { user: BIA, role: 'viewer' },
+    ]);
+    const res = await request(a)
+      .patch(`/api/v1/organizations/current/users/${BIA.userId}`)
+      .set(as('caio'))
+      .send({ role: 'analyst' });
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it('não atravessa organizações: membro de outra organização é 404', async () => {
+    const a = await withOrg();
+    await request(a)
+      .post('/api/v1/organizations')
+      .set(as('bia'))
+      .send({ name: 'Beta', slug: 'beta' });
+    const res = await request(a)
+      .patch(`/api/v1/organizations/current/users/${BIA.userId}`)
+      .set(as('ana'))
+      .send({ role: 'admin' });
+    expect(res.status).toBe(404);
+    expect(repository.members.find((m) => m.authUserId === BIA.userId)?.role).toBe('owner');
+  });
+});
+
+describe('DELETE /api/v1/organizations/current/users/:authUserId', () => {
+  it('remove o vínculo e responde 204', async () => {
+    const a = await withOrg([{ user: BIA, role: 'analyst' }]);
+    const res = await request(a)
+      .delete(`/api/v1/organizations/current/users/${BIA.userId}`)
+      .set(as('ana'));
+    expect(res.status).toBe(204);
+    expect(repository.members.some((m) => m.authUserId === BIA.userId)).toBe(false);
+  });
+
+  it('ninguém remove a si mesmo', async () => {
+    const a = await withOrg([{ user: CAIO, role: 'admin' }]);
+    const res = await request(a)
+      .delete(`/api/v1/organizations/current/users/${CAIO.userId}`)
+      .set(as('caio'));
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('CANNOT_CHANGE_SELF');
+    expect(repository.members.some((m) => m.authUserId === CAIO.userId)).toBe(true);
+  });
+
+  it('com dois owners, um remove o outro', async () => {
+    const a = await withOrg([{ user: BIA, role: 'owner' }]);
+    const res = await request(a)
+      .delete(`/api/v1/organizations/current/users/${BIA.userId}`)
+      .set(as('ana'));
+    expect(res.status).toBe(204);
+    expect(repository.members.some((m) => m.authUserId === BIA.userId)).toBe(false);
+  });
+
+  it('admin não remove um owner', async () => {
+    const a = await withOrg([{ user: CAIO, role: 'admin' }]);
+    const res = await request(a)
+      .delete(`/api/v1/organizations/current/users/${ANA.userId}`)
+      .set(as('caio'));
+    expect(res.status).toBe(403);
+    expect(repository.members.some((m) => m.authUserId === ANA.userId)).toBe(true);
+  });
+
+  it('viewer não remove ninguém (403 FORBIDDEN)', async () => {
+    const a = await withOrg([
+      { user: CAIO, role: 'viewer' },
+      { user: BIA, role: 'viewer' },
+    ]);
+    const res = await request(a)
+      .delete(`/api/v1/organizations/current/users/${BIA.userId}`)
+      .set(as('caio'));
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it('responde 404 para quem não é da organização', async () => {
+    const a = await withOrg();
+    const res = await request(a)
+      .delete(`/api/v1/organizations/current/users/${BIA.userId}`)
+      .set(as('ana'));
+    expect(res.status).toBe(404);
   });
 });
 

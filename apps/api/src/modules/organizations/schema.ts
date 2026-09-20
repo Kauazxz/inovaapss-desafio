@@ -4,7 +4,7 @@
  */
 import { z } from 'zod';
 
-import { organizationRoleSchema, slugSchema } from '@inovaapss/validation';
+import { organizationRoleSchema, slugSchema, uuidSchema } from '@inovaapss/validation';
 
 export const organizationNameSchema = z
   .string()
@@ -38,3 +38,14 @@ export const inviteMemberSchema = z.object({
   role: organizationRoleSchema.default('viewer'),
 });
 export type InviteMemberBody = z.infer<typeof inviteMemberSchema>;
+
+/** Papel novo de um membro já vinculado (PATCH /organizations/current/users/:authUserId). */
+export const updateMemberRoleSchema = z.object({
+  role: organizationRoleSchema,
+});
+export type UpdateMemberRoleBody = z.infer<typeof updateMemberRoleSchema>;
+
+/** `:authUserId` das rotas de um membro específico. */
+export const memberParamsSchema = z.object({
+  authUserId: uuidSchema,
+});

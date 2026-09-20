@@ -672,6 +672,40 @@ export const openapiDocument: OpenAPIV3_1.Document = {
         },
       },
     },
+    '/api/v1/organizations/current/users/{authUserId}': {
+      parameters: [idParam('authUserId', 'id do usuário em auth.users')],
+      patch: {
+        tags: ['organizations'],
+        summary: 'Muda o papel de um usuário da organização (owner ou admin)',
+        operationId: 'updateOrganizationUserRole',
+        description:
+          'Somente o owner atribui o papel owner ou mexe no papel de outro owner. A organização nunca fica sem owner: o último owner não consegue abrir mão do papel (LAST_OWNER).',
+        requestBody: jsonBody('UpdateMemberRole'),
+        responses: {
+          '200': jsonResponse('Vínculo atualizado', 'InviteMemberResult'),
+          '400': { $ref: '#/components/responses/ValidationError' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': errorResponse('O usuário não faz parte da organização'),
+          '409': errorResponse('Último owner da organização (LAST_OWNER)'),
+        },
+      },
+      delete: {
+        tags: ['organizations'],
+        summary: 'Remove o acesso de um usuário à organização (owner ou admin)',
+        operationId: 'removeOrganizationUser',
+        description:
+          'Apaga só o vínculo: a conta no Auth continua existindo. Ninguém remove a si mesmo (CANNOT_CHANGE_SELF) e o último owner não pode ser removido (LAST_OWNER).',
+        responses: {
+          '204': { description: 'Vínculo removido' },
+          '400': { $ref: '#/components/responses/ValidationError' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': errorResponse('O usuário não faz parte da organização'),
+          '409': errorResponse('Último owner da organização (LAST_OWNER)'),
+        },
+      },
+    },
     '/api/v1/metrics': {
       get: {
         tags: ['metrics'],
@@ -1864,6 +1898,13 @@ export const openapiDocument: OpenAPIV3_1.Document = {
         properties: {
           email: { type: 'string', format: 'email' },
           role: { type: 'string', enum: ORGANIZATION_ROLES, default: 'viewer' },
+        },
+      },
+      UpdateMemberRole: {
+        type: 'object',
+        required: ['role'],
+        properties: {
+          role: { type: 'string', enum: ORGANIZATION_ROLES },
         },
       },
       InviteMemberResult: {
