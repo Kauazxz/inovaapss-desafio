@@ -252,7 +252,7 @@ export function AssistantPage() {
                   <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                     <Bot className="size-4" aria-hidden="true" />
                   </span>
-                  <span className="rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground">
+                  <span className="rounded-2xl bg-muted px-3 py-2 text-sm text-muted-foreground">
                     Lendo o relatório…
                   </span>
                 </li>

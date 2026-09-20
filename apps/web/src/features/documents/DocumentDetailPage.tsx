@@ -24,6 +24,7 @@ import {
   useReviewSuggestion,
   useSuggestions,
 } from './api';
+import { BulkSuggestionsDialog } from './BulkSuggestionsDialog';
 import { DocumentOriginBadge, DocumentStatusBadge } from './DocumentStatusBadge';
 import {
   DOCUMENT_KIND_LABELS,
@@ -61,6 +62,7 @@ export function DocumentDetailPage() {
   const create = useCreateSuggestion(id);
   const review = useReviewSuggestion(id);
   const [showForm, setShowForm] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
 
   if (document.isPending) {
@@ -101,6 +103,8 @@ export function DocumentDetailPage() {
   }
 
   const doc = document.data;
+  // A fila da revisão em lote: o que a análise sugeriu e ninguém aceitou nem recusou ainda.
+  const pendentes = (suggestions.data ?? []).filter((item) => item.status === 'pending');
   const busyId = review.accept.isPending
     ? review.accept.variables
     : review.reject.isPending
@@ -258,17 +262,25 @@ export function DocumentDetailPage() {
               de aceitar; a métrica só é criada depois da sua confirmação no cadastro.
             </p>
           </div>
-          {!showForm ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full sm:w-auto"
-              onClick={() => setShowForm(true)}
-            >
-              <Plus aria-hidden="true" />
-              Nova sugestão a partir deste documento
-            </Button>
-          ) : null}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {pendentes.length > 0 ? (
+              <Button type="button" className="w-full sm:w-auto" onClick={() => setBulkOpen(true)}>
+                <Sparkles aria-hidden="true" />
+                Revisar e criar {pendentes.length} métrica{pendentes.length === 1 ? '' : 's'}
+              </Button>
+            ) : null}
+            {!showForm ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => setShowForm(true)}
+              >
+                <Plus aria-hidden="true" />
+                Nova sugestão a partir deste documento
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         {showForm ? (
@@ -325,6 +337,16 @@ export function DocumentDetailPage() {
           />
         )}
       </section>
+
+      {bulkOpen ? (
+        <BulkSuggestionsDialog
+          key={pendentes.length}
+          open={bulkOpen}
+          onOpenChange={setBulkOpen}
+          documentId={id}
+          suggestions={pendentes}
+        />
+      ) : null}
     </>
   );
 }

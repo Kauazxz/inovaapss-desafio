@@ -67,17 +67,22 @@ function AlertRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2">
-          <span className="truncate font-medium">{alert.clientName}</span>
+          <span className="font-medium">{alert.clientName}</span>
           <span className="text-xs text-muted-foreground">
             {ALERT_SEVERITY_LABELS[alert.severity]}
             {tratado ? ` · ${ALERT_STATUS_LABELS[alert.status]}` : ''}
           </span>
         </div>
-        <p className="truncate text-sm text-muted-foreground" title={alert.description}>
-          {alert.description}
-        </p>
+        {/*
+          Estes dois textos NÃO são cortados. Eram, com uma dica flutuante para ler o resto — e
+          dica flutuante não existe em celular, que é onde a fila costuma ser triada. O que
+          sobrava na tela era "Tempo médio de resol..." e "Revisar os ch...": justamente o
+          problema e a ação, que é a razão de o alerta existir. Cartão mais alto e legível vale
+          mais que cartão curto e inútil.
+        */}
+        <p className="text-sm text-muted-foreground">{alert.description}</p>
         {alert.suggestedAction ? (
-          <p className="truncate text-xs text-muted-foreground" title={alert.suggestedAction}>
+          <p className="text-xs text-muted-foreground">
             <span className="text-foreground">O que fazer:</span> {alert.suggestedAction}
           </p>
         ) : null}

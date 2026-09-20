@@ -7,9 +7,10 @@
  * normal, e corrigir precisa custar um clique, não uma reimportação. Nada é gravado até a
  * confirmação — a prévia existe justamente para a pessoa ver o que vai acontecer antes.
  */
-import { ArrowLeft, Check, CircleAlert, CircleCheck, Loader2 } from 'lucide-react';
+import { useMutation } from '@tanstack/react-query';
+import { ArrowLeft, Check, CircleAlert, CircleCheck, Loader2, Sparkles } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import { IMPORT_DATASET_KEYS, IMPORT_DATASET_LABELS } from '@inovaapss/shared';
 import type {
@@ -23,6 +24,7 @@ import type {
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { extractMetrics, fetchDocuments } from '@/features/documents/api';
 import { cn } from '@/lib/utils';
 
 import { type SheetSelection, useConfirmImport, usePreviewImport, useUploadImport } from './api';
@@ -82,6 +84,29 @@ export function ImportPage() {
   const [selections, setSelections] = useState<SheetSelection[]>([]);
   const [preview, setPreview] = useState<ImportPreviewDto | null>(null);
   const [result, setResult] = useState<ImportConfirmDto | null>(null);
+  const navigate = useNavigate();
+
+  /**
+   * O elo que faltava entre importar e medir: a planilha já ficou arquivada no acervo com o id
+   * desta importação, então dá para achá-la, mandar a IA lê-la e levar a pessoa direto para as
+   * sugestões — em vez de pedir que ela adivinhe o caminho por Documentos.
+   */
+  const analisar = useMutation({
+    mutationFn: async (importJobId: string) => {
+      const pagina = await fetchDocuments({ page: 1, pageSize: 50, origin: 'import' });
+      const arquivo = pagina.items.find((item) => item.importJobId === importJobId);
+      if (arquivo === undefined) {
+        throw new Error(
+          'A planilha ainda não apareceu no acervo da organização. Abra Documentos e analise por lá.',
+        );
+      }
+      await extractMetrics(arquivo.id);
+      return arquivo.id;
+    },
+    onSuccess: (documentId) => {
+      void navigate(`/documents/${documentId}`);
+    },
+  });
   const [rejected, setRejected] = useState<RejectedImportFile | null>(null);
 
   const uploadMutation = useUploadImport();
@@ -420,8 +445,31 @@ export function ImportPage() {
             </p>
           ) : null}
 
+          {analisar.isError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {analisar.error instanceof Error
+                ? analisar.error.message
+                : 'Não foi possível analisar o arquivo.'}
+            </p>
+          ) : null}
+
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
-            <Button asChild className="w-full sm:w-auto">
+            <Button
+              type="button"
+              className="w-full sm:w-auto"
+              disabled={upload === null || analisar.isPending}
+              onClick={() => {
+                if (upload !== null) analisar.mutate(upload.job.id);
+              }}
+            >
+              {analisar.isPending ? (
+                <Loader2 className="animate-spin" aria-hidden="true" />
+              ) : (
+                <Sparkles aria-hidden="true" />
+              )}
+              {analisar.isPending ? 'Analisando…' : 'Analisar o arquivo e sugerir métricas'}
+            </Button>
+            <Button asChild variant="outline" className="w-full sm:w-auto">
               <Link to="/dashboard">Ver o dashboard</Link>
             </Button>
             <Button asChild variant="outline" className="w-full sm:w-auto">

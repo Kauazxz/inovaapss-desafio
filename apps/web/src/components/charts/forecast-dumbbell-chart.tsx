@@ -144,26 +144,42 @@ export function ForecastDumbbellChart({
           style={{ fontFamily: CHART_TYPOGRAPHY.fontFamily, display: 'block' }}
         >
           {/* Faixas de classe ao fundo (band.fill) e nomes acima de cada faixa */}
-          {bands.map((band) => (
-            <g key={band.healthClass}>
-              <rect
-                x={x(band.from)}
-                y={plotTop}
-                width={Math.max(0, x(band.to) - x(band.from))}
-                height={plotBottom - plotTop}
-                fill={bandFill(palette, band.healthClass)}
-              />
-              <text
-                x={(x(band.from) + x(band.to)) / 2}
-                y={HEADER_HEIGHT - 12}
-                textAnchor="middle"
-                fill={palette.muted}
-                fontSize={CHART_TYPOGRAPHY.tick.size}
-              >
-                {HEALTH_CLASS_LABELS[band.healthClass]}
-              </text>
-            </g>
-          ))}
+          {bands.map((band) => {
+            const larguraDaFaixa = Math.max(0, x(band.to) - x(band.from));
+            const rotulo = HEALTH_CLASS_LABELS[band.healthClass];
+            /*
+             * O nome só entra se COUBER dentro da própria faixa. No celular a faixa de Risco
+             * tem cerca de 35 px e "Atenção" precisa de uns 45: sem esta conferência os quatro
+             * nomes se encavalam e viram "RiscoAtençãoNormal", ilegível. Ausente é melhor que
+             * embolado — a linha de referência com o número continua ali embaixo dizendo onde
+             * cada faixa começa. A largura do texto é estimada, não medida, porque medir exige
+             * o navegador e isto precisa desenhar igual no servidor e no teste.
+             */
+            const larguraDoTexto = rotulo.length * CHART_TYPOGRAPHY.tick.size * 0.58;
+            const cabe = larguraDaFaixa >= larguraDoTexto + 8;
+            return (
+              <g key={band.healthClass}>
+                <rect
+                  x={x(band.from)}
+                  y={plotTop}
+                  width={larguraDaFaixa}
+                  height={plotBottom - plotTop}
+                  fill={bandFill(palette, band.healthClass)}
+                />
+                {cabe ? (
+                  <text
+                    x={(x(band.from) + x(band.to)) / 2}
+                    y={HEADER_HEIGHT - 12}
+                    textAnchor="middle"
+                    fill={palette.muted}
+                    fontSize={CHART_TYPOGRAPHY.tick.size}
+                  >
+                    {rotulo}
+                  </text>
+                ) : null}
+              </g>
+            );
+          })}
           {/* Linhas de referência nos thresholds vigentes + ticks */}
           {[0, data.thresholds.critical, data.thresholds.risk, data.thresholds.attention, 100].map(
             (value) => (
