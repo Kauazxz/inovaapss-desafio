@@ -138,9 +138,10 @@ export const GLOBALSYS_V1_METRICS: readonly PresetMetric[] = [
         name: 'Tempo de resolução comprometendo o SLA',
         field: 'health',
         operator: '<=',
-        threshold: 50,
-        severity: 'CRITICAL',
-        priorityFloor: 80,
+        threshold: 25,
+        // Sinal antecipado, não emergência: avisa antes de o SLA agregado estourar.
+        severity: 'WARNING',
+        priorityFloor: 70,
         message:
           'Tempo médio de resolução consumindo mais do que a meta do SLA contratado. Revisar a fila e as causas de estouro.',
       },
@@ -301,7 +302,7 @@ export const GLOBALSYS_V1_METRICS: readonly PresetMetric[] = [
         operator: '>=',
         threshold: 1,
         consecutivePeriods: 2,
-        severity: 'CRITICAL',
+        severity: 'WARNING',
         priorityFloor: 80,
         message: 'Reclamação formal em {periods} meses seguidos. Acionar o time de relacionamento.',
       },

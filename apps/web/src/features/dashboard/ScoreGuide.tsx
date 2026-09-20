@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react';
-
 import type { RankingRow } from '@inovaapss/shared';
 
 import { formatInteger } from '@/lib/format';
+
+import type { ReactNode } from 'react';
 
 function GuideItem({
   number,
@@ -18,9 +18,7 @@ function GuideItem({
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-start gap-3">
-        <span
-          className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
-        >
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
           {number}
         </span>
         <div className="min-w-0">
@@ -70,9 +68,9 @@ export function ScoreGuide({ example }: { example: RankingRow }) {
           title="Risco de cancelamento"
           scale="0 = menor risco · 100 = maior risco"
         >
-          É um sinal calculado como <strong className="text-foreground">100 − saúde atual</strong>.
-          {' '}É um score de atenção, não a porcentagem de chance de o cliente cancelar.
-          {' '}A coluna mostra o risco de agora; a projeção não altera esse número antecipadamente.
+          É um sinal calculado como <strong className="text-foreground">100 − saúde atual</strong>.{' '}
+          É um score de atenção, não a porcentagem de chance de o cliente cancelar. A coluna mostra
+          o risco de agora; a projeção não altera esse número antecipadamente.
           <strong className="mt-2 block text-foreground">
             Exemplo: 100 − {formatInteger(example.healthCurrent)} ={' '}
             {formatInteger(example.riskScore)}/100 de risco.

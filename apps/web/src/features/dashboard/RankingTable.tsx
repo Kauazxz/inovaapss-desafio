@@ -1,10 +1,6 @@
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
 
-import {
-  PROJECTION_CONFIDENCE_LABELS,
-  type HealthTrend,
-  type RankingRow,
-} from '@inovaapss/shared';
+import { PROJECTION_CONFIDENCE_LABELS, type HealthTrend, type RankingRow } from '@inovaapss/shared';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -18,7 +14,8 @@ import {
 import { formatCurrency, formatInteger, formatPercent } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-import { HEALTH_STATUS_LABELS, HealthPill, PriorityPill } from './HealthPill';
+import { HEALTH_STATUS_LABELS } from './health-labels';
+import { HealthPill, PriorityPill } from './HealthPill';
 
 export interface RankingTableProps {
   /** Já ordenado por prioridade pela API; a tabela mostra a lista na ordem recebida. */
