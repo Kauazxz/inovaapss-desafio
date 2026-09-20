@@ -15,9 +15,12 @@ import {
   type MetricExtractionProvider,
   type TextExtractor,
 } from '../infrastructure/extraction/index.js';
+import { createMailer } from '../infrastructure/mailer.js';
 import { createSupabaseDocumentStorage } from '../infrastructure/storage/supabase-storage.js';
 import { createRequireAuth, type GetUserByToken, supabaseGetUser } from '../middleware/auth.js';
 import { createResolveTenant } from '../middleware/tenant.js';
+import { createAlertsRouter } from '../modules/alerts/routes.js';
+import { createAlertsService } from '../modules/alerts/service.js';
 import { createAuthController } from '../modules/auth/controller.js';
 import { createAuthRouter } from '../modules/auth/routes.js';
 import { createAuthService } from '../modules/auth/service.js';
@@ -68,7 +71,9 @@ import {
 import { createPortfolioClientsRouter } from '../modules/portfolio-clients/routes.js';
 import { createPortfolioClientsService } from '../modules/portfolio-clients/service.js';
 
+import type { ApiEnv } from '../config/env.js';
 import type { DbClient } from '../infrastructure/db/index.js';
+import type { Mailer } from '../infrastructure/mailer.js';
 import type { DocumentStorage } from '../infrastructure/storage/document-storage.js';
 import type { SupabaseClients } from '../infrastructure/supabase.js';
 
@@ -121,6 +126,21 @@ export const ROUTES: readonly RouteDescriptor[] = [
     method: 'GET',
     path: `${API_V1_PREFIX}/dashboard/general`,
     description: 'Aba Geral: distribuição por classe, MRR, saúde por dimensão e evolução',
+  },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/alerts`,
+    description: 'Gatilhos críticos disparados, com o cliente, o motivo e a ação',
+  },
+  {
+    method: 'PATCH',
+    path: `${API_V1_PREFIX}/alerts/:id`,
+    description: 'Reconhece ou resolve um alerta (owner, admin ou analyst)',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/alerts/digest/send`,
+    description: 'Envia por e-mail o resumo dos alertas abertos',
   },
   {
     method: 'GET',
@@ -324,6 +344,10 @@ export interface ApiV1Dependencies {
   contractsRepository?: ContractsRepository;
   /** Testes: substitui a persistência de métricas e modelos. */
   metricsRepository?: MetricsRepository;
+  /** Variáveis para os serviços que dependem de configuração (e-mail, URL do painel). */
+  env?: Pick<ApiEnv, 'RESEND_API_KEY' | 'EMAIL_FROM' | 'WEB_BASE_URL'>;
+  /** Testes: substitui o envio de e-mail. */
+  mailer?: Mailer;
 }
 
 export function createApiV1Router(deps: ApiV1Dependencies): Router {
@@ -430,6 +454,19 @@ export function createApiV1Router(deps: ApiV1Dependencies): Router {
           clients: portfolioClientsRepository,
         }),
       ),
+    }),
+  );
+
+  router.use(
+    '/alerts',
+    createAlertsRouter({
+      requireAuth,
+      resolveTenant,
+      service: createAlertsService(getDb),
+      mailer:
+        deps.mailer ??
+        createMailer({ apiKey: deps.env?.RESEND_API_KEY, from: deps.env?.EMAIL_FROM }),
+      webBaseUrl: deps.env?.WEB_BASE_URL ?? 'https://inovaapss-desafio.vercel.app',
     }),
   );
 

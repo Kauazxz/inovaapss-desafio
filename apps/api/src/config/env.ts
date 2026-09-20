@@ -43,6 +43,12 @@ export const apiEnvSchema = serverEnvSchema
     RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
     /** Tempo máximo que o /ready espera o `select 1` do banco. */
     DB_READY_TIMEOUT_MS: z.coerce.number().int().positive().default(2000),
+    /** Envio do resumo de alertas por e-mail. Sem a chave, a API devolve a prévia e não envia. */
+    RESEND_API_KEY: z.string().min(1).optional(),
+    /** Remetente verificado no provedor de e-mail. */
+    EMAIL_FROM: z.string().min(1).optional(),
+    /** Endereço do painel, usado nos links do e-mail. */
+    WEB_BASE_URL: z.string().url().optional(),
   });
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;

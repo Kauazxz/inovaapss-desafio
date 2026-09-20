@@ -12,12 +12,13 @@
  *   §20 — o impacto comercial usa o valor mensal do contrato, comparado ao maior da carteira.
  *   §32 — todo snapshot guarda a versão do modelo que o gerou.
  */
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 
 import { scoreClient } from '@inovaapss/engine';
 import type { ClientScoreResult, MetricConfig, MetricInput, PeriodValue } from '@inovaapss/engine';
 
 import {
+  alerts,
   clientScoreSnapshots,
   contracts,
   metricDefinitions,
@@ -48,6 +49,7 @@ export interface RecalculateResult {
   clients: number;
   clientSnapshots: number;
   metricSnapshots: number;
+  alerts: number;
   withoutData: number;
   distribution: Record<string, number>;
 }
@@ -204,8 +206,10 @@ export async function recalculateOrganization(
   // ------------------------------------------------------------ cálculo
   type ClientSnapshot = typeof clientScoreSnapshots.$inferInsert;
   type MetricSnapshot = typeof metricScoreSnapshots.$inferInsert;
+  type AlertRow = typeof alerts.$inferInsert;
   const clientSnapshots: ClientSnapshot[] = [];
   const metricSnapshots: MetricSnapshot[] = [];
+  const alertRows: AlertRow[] = [];
   const distribution: Record<string, number> = {};
   let withoutData = 0;
 
@@ -244,6 +248,41 @@ export async function recalculateOrganization(
       const isLatest = periodEnd === targets[targets.length - 1];
       if (isLatest && result.healthClass) {
         distribution[result.healthClass] = (distribution[result.healthClass] ?? 0) + 1;
+      }
+
+      // §27 — cada gatilho que disparou no período atual vira um alerta acionável.
+      if (isLatest) {
+        const hits = (result.triggers as { hits?: unknown }).hits;
+        for (const hit of Array.isArray(hits) ? hits : []) {
+          const h = hit as {
+            triggerId?: string;
+            name?: string;
+            message?: string;
+            severity?: string;
+            metricId?: string;
+            priorityFloor?: number;
+          };
+          if (!h.triggerId) continue;
+          alertRows.push({
+            organizationId,
+            portfolioClientId: client.id,
+            metricDefinitionId: h.metricId ?? null,
+            triggerId: h.triggerId,
+            severity: h.severity ?? 'WARNING',
+            status: 'open',
+            title: h.name ?? h.triggerId,
+            description: h.message ?? '',
+            priorityFloor: h.priorityFloor ?? null,
+            periodEnd,
+            metadataJson: {
+              healthScore: result.overallHealth,
+              healthClass: result.healthClass,
+              priorityScore: result.priorityScore,
+              priorityClass: result.priorityClass,
+              topEvidence: result.evidence[0]?.humanExplanation ?? null,
+            } as unknown as Record<string, unknown>,
+          });
+        }
       }
 
       clientSnapshots.push({
@@ -304,12 +343,31 @@ export async function recalculateOrganization(
     await db.insert(metricScoreSnapshots).values(metricSnapshots.slice(i, i + CHUNK));
   }
 
+  // Alertas: recalcular não pode "reabrir" o que alguém já tratou, então o upsert só atualiza
+  // o texto e o contexto — status, reconhecimento e resolução ficam como estão.
+  for (let i = 0; i < alertRows.length; i += CHUNK) {
+    await db
+      .insert(alerts)
+      .values(alertRows.slice(i, i + CHUNK))
+      .onConflictDoUpdate({
+        target: [alerts.portfolioClientId, alerts.triggerId, alerts.periodEnd],
+        set: {
+          severity: sql`excluded.severity`,
+          title: sql`excluded.title`,
+          description: sql`excluded.description`,
+          priorityFloor: sql`excluded.priority_floor`,
+          metadataJson: sql`excluded.metadata_json`,
+        },
+      });
+  }
+
   return {
     organizationId,
     modelVersionId: version.id,
     clients: clientRows.length,
     clientSnapshots: clientSnapshots.length,
     metricSnapshots: metricSnapshots.length,
+    alerts: alertRows.length,
     withoutData,
     distribution,
   };

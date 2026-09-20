@@ -97,7 +97,19 @@ export function createApp(env: ApiEnv, deps: AppDependencies = {}): Express {
     createHealthRouter({ db, version: API_VERSION, readyTimeoutMs: env.DB_READY_TIMEOUT_MS }),
   );
   app.use('/api', createDocsRouter({ enableUi: !isProduction }));
-  app.use(API_V1_PREFIX, createApiV1Router({ db, supabase, ...deps.apiV1 }));
+  app.use(
+    API_V1_PREFIX,
+    createApiV1Router({
+      db,
+      supabase,
+      env: {
+        ...(env.RESEND_API_KEY ? { RESEND_API_KEY: env.RESEND_API_KEY } : {}),
+        ...(env.EMAIL_FROM ? { EMAIL_FROM: env.EMAIL_FROM } : {}),
+        ...(env.WEB_BASE_URL ? { WEB_BASE_URL: env.WEB_BASE_URL } : {}),
+      },
+      ...deps.apiV1,
+    }),
+  );
 
   app.use(notFound);
   app.use(createErrorHandler({ exposeDetails: !isProduction }));

@@ -14,3 +14,4 @@ export * from './clients.js';
 export * from './contracts.js';
 export * from './documents.js';
 export * from './scores.js';
+export * from './alerts.js';

@@ -1,0 +1,2992 @@
+{
+  "id": "458e3e1d-2faa-43aa-bdcd-1432127aaef4",
+  "prevId": "5c1ad03d-4fd1-48a4-bc6b-e8be8d8aa159",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.organization_users": {
+      "name": "organization_users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "auth_user_id": {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "organization_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'viewer'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "organization_users_org_user_unique": {
+          "name": "organization_users_org_user_unique",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "auth_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "organization_users_auth_user_idx": {
+          "name": "organization_users_auth_user_idx",
+          "columns": [
+            {
+              "expression": "auth_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "organization_users_organization_idx": {
+          "name": "organization_users_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "organization_users_organization_id_organizations_id_fk": {
+          "name": "organization_users_organization_id_organizations_id_fk",
+          "tableFrom": "organization_users",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.organizations": {
+      "name": "organizations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "organizations_slug_unique": {
+          "name": "organizations_slug_unique",
+          "columns": [
+            {
+              "expression": "slug",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.metric_definitions": {
+      "name": "metric_definitions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metric_type": {
+          "name": "metric_type",
+          "type": "metric_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit": {
+          "name": "unit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "direction": {
+          "name": "direction",
+          "type": "metric_direction",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "periodicity": {
+          "name": "periodicity",
+          "type": "metric_periodicity",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'MONTHLY'"
+        },
+        "source_type": {
+          "name": "source_type",
+          "type": "metric_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'MANUAL'"
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "metric_definitions_org_slug_unique": {
+          "name": "metric_definitions_org_slug_unique",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "slug",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "metric_definitions_organization_idx": {
+          "name": "metric_definitions_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "metric_definitions_organization_id_organizations_id_fk": {
+          "name": "metric_definitions_organization_id_organizations_id_fk",
+          "tableFrom": "metric_definitions",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "metric_definitions_select_member": {
+          "name": "metric_definitions_select_member",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"metric_definitions\".\"organization_id\" in (select public.current_user_organization_ids())"
+        },
+        "metric_definitions_insert_owner_admin": {
+          "name": "metric_definitions_insert_owner_admin",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "public.current_user_role_in(\"metric_definitions\".\"organization_id\") in ('owner', 'admin')"
+        },
+        "metric_definitions_update_owner_admin": {
+          "name": "metric_definitions_update_owner_admin",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"metric_definitions\".\"organization_id\") in ('owner', 'admin')",
+          "withCheck": "public.current_user_role_in(\"metric_definitions\".\"organization_id\") in ('owner', 'admin')"
+        },
+        "metric_definitions_delete_owner_admin": {
+          "name": "metric_definitions_delete_owner_admin",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"metric_definitions\".\"organization_id\") in ('owner', 'admin')"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.metric_model_items": {
+      "name": "metric_model_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "metric_model_version_id": {
+          "name": "metric_model_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metric_definition_id": {
+          "name": "metric_definition_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "weight": {
+          "name": "weight",
+          "type": "numeric(6, 4)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "current_weight": {
+          "name": "current_weight",
+          "type": "numeric(6, 4)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0.45
+        },
+        "trend_weight": {
+          "name": "trend_weight",
+          "type": "numeric(6, 4)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0.35
+        },
+        "persistence_weight": {
+          "name": "persistence_weight",
+          "type": "numeric(6, 4)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0.2
+        },
+        "normalization_strategy": {
+          "name": "normalization_strategy",
+          "type": "normalization_strategy",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "normalization_config_json": {
+          "name": "normalization_config_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "threshold_config_json": {
+          "name": "threshold_config_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "critical_trigger_config_json": {
+          "name": "critical_trigger_config_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "formula_config_json": {
+          "name": "formula_config_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "metric_model_items_version_definition_unique": {
+          "name": "metric_model_items_version_definition_unique",
+          "columns": [
+            {
+              "expression": "metric_model_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "metric_definition_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "metric_model_items_definition_idx": {
+          "name": "metric_model_items_definition_idx",
+          "columns": [
+            {
+              "expression": "metric_definition_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "metric_model_items_metric_model_version_id_metric_model_versions_id_fk": {
+          "name": "metric_model_items_metric_model_version_id_metric_model_versions_id_fk",
+          "tableFrom": "metric_model_items",
+          "tableTo": "metric_model_versions",
+          "columnsFrom": [
+            "metric_model_version_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "metric_model_items_metric_definition_id_metric_definitions_id_fk": {
+          "name": "metric_model_items_metric_definition_id_metric_definitions_id_fk",
+          "tableFrom": "metric_model_items",
+          "tableTo": "metric_definitions",
+          "columnsFrom": [
+            "metric_definition_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "metric_model_items_select_member": {
+          "name": "metric_model_items_select_member",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "exists (select 1 from public.metric_model_versions v where v.id = \"metric_model_items\".\"metric_model_version_id\" and v.organization_id in (select public.current_user_organization_ids()))"
+        },
+        "metric_model_items_insert_owner_admin": {
+          "name": "metric_model_items_insert_owner_admin",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "exists (select 1 from public.metric_model_versions v where v.id = \"metric_model_items\".\"metric_model_version_id\" and public.current_user_role_in(v.organization_id) in ('owner', 'admin'))"
+        },
+        "metric_model_items_update_owner_admin": {
+          "name": "metric_model_items_update_owner_admin",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "exists (select 1 from public.metric_model_versions v where v.id = \"metric_model_items\".\"metric_model_version_id\" and public.current_user_role_in(v.organization_id) in ('owner', 'admin'))",
+          "withCheck": "exists (select 1 from public.metric_model_versions v where v.id = \"metric_model_items\".\"metric_model_version_id\" and public.current_user_role_in(v.organization_id) in ('owner', 'admin'))"
+        },
+        "metric_model_items_delete_owner_admin": {
+          "name": "metric_model_items_delete_owner_admin",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "exists (select 1 from public.metric_model_versions v where v.id = \"metric_model_items\".\"metric_model_version_id\" and public.current_user_role_in(v.organization_id) in ('owner', 'admin'))"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.metric_model_versions": {
+      "name": "metric_model_versions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "metric_model_id": {
+          "name": "metric_model_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "metric_model_version_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "effective_from": {
+          "name": "effective_from",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "metric_model_versions_model_version_unique": {
+          "name": "metric_model_versions_model_version_unique",
+          "columns": [
+            {
+              "expression": "metric_model_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "version",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "metric_model_versions_organization_idx": {
+          "name": "metric_model_versions_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "metric_model_versions_model_status_idx": {
+          "name": "metric_model_versions_model_status_idx",
+          "columns": [
+            {
+              "expression": "metric_model_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "metric_model_versions_metric_model_id_metric_models_id_fk": {
+          "name": "metric_model_versions_metric_model_id_metric_models_id_fk",
+          "tableFrom": "metric_model_versions",
+          "tableTo": "metric_models",
+          "columnsFrom": [
+            "metric_model_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "metric_model_versions_organization_id_organizations_id_fk": {
+          "name": "metric_model_versions_organization_id_organizations_id_fk",
+          "tableFrom": "metric_model_versions",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "metric_model_versions_select_member": {
+          "name": "metric_model_versions_select_member",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"metric_model_versions\".\"organization_id\" in (select public.current_user_organization_ids())"
+        },
+        "metric_model_versions_insert_owner_admin": {
+          "name": "metric_model_versions_insert_owner_admin",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "public.current_user_role_in(\"metric_model_versions\".\"organization_id\") in ('owner', 'admin')"
+        },
+        "metric_model_versions_update_owner_admin": {
+          "name": "metric_model_versions_update_owner_admin",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"metric_model_versions\".\"organization_id\") in ('owner', 'admin')",
+          "withCheck": "public.current_user_role_in(\"metric_model_versions\".\"organization_id\") in ('owner', 'admin')"
+        },
+        "metric_model_versions_delete_owner_admin": {
+          "name": "metric_model_versions_delete_owner_admin",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"metric_model_versions\".\"organization_id\") in ('owner', 'admin')"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.metric_models": {
+      "name": "metric_models",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mode": {
+          "name": "mode",
+          "type": "metric_model_mode",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ASSISTED'"
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "metric_models_organization_idx": {
+          "name": "metric_models_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "metric_models_organization_id_organizations_id_fk": {
+          "name": "metric_models_organization_id_organizations_id_fk",
+          "tableFrom": "metric_models",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "metric_models_select_member": {
+          "name": "metric_models_select_member",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"metric_models\".\"organization_id\" in (select public.current_user_organization_ids())"
+        },
+        "metric_models_insert_owner_admin": {
+          "name": "metric_models_insert_owner_admin",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "public.current_user_role_in(\"metric_models\".\"organization_id\") in ('owner', 'admin')"
+        },
+        "metric_models_update_owner_admin": {
+          "name": "metric_models_update_owner_admin",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"metric_models\".\"organization_id\") in ('owner', 'admin')",
+          "withCheck": "public.current_user_role_in(\"metric_models\".\"organization_id\") in ('owner', 'admin')"
+        },
+        "metric_models_delete_owner_admin": {
+          "name": "metric_models_delete_owner_admin",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"metric_models\".\"organization_id\") in ('owner', 'admin')"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.portfolio_clients": {
+      "name": "portfolio_clients",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_code": {
+          "name": "external_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "segment": {
+          "name": "segment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "size": {
+          "name": "size",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "portfolio_client_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "strategic_importance": {
+          "name": "strategic_importance",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 3
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "portfolio_clients_org_external_code_unique": {
+          "name": "portfolio_clients_org_external_code_unique",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "external_code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "portfolio_clients_organization_idx": {
+          "name": "portfolio_clients_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "portfolio_clients_org_status_idx": {
+          "name": "portfolio_clients_org_status_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "portfolio_clients_org_segment_idx": {
+          "name": "portfolio_clients_org_segment_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "segment",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "portfolio_clients_organization_id_organizations_id_fk": {
+          "name": "portfolio_clients_organization_id_organizations_id_fk",
+          "tableFrom": "portfolio_clients",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "portfolio_clients_select_member": {
+          "name": "portfolio_clients_select_member",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"portfolio_clients\".\"organization_id\" in (select public.current_user_organization_ids())"
+        },
+        "portfolio_clients_insert_writer": {
+          "name": "portfolio_clients_insert_writer",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "public.current_user_role_in(\"portfolio_clients\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        },
+        "portfolio_clients_update_writer": {
+          "name": "portfolio_clients_update_writer",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"portfolio_clients\".\"organization_id\") in ('owner', 'admin', 'analyst')",
+          "withCheck": "public.current_user_role_in(\"portfolio_clients\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        },
+        "portfolio_clients_delete_owner_admin": {
+          "name": "portfolio_clients_delete_owner_admin",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"portfolio_clients\".\"organization_id\") in ('owner', 'admin')"
+        }
+      },
+      "checkConstraints": {
+        "portfolio_clients_strategic_importance_check": {
+          "name": "portfolio_clients_strategic_importance_check",
+          "value": "\"portfolio_clients\".\"strategic_importance\" between 1 and 5"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.contracts": {
+      "name": "contracts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "portfolio_client_id": {
+          "name": "portfolio_client_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "monthly_value": {
+          "name": "monthly_value",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "currency": {
+          "name": "currency",
+          "type": "char(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'BRL'"
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "contract_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "contracted_sla_hours": {
+          "name": "contracted_sla_hours",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "contracts_organization_idx": {
+          "name": "contracts_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "contracts_org_client_idx": {
+          "name": "contracts_org_client_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "portfolio_client_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "contracts_org_plan_idx": {
+          "name": "contracts_org_plan_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "plan_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "contracts_one_active_per_client": {
+          "name": "contracts_one_active_per_client",
+          "columns": [
+            {
+              "expression": "portfolio_client_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"contracts\".\"status\" = 'active'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "contracts_organization_id_organizations_id_fk": {
+          "name": "contracts_organization_id_organizations_id_fk",
+          "tableFrom": "contracts",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "contracts_portfolio_client_id_portfolio_clients_id_fk": {
+          "name": "contracts_portfolio_client_id_portfolio_clients_id_fk",
+          "tableFrom": "contracts",
+          "tableTo": "portfolio_clients",
+          "columnsFrom": [
+            "portfolio_client_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "contracts_plan_id_plans_id_fk": {
+          "name": "contracts_plan_id_plans_id_fk",
+          "tableFrom": "contracts",
+          "tableTo": "plans",
+          "columnsFrom": [
+            "plan_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "contracts_select_member": {
+          "name": "contracts_select_member",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"contracts\".\"organization_id\" in (select public.current_user_organization_ids())"
+        },
+        "contracts_insert_writer": {
+          "name": "contracts_insert_writer",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "public.current_user_role_in(\"contracts\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        },
+        "contracts_update_writer": {
+          "name": "contracts_update_writer",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"contracts\".\"organization_id\") in ('owner', 'admin', 'analyst')",
+          "withCheck": "public.current_user_role_in(\"contracts\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        },
+        "contracts_delete_owner_admin": {
+          "name": "contracts_delete_owner_admin",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"contracts\".\"organization_id\") in ('owner', 'admin')"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.plans": {
+      "name": "plans",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "plans_org_name_unique": {
+          "name": "plans_org_name_unique",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "plans_organization_idx": {
+          "name": "plans_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "plans_organization_id_organizations_id_fk": {
+          "name": "plans_organization_id_organizations_id_fk",
+          "tableFrom": "plans",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "plans_select_member": {
+          "name": "plans_select_member",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"plans\".\"organization_id\" in (select public.current_user_organization_ids())"
+        },
+        "plans_insert_writer": {
+          "name": "plans_insert_writer",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "public.current_user_role_in(\"plans\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        },
+        "plans_update_writer": {
+          "name": "plans_update_writer",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"plans\".\"organization_id\") in ('owner', 'admin', 'analyst')",
+          "withCheck": "public.current_user_role_in(\"plans\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        },
+        "plans_delete_owner_admin": {
+          "name": "plans_delete_owner_admin",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"plans\".\"organization_id\") in ('owner', 'admin')"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.metric_extraction_suggestions": {
+      "name": "metric_extraction_suggestions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "uploaded_document_id": {
+          "name": "uploaded_document_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "suggested_name": {
+          "name": "suggested_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "suggested_type": {
+          "name": "suggested_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "suggested_direction": {
+          "name": "suggested_direction",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit": {
+          "name": "unit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "suggested_weight": {
+          "name": "suggested_weight",
+          "type": "numeric(6, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "suggested_formula_json": {
+          "name": "suggested_formula_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "suggested_thresholds_json": {
+          "name": "suggested_thresholds_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "confidence": {
+          "name": "confidence",
+          "type": "numeric(5, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_excerpt": {
+          "name": "source_excerpt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'manual'"
+        },
+        "status": {
+          "name": "status",
+          "type": "metric_suggestion_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_by": {
+          "name": "reviewed_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_at": {
+          "name": "reviewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "metric_extraction_suggestions_document_idx": {
+          "name": "metric_extraction_suggestions_document_idx",
+          "columns": [
+            {
+              "expression": "uploaded_document_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "metric_extraction_suggestions_organization_idx": {
+          "name": "metric_extraction_suggestions_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "metric_extraction_suggestions_uploaded_document_id_uploaded_documents_id_fk": {
+          "name": "metric_extraction_suggestions_uploaded_document_id_uploaded_documents_id_fk",
+          "tableFrom": "metric_extraction_suggestions",
+          "tableTo": "uploaded_documents",
+          "columnsFrom": [
+            "uploaded_document_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "metric_extraction_suggestions_organization_id_organizations_id_fk": {
+          "name": "metric_extraction_suggestions_organization_id_organizations_id_fk",
+          "tableFrom": "metric_extraction_suggestions",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "metric_extraction_suggestions_select_member": {
+          "name": "metric_extraction_suggestions_select_member",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "organization_id in (select public.current_user_organization_ids())"
+        },
+        "metric_extraction_suggestions_insert_writer": {
+          "name": "metric_extraction_suggestions_insert_writer",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "public.current_user_role_in(organization_id) in ('owner', 'admin', 'analyst')"
+        },
+        "metric_extraction_suggestions_update_writer": {
+          "name": "metric_extraction_suggestions_update_writer",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(organization_id) in ('owner', 'admin', 'analyst')",
+          "withCheck": "public.current_user_role_in(organization_id) in ('owner', 'admin', 'analyst')"
+        },
+        "metric_extraction_suggestions_delete_writer": {
+          "name": "metric_extraction_suggestions_delete_writer",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(organization_id) in ('owner', 'admin', 'analyst')"
+        }
+      },
+      "checkConstraints": {
+        "metric_extraction_suggestions_type_check": {
+          "name": "metric_extraction_suggestions_type_check",
+          "value": "\"metric_extraction_suggestions\".\"suggested_type\" in ('TIME', 'PERCENTAGE', 'QUANTITY', 'FREQUENCY', 'FINANCIAL', 'VARIATION', 'SCORE', 'BOOLEAN', 'CATEGORY', 'DATE_DEADLINE')"
+        },
+        "metric_extraction_suggestions_direction_check": {
+          "name": "metric_extraction_suggestions_direction_check",
+          "value": "\"metric_extraction_suggestions\".\"suggested_direction\" in ('HIGHER_IS_BETTER', 'HIGHER_IS_WORSE', 'TARGET_RANGE', 'CUSTOM')"
+        },
+        "metric_extraction_suggestions_weight_check": {
+          "name": "metric_extraction_suggestions_weight_check",
+          "value": "\"metric_extraction_suggestions\".\"suggested_weight\" is null or (\"metric_extraction_suggestions\".\"suggested_weight\" >= 0 and \"metric_extraction_suggestions\".\"suggested_weight\" <= 1)"
+        },
+        "metric_extraction_suggestions_confidence_check": {
+          "name": "metric_extraction_suggestions_confidence_check",
+          "value": "\"metric_extraction_suggestions\".\"confidence\" is null or (\"metric_extraction_suggestions\".\"confidence\" >= 0 and \"metric_extraction_suggestions\".\"confidence\" <= 1)"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.uploaded_documents": {
+      "name": "uploaded_documents",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "storage_path": {
+          "name": "storage_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_name": {
+          "name": "file_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mime_type": {
+          "name": "mime_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "size_bytes": {
+          "name": "size_bytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "document_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'uploaded'"
+        },
+        "uploaded_by": {
+          "name": "uploaded_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "extracted_text_path": {
+          "name": "extracted_text_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "extracted_text_preview": {
+          "name": "extracted_text_preview",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "extraction_error": {
+          "name": "extraction_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "extracted_at": {
+          "name": "extracted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "uploaded_documents_organization_idx": {
+          "name": "uploaded_documents_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "uploaded_documents_organization_id_organizations_id_fk": {
+          "name": "uploaded_documents_organization_id_organizations_id_fk",
+          "tableFrom": "uploaded_documents",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "uploaded_documents_select_member": {
+          "name": "uploaded_documents_select_member",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "organization_id in (select public.current_user_organization_ids())"
+        },
+        "uploaded_documents_insert_writer": {
+          "name": "uploaded_documents_insert_writer",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "public.current_user_role_in(organization_id) in ('owner', 'admin', 'analyst')"
+        },
+        "uploaded_documents_update_writer": {
+          "name": "uploaded_documents_update_writer",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(organization_id) in ('owner', 'admin', 'analyst')",
+          "withCheck": "public.current_user_role_in(organization_id) in ('owner', 'admin', 'analyst')"
+        },
+        "uploaded_documents_delete_writer": {
+          "name": "uploaded_documents_delete_writer",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(organization_id) in ('owner', 'admin', 'analyst')"
+        }
+      },
+      "checkConstraints": {
+        "uploaded_documents_size_bytes_check": {
+          "name": "uploaded_documents_size_bytes_check",
+          "value": "\"uploaded_documents\".\"size_bytes\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.client_score_snapshots": {
+      "name": "client_score_snapshots",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "portfolio_client_id": {
+          "name": "portfolio_client_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metric_model_version_id": {
+          "name": "metric_model_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_end": {
+          "name": "period_end",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "overall_health": {
+          "name": "overall_health",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "risk_score": {
+          "name": "risk_score",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "analysis_confidence": {
+          "name": "analysis_confidence",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "commercial_impact_score": {
+          "name": "commercial_impact_score",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "priority_score": {
+          "name": "priority_score",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "priority_floor": {
+          "name": "priority_floor",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "health_class": {
+          "name": "health_class",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "priority_class": {
+          "name": "priority_class",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evidence_json": {
+          "name": "evidence_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "client_score_snapshots_unique": {
+          "name": "client_score_snapshots_unique",
+          "columns": [
+            {
+              "expression": "portfolio_client_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "metric_model_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_end",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "client_score_snapshots_organization_period_idx": {
+          "name": "client_score_snapshots_organization_period_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_end",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "client_score_snapshots_organization_id_organizations_id_fk": {
+          "name": "client_score_snapshots_organization_id_organizations_id_fk",
+          "tableFrom": "client_score_snapshots",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "client_score_snapshots_portfolio_client_id_portfolio_clients_id_fk": {
+          "name": "client_score_snapshots_portfolio_client_id_portfolio_clients_id_fk",
+          "tableFrom": "client_score_snapshots",
+          "tableTo": "portfolio_clients",
+          "columnsFrom": [
+            "portfolio_client_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "client_score_snapshots_metric_model_version_id_metric_model_versions_id_fk": {
+          "name": "client_score_snapshots_metric_model_version_id_metric_model_versions_id_fk",
+          "tableFrom": "client_score_snapshots",
+          "tableTo": "metric_model_versions",
+          "columnsFrom": [
+            "metric_model_version_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "client_score_snapshots_select_member": {
+          "name": "client_score_snapshots_select_member",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"client_score_snapshots\".\"organization_id\" in (select public.current_user_organization_ids())"
+        },
+        "client_score_snapshots_insert_writer": {
+          "name": "client_score_snapshots_insert_writer",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "public.current_user_role_in(\"client_score_snapshots\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        },
+        "client_score_snapshots_update_writer": {
+          "name": "client_score_snapshots_update_writer",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"client_score_snapshots\".\"organization_id\") in ('owner', 'admin', 'analyst')",
+          "withCheck": "public.current_user_role_in(\"client_score_snapshots\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        },
+        "client_score_snapshots_delete_writer": {
+          "name": "client_score_snapshots_delete_writer",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"client_score_snapshots\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.metric_score_snapshots": {
+      "name": "metric_score_snapshots",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "portfolio_client_id": {
+          "name": "portfolio_client_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metric_definition_id": {
+          "name": "metric_definition_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metric_model_version_id": {
+          "name": "metric_model_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_end": {
+          "name": "period_end",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "current_health": {
+          "name": "current_health",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "trend_health": {
+          "name": "trend_health",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "persistence_health": {
+          "name": "persistence_health",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metric_health": {
+          "name": "metric_health",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "confidence": {
+          "name": "confidence",
+          "type": "numeric(4, 3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "explanation_json": {
+          "name": "explanation_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "metric_score_snapshots_unique": {
+          "name": "metric_score_snapshots_unique",
+          "columns": [
+            {
+              "expression": "portfolio_client_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "metric_definition_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "metric_model_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_end",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "metric_score_snapshots_organization_idx": {
+          "name": "metric_score_snapshots_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "metric_score_snapshots_organization_id_organizations_id_fk": {
+          "name": "metric_score_snapshots_organization_id_organizations_id_fk",
+          "tableFrom": "metric_score_snapshots",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "metric_score_snapshots_portfolio_client_id_portfolio_clients_id_fk": {
+          "name": "metric_score_snapshots_portfolio_client_id_portfolio_clients_id_fk",
+          "tableFrom": "metric_score_snapshots",
+          "tableTo": "portfolio_clients",
+          "columnsFrom": [
+            "portfolio_client_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "metric_score_snapshots_metric_definition_id_metric_definitions_id_fk": {
+          "name": "metric_score_snapshots_metric_definition_id_metric_definitions_id_fk",
+          "tableFrom": "metric_score_snapshots",
+          "tableTo": "metric_definitions",
+          "columnsFrom": [
+            "metric_definition_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "metric_score_snapshots_metric_model_version_id_metric_model_versions_id_fk": {
+          "name": "metric_score_snapshots_metric_model_version_id_metric_model_versions_id_fk",
+          "tableFrom": "metric_score_snapshots",
+          "tableTo": "metric_model_versions",
+          "columnsFrom": [
+            "metric_model_version_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "metric_score_snapshots_select_member": {
+          "name": "metric_score_snapshots_select_member",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"metric_score_snapshots\".\"organization_id\" in (select public.current_user_organization_ids())"
+        },
+        "metric_score_snapshots_insert_writer": {
+          "name": "metric_score_snapshots_insert_writer",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "public.current_user_role_in(\"metric_score_snapshots\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        },
+        "metric_score_snapshots_update_writer": {
+          "name": "metric_score_snapshots_update_writer",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"metric_score_snapshots\".\"organization_id\") in ('owner', 'admin', 'analyst')",
+          "withCheck": "public.current_user_role_in(\"metric_score_snapshots\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        },
+        "metric_score_snapshots_delete_writer": {
+          "name": "metric_score_snapshots_delete_writer",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"metric_score_snapshots\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.metric_values": {
+      "name": "metric_values",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "portfolio_client_id": {
+          "name": "portfolio_client_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metric_definition_id": {
+          "name": "metric_definition_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_start": {
+          "name": "period_start",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_end": {
+          "name": "period_end",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "raw_value_numeric": {
+          "name": "raw_value_numeric",
+          "type": "numeric(18, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raw_value_text": {
+          "name": "raw_value_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "answered": {
+          "name": "answered",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "metric_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'MANUAL'"
+        },
+        "source_reference": {
+          "name": "source_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recorded_at": {
+          "name": "recorded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "metric_values_client_metric_period_unique": {
+          "name": "metric_values_client_metric_period_unique",
+          "columns": [
+            {
+              "expression": "portfolio_client_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "metric_definition_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_start",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "metric_values_organization_idx": {
+          "name": "metric_values_organization_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "metric_values_period_idx": {
+          "name": "metric_values_period_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_end",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "metric_values_organization_id_organizations_id_fk": {
+          "name": "metric_values_organization_id_organizations_id_fk",
+          "tableFrom": "metric_values",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "metric_values_portfolio_client_id_portfolio_clients_id_fk": {
+          "name": "metric_values_portfolio_client_id_portfolio_clients_id_fk",
+          "tableFrom": "metric_values",
+          "tableTo": "portfolio_clients",
+          "columnsFrom": [
+            "portfolio_client_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "metric_values_metric_definition_id_metric_definitions_id_fk": {
+          "name": "metric_values_metric_definition_id_metric_definitions_id_fk",
+          "tableFrom": "metric_values",
+          "tableTo": "metric_definitions",
+          "columnsFrom": [
+            "metric_definition_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "metric_values_select_member": {
+          "name": "metric_values_select_member",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"metric_values\".\"organization_id\" in (select public.current_user_organization_ids())"
+        },
+        "metric_values_insert_writer": {
+          "name": "metric_values_insert_writer",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "public.current_user_role_in(\"metric_values\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        },
+        "metric_values_update_writer": {
+          "name": "metric_values_update_writer",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"metric_values\".\"organization_id\") in ('owner', 'admin', 'analyst')",
+          "withCheck": "public.current_user_role_in(\"metric_values\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        },
+        "metric_values_delete_writer": {
+          "name": "metric_values_delete_writer",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"metric_values\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.alerts": {
+      "name": "alerts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "portfolio_client_id": {
+          "name": "portfolio_client_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metric_definition_id": {
+          "name": "metric_definition_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "trigger_id": {
+          "name": "trigger_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "severity": {
+          "name": "severity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'WARNING'"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'open'"
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "priority_floor": {
+          "name": "priority_floor",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "period_end": {
+          "name": "period_end",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata_json": {
+          "name": "metadata_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "triggered_at": {
+          "name": "triggered_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "resolved_at": {
+          "name": "resolved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "alerts_client_trigger_period_unique": {
+          "name": "alerts_client_trigger_period_unique",
+          "columns": [
+            {
+              "expression": "portfolio_client_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "trigger_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_end",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "alerts_organization_status_idx": {
+          "name": "alerts_organization_status_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "alerts_organization_id_organizations_id_fk": {
+          "name": "alerts_organization_id_organizations_id_fk",
+          "tableFrom": "alerts",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "alerts_portfolio_client_id_portfolio_clients_id_fk": {
+          "name": "alerts_portfolio_client_id_portfolio_clients_id_fk",
+          "tableFrom": "alerts",
+          "tableTo": "portfolio_clients",
+          "columnsFrom": [
+            "portfolio_client_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "alerts_metric_definition_id_metric_definitions_id_fk": {
+          "name": "alerts_metric_definition_id_metric_definitions_id_fk",
+          "tableFrom": "alerts",
+          "tableTo": "metric_definitions",
+          "columnsFrom": [
+            "metric_definition_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "alerts_select_member": {
+          "name": "alerts_select_member",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"alerts\".\"organization_id\" in (select public.current_user_organization_ids())"
+        },
+        "alerts_insert_writer": {
+          "name": "alerts_insert_writer",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "public.current_user_role_in(\"alerts\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        },
+        "alerts_update_writer": {
+          "name": "alerts_update_writer",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"alerts\".\"organization_id\") in ('owner', 'admin', 'analyst')",
+          "withCheck": "public.current_user_role_in(\"alerts\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        },
+        "alerts_delete_writer": {
+          "name": "alerts_delete_writer",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "public.current_user_role_in(\"alerts\".\"organization_id\") in ('owner', 'admin', 'analyst')"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {
+    "public.organization_role": {
+      "name": "organization_role",
+      "schema": "public",
+      "values": [
+        "owner",
+        "admin",
+        "analyst",
+        "viewer"
+      ]
+    },
+    "public.metric_direction": {
+      "name": "metric_direction",
+      "schema": "public",
+      "values": [
+        "HIGHER_IS_BETTER",
+        "HIGHER_IS_WORSE",
+        "TARGET_RANGE",
+        "CUSTOM"
+      ]
+    },
+    "public.metric_model_mode": {
+      "name": "metric_model_mode",
+      "schema": "public",
+      "values": [
+        "MANUAL",
+        "ASSISTED",
+        "AUTOMATIC"
+      ]
+    },
+    "public.metric_model_version_status": {
+      "name": "metric_model_version_status",
+      "schema": "public",
+      "values": [
+        "draft",
+        "active",
+        "archived"
+      ]
+    },
+    "public.metric_periodicity": {
+      "name": "metric_periodicity",
+      "schema": "public",
+      "values": [
+        "DAILY",
+        "WEEKLY",
+        "MONTHLY",
+        "QUARTERLY",
+        "YEARLY"
+      ]
+    },
+    "public.metric_source": {
+      "name": "metric_source",
+      "schema": "public",
+      "values": [
+        "MANUAL",
+        "CSV",
+        "XLSX",
+        "JSON",
+        "API",
+        "DOCUMENT",
+        "DERIVED"
+      ]
+    },
+    "public.metric_type": {
+      "name": "metric_type",
+      "schema": "public",
+      "values": [
+        "TIME",
+        "PERCENTAGE",
+        "QUANTITY",
+        "FREQUENCY",
+        "FINANCIAL",
+        "VARIATION",
+        "SCORE",
+        "BOOLEAN",
+        "CATEGORY",
+        "DATE_DEADLINE"
+      ]
+    },
+    "public.normalization_strategy": {
+      "name": "normalization_strategy",
+      "schema": "public",
+      "values": [
+        "THRESHOLD_BANDS",
+        "LINEAR_RANGE",
+        "RATIO_TO_TARGET",
+        "BASELINE_DEVIATION",
+        "BOOLEAN_MAP",
+        "SCORE_MAP",
+        "CUSTOM_SAFE_RULE"
+      ]
+    },
+    "public.portfolio_client_status": {
+      "name": "portfolio_client_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "inactive",
+        "cancelled",
+        "archived"
+      ]
+    },
+    "public.contract_status": {
+      "name": "contract_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "ended",
+        "suspended"
+      ]
+    },
+    "public.document_status": {
+      "name": "document_status",
+      "schema": "public",
+      "values": [
+        "uploaded",
+        "extracted",
+        "failed"
+      ]
+    },
+    "public.metric_suggestion_status": {
+      "name": "metric_suggestion_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "accepted",
+        "rejected"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
