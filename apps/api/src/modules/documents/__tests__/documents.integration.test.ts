@@ -11,13 +11,17 @@ import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { sql } from 'drizzle-orm';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createApp } from '../../../app.js';
 import { type ApiEnv, loadEnvFiles, parseApiEnv } from '../../../config/env.js';
 import { createDbClient, type DbClient } from '../../../infrastructure/db/index.js';
 import { DOCUMENTS_BUCKET } from '../../../infrastructure/storage/supabase-storage.js';
 import { createSupabaseClients } from '../../../infrastructure/supabase.js';
+
+// Esta suíte fala com o Supabase remoto: uma ida e volta pela rede não cabe nos 5 s padrão do
+// vitest, pensados para teste em memória. O limite alto vale só para este arquivo.
+vi.setConfig({ testTimeout: 30_000, hookTimeout: 60_000 });
 
 loadEnvFiles();
 const env: ApiEnv = parseApiEnv({ ...process.env, NODE_ENV: 'test', LOG_LEVEL: 'silent' });
@@ -184,6 +188,13 @@ describe.skipIf(!enabled)('documents — integração com o Supabase real', () =
     });
 
     const list = await request(app).get(`/api/v1/documents/${id}/suggestions`).set(bearer());
-    expect(list.body.total).toBe(1);
+    // Uma sugestão vem da análise automática da coluna pct_sla_cumprido e outra é a manual.
+    expect(list.body.total).toBe(2);
+    expect(list.body.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ provider: 'automatic-local', status: 'pending' }),
+        expect.objectContaining({ id: created.body.suggestion.id, status: 'accepted' }),
+      ]),
+    );
   }, 60_000);
 });

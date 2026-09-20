@@ -339,7 +339,8 @@ export function createDocumentsService(deps: DocumentsServiceDependencies): Docu
       await storage.upload({
         path: extractedTextPath,
         body: Buffer.from(extracted.text, 'utf8'),
-        contentType: 'text/plain; charset=utf-8',
+        // O bucket usa allowlist exata de MIME; charset no parâmetro faz o Storage rejeitar.
+        contentType: 'text/plain',
       });
       const updated = await repository.updateDocument(tenant.organizationId, id, {
         status: 'extracted',
