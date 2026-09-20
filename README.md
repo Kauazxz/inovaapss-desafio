@@ -33,15 +33,15 @@ vencem o resto em caso de conflito).
 
 ## Stack
 
-| Camada                 | Tecnologia                                                                                                   | Estado                                                                                              |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| Monorepo               | **pnpm** workspaces + **Turborepo**, TypeScript, ESLint, Prettier, Husky + lint-staged                       | **pronto** (Etapa 0)                                                                                |
-| API                    | **Express** + **Drizzle ORM** + Zod + Pino, Vitest + Supertest, OpenAPI                                      | Etapa 1 pronta: auth (JWT do Supabase), tenant, RBAC, organizações (`/api/v1/me`, `/organizations`) |
-| Motor                  | `packages/engine` — scoring, SLA e forecast puros, com testes                                                | Etapas 4/5 (parte pura) prontas; acoplamento ao banco pendente                                      |
-| Web                    | **React** + **Vite** + **Tailwind** + **shadcn/ui**, React Router, TanStack Query, React Hook Form, Recharts | login, recuperação de senha, onboarding e dashboard com dados de exemplo (mock)                     |
-| Banco / Auth / Storage | **Supabase** (Postgres, Auth, Storage), migrations geradas pelo Drizzle em `supabase/migrations/`            | **funcionando** — deploy automático por GitHub Actions                                              |
-| Hospedagem web         | **Vercel**                                                                                                   | **no ar**: https://inovaapss-desafio.vercel.app (todo push na `main`) — ainda sem API publicada     |
-| Hospedagem API         | **Railway ou Render** (Dockerfile)                                                                           | a conectar — [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)                                               |
+| Camada                 | Tecnologia                                                                                                   | Estado                                                                                                              |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| Monorepo               | **pnpm** workspaces + **Turborepo**, TypeScript, ESLint, Prettier, Husky + lint-staged                       | **pronto** (Etapa 0)                                                                                                |
+| API                    | **Express** + **Drizzle ORM** + Zod + Pino, Vitest + Supertest, OpenAPI                                      | Etapa 1 pronta: auth (JWT do Supabase), tenant, RBAC, organizações (`/api/v1/me`, `/organizations`)                 |
+| Motor                  | `packages/engine` — scoring, SLA e forecast puros, com testes                                                | Etapas 4/5 (parte pura) prontas; acoplamento ao banco pendente                                                      |
+| Web                    | **React** + **Vite** + **Tailwind** + **shadcn/ui**, React Router, TanStack Query, React Hook Form, Recharts | login, recuperação de senha, onboarding e dashboard lendo a API (`VITE_DATA_SOURCE=mock` desenha sem backend)       |
+| Banco / Auth / Storage | **Supabase** (Postgres, Auth, Storage), migrations geradas pelo Drizzle em `supabase/migrations/`            | **funcionando** — deploy automático por GitHub Actions                                                              |
+| Hospedagem web         | **Vercel**                                                                                                   | **no ar**: https://inovaapss-desafio.vercel.app (todo push na `main`)                                               |
+| Hospedagem API         | **Vercel** (o Dockerfile serve para Railway/Render)                                                          | **no ar**: https://inovaapss-api.vercel.app (`/ready` responde `db: ok`) — [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
 
 O deploy do banco é **automático**: todo push na `main` que mexe em `supabase/` é aplicado pelo
 GitHub Actions. Guia em **[docs/SUPABASE.md](docs/SUPABASE.md)**.
