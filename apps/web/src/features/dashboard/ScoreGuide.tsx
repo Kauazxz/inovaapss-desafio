@@ -1,12 +1,8 @@
-import type { ReactNode } from 'react';
-
-import {
-  PRIORITY_CLASS_LABELS,
-  type PriorityWeights,
-  type RankingRow,
-} from '@inovaapss/shared';
+import { PRIORITY_CLASS_LABELS, type PriorityWeights, type RankingRow } from '@inovaapss/shared';
 
 import { formatInteger } from '@/lib/format';
+
+import type { ReactNode } from 'react';
 
 function GuideItem({
   number,
@@ -113,8 +109,8 @@ export function ScoreGuide({
           <strong className="text-foreground">
             {formatInteger(example.riskScore)} não significa {formatInteger(example.riskScore)}% de
             chance de cancelar.
-          </strong>
-          {' '}A coluna mostra o risco de agora; a projeção não altera esse número antecipadamente.
+          </strong>{' '}
+          A coluna mostra o risco de agora; a projeção não altera esse número antecipadamente.
         </GuideItem>
 
         <GuideItem
