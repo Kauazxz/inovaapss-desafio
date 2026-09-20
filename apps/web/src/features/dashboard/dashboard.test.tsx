@@ -107,7 +107,7 @@ describe('aba Em risco', () => {
   );
 
   it(
-    'leva a /clients/:id ao clicar numa linha do gráfico',
+    'clicar no gráfico abre o caso sem tirar a pessoa da fila, e o painel leva ao cliente',
     async () => {
       renderWithProviders(<RiskTab />);
 
@@ -118,6 +118,12 @@ describe('aba Em risco', () => {
       );
       await userEvent.click(within(chart).getAllByRole('listitem')[0]!);
 
+      // O clique NÃO navega mais: abre um painel por cima da fila de prioridade, para quem
+      // está triando não perder o lugar. Quem quiser o histórico inteiro pede explicitamente.
+      const painel = await screen.findByRole('dialog');
+      expect(screen.queryByText('Página do cliente')).not.toBeInTheDocument();
+
+      await userEvent.click(within(painel).getByRole('button', { name: /Ver o caso completo/i }));
       expect(await screen.findByText('Página do cliente')).toBeInTheDocument();
     },
     TEST_TIMEOUT,
