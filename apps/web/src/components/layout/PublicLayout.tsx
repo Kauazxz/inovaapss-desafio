@@ -13,7 +13,7 @@ export function PublicLayout() {
 
       <div className="relative mb-8 flex flex-col items-center text-center">
         <span
-          className="mb-3 flex size-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-soft"
+          className="mb-3 flex size-11 items-center justify-center rounded-[1.125rem] bg-primary text-primary-foreground shadow-soft"
           aria-hidden="true"
         >
           <Activity className="size-6" />

@@ -38,7 +38,7 @@ export function PreviewSummary({ preview }: { preview: ImportPreviewDto }) {
     <div className="space-y-6">
       {/* As quatro contagens numa superfície só (uma sombra, não quatro): duas por linha no
           celular, as quatro em fila do md em diante. */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-5 rounded-xl bg-card p-4 shadow-soft ring-1 ring-foreground/5 sm:gap-x-6 sm:p-5 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-5 rounded-2xl bg-card p-4 shadow-soft ring-1 ring-foreground/5 sm:gap-x-6 sm:p-5 md:grid-cols-4">
         <Count label="Linhas lidas" value={preview.counts.total} />
         <Count label="Válidas" value={preview.counts.valid} hint="serão gravadas" />
         <Count label="Inválidas" value={preview.counts.invalid} hint="ficam de fora" />
@@ -50,7 +50,7 @@ export function PreviewSummary({ preview }: { preview: ImportPreviewDto }) {
       </div>
 
       {missing.length > 0 ? (
-        <p className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive ring-1 ring-destructive/20">
+        <p className="rounded-2xl bg-destructive/10 p-4 text-sm text-destructive ring-1 ring-destructive/20">
           Campos obrigatórios sem coluna: <strong>{missing.join(', ')}</strong>. Volte ao mapeamento
           e escolha a coluna de cada um.
         </p>
@@ -60,7 +60,7 @@ export function PreviewSummary({ preview }: { preview: ImportPreviewDto }) {
           voltam conforme a tela cresce, em vez de seis colunas espremidas. */}
       <section
         aria-labelledby="tabelas-titulo"
-        className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5"
+        className="overflow-hidden rounded-2xl bg-card shadow-soft ring-1 ring-foreground/5"
       >
         <h4 id="tabelas-titulo" className="px-4 pt-4 pb-3 text-sm font-medium sm:px-5 sm:pt-5">
           Por tabela
@@ -104,7 +104,7 @@ export function PreviewSummary({ preview }: { preview: ImportPreviewDto }) {
       {preview.skipped.length > 0 ? (
         <section
           aria-labelledby="ignoradas-titulo"
-          className="space-y-2 rounded-xl bg-card p-4 shadow-soft ring-1 ring-foreground/5 sm:p-5"
+          className="space-y-2 rounded-2xl bg-card p-4 shadow-soft ring-1 ring-foreground/5 sm:p-5"
         >
           <h4 id="ignoradas-titulo" className="text-sm font-medium">
             Tabelas ignoradas
@@ -122,7 +122,7 @@ export function PreviewSummary({ preview }: { preview: ImportPreviewDto }) {
       {errors.length > 0 ? (
         <section
           aria-labelledby="erros-titulo"
-          className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5"
+          className="overflow-hidden rounded-2xl bg-card shadow-soft ring-1 ring-foreground/5"
         >
           <h4 id="erros-titulo" className="px-4 pt-4 pb-3 text-sm font-medium sm:px-5 sm:pt-5">
             Erros por linha ({formatCount(preview.errorCount)})

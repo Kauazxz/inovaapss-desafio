@@ -66,7 +66,7 @@ function formatDateTime(iso: string): string {
 
 /** Campo nativo com o acabamento do <Input>: h-9, superfície de card e anel de foco (§3 do guia). */
 const SELECT_CLASS =
-  'h-9 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
+  'h-9 w-full rounded-xl border border-input bg-card px-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
 
 /** Um indicador: o número grande, o que ele responde e a frase do que significa na prática. */
 function Indicator({
@@ -264,7 +264,7 @@ export function CalibrationPage() {
       </header>
 
       {/* --------------------------------------- controles: empilham no celular */}
-      <div className="flex flex-col gap-4 rounded-xl bg-card p-4 shadow-soft ring-1 ring-foreground/5 sm:flex-row sm:flex-wrap sm:items-end sm:p-5">
+      <div className="flex flex-col gap-4 rounded-2xl bg-card p-4 shadow-soft ring-1 ring-foreground/5 sm:flex-row sm:flex-wrap sm:items-end sm:p-5">
         <label className="flex w-full min-w-0 flex-col gap-1 text-sm sm:w-56">
           <span className="font-medium">Janela de antecedência</span>
           <select
@@ -323,7 +323,7 @@ export function CalibrationPage() {
       {mensagemErro ? (
         <p
           role="alert"
-          className="rounded-xl bg-destructive/10 p-4 text-sm font-medium text-destructive ring-1 ring-destructive/20"
+          className="rounded-2xl bg-destructive/10 p-4 text-sm font-medium text-destructive ring-1 ring-destructive/20"
         >
           {mensagemErro}
         </p>
@@ -338,7 +338,7 @@ export function CalibrationPage() {
         />
       ) : run.status !== 'done' || resultados === null ? (
         <p
-          className="rounded-xl bg-muted/50 p-4 text-sm ring-1 ring-foreground/5 sm:p-5"
+          className="rounded-2xl bg-muted/50 p-4 text-sm ring-1 ring-foreground/5 sm:p-5"
           role="status"
         >
           <strong>{CALIBRATION_RUN_STATUS_LABELS[run.status]}.</strong>{' '}
@@ -348,7 +348,7 @@ export function CalibrationPage() {
         <>
           {/* Ressalva de base pequena: é aviso de leitura, não saúde de cliente — nada de âmbar. */}
           <div
-            className="flex items-start gap-3 rounded-xl bg-muted/60 p-4 text-sm ring-1 ring-foreground/10"
+            className="flex items-start gap-3 rounded-2xl bg-muted/60 p-4 text-sm ring-1 ring-foreground/10"
             role="note"
           >
             <AlertTriangle
@@ -364,7 +364,7 @@ export function CalibrationPage() {
           </div>
 
           <section
-            className="space-y-5 rounded-xl bg-card p-4 shadow-soft ring-1 ring-foreground/5 sm:p-5"
+            className="space-y-5 rounded-2xl bg-card p-4 shadow-soft ring-1 ring-foreground/5 sm:p-5"
             aria-label="Desempenho do modelo em vigor"
           >
             <h2 className="cn-font-heading text-base font-medium text-balance">
@@ -380,7 +380,7 @@ export function CalibrationPage() {
           </section>
 
           <section
-            className="space-y-5 rounded-xl bg-card p-4 shadow-soft ring-1 ring-foreground/5 sm:p-5"
+            className="space-y-5 rounded-2xl bg-card p-4 shadow-soft ring-1 ring-foreground/5 sm:p-5"
             aria-label="Pesos sugeridos pelo histórico"
           >
             <h2 className="cn-font-heading text-base font-medium">
@@ -507,7 +507,7 @@ export function CalibrationPage() {
           </section>
 
           <section
-            className="space-y-5 rounded-xl bg-card p-4 shadow-soft ring-1 ring-foreground/5 sm:p-5"
+            className="space-y-5 rounded-2xl bg-card p-4 shadow-soft ring-1 ring-foreground/5 sm:p-5"
             aria-label="Desempenho estimado da proposta"
           >
             <h2 className="cn-font-heading text-base font-medium">
@@ -531,7 +531,7 @@ export function CalibrationPage() {
         ) : (
           // No celular sobram quando, quantos cancelamentos pegou e o botão de abrir. A tabela
           // mora numa superfície elevada, como as outras tabelas do sistema.
-          <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+          <div className="overflow-hidden rounded-2xl bg-card shadow-soft ring-1 ring-foreground/5">
             <Table>
               <TableHeader>
                 <TableRow>

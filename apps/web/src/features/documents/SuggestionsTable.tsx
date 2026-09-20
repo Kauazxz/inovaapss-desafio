@@ -58,7 +58,7 @@ export function SuggestionsTable({
   // No celular ficam as três colunas que decidem: qual métrica, em que pé está e o que fazer.
   // Tipo, direção, peso e origem voltam conforme a tela cresce.
   return (
-    <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+    <div className="overflow-hidden rounded-2xl bg-card shadow-soft ring-1 ring-foreground/5">
       <Table aria-label="Sugestões de métrica">
         <TableHeader>
           <TableRow>

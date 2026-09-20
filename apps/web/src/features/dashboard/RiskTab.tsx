@@ -79,7 +79,7 @@ export function RiskTab() {
               </p>
             </div>
             {/* A tabela mora numa superfície elevada, como as outras tabelas do sistema. */}
-            <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+            <div className="overflow-hidden rounded-2xl bg-card shadow-soft ring-1 ring-foreground/5">
               <RankingTable rows={data.ranking} onSelect={openClient} />
             </div>
           </section>

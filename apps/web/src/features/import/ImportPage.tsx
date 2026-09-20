@@ -344,7 +344,7 @@ export function ImportPage() {
           </div>
 
           {/* A decisão mora numa faixa só, para não se perder no fim de uma página longa. */}
-          <div className="flex flex-col gap-3 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex flex-col gap-3 rounded-2xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 sm:flex-row sm:flex-wrap sm:items-center">
             <Button
               type="button"
               variant="outline"
@@ -383,7 +383,7 @@ export function ImportPage() {
       {/* ---------------------------------------------------------- 4. resultado */}
       {step === 'done' && result !== null ? (
         <section className="space-y-6" aria-labelledby="resultado-titulo">
-          <div className="flex items-start gap-3 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 sm:gap-4">
+          <div className="flex items-start gap-3 rounded-2xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 sm:gap-4">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
               <CircleCheck className="size-5" aria-hidden="true" />
             </span>

@@ -39,7 +39,7 @@ export function OrganizationTab() {
       <div
         role="status"
         aria-label="Carregando a organização"
-        className="w-full max-w-md space-y-4 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5"
+        className="w-full max-w-md space-y-4 rounded-2xl bg-card p-5 shadow-soft ring-1 ring-foreground/5"
       >
         <Skeleton className="h-9 w-full" />
         <Skeleton className="h-9 w-full" />
@@ -131,7 +131,7 @@ function OrganizationForm({
         aria-label="Dados da organização"
         noValidate
         onSubmit={handleSubmit(onSubmit)}
-        className="w-full max-w-md space-y-4 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5"
+        className="w-full max-w-md space-y-4 rounded-2xl bg-card p-5 shadow-soft ring-1 ring-foreground/5"
       >
         <FormField label="Nome" error={errors.name?.message}>
           {(control) => <Input {...control} {...register('name')} disabled={!canEdit} />}

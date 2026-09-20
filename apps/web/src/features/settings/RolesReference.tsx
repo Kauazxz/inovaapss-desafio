@@ -26,7 +26,7 @@ export function RolesReference() {
         </p>
       </div>
 
-      <dl className="space-y-3 rounded-xl bg-card p-5 text-sm shadow-soft ring-1 ring-foreground/5">
+      <dl className="space-y-3 rounded-2xl bg-card p-5 text-sm shadow-soft ring-1 ring-foreground/5">
         {ROLES.map((role) => (
           <div key={role} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <dt className="font-medium">
@@ -40,7 +40,7 @@ export function RolesReference() {
         ))}
       </dl>
 
-      <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+      <div className="overflow-hidden rounded-2xl bg-card shadow-soft ring-1 ring-foreground/5">
         <Table>
           <caption className="caption-bottom px-3 pt-2 pb-3 text-left text-xs text-muted-foreground">
             Quem pode o quê, como a API aplica hoje.

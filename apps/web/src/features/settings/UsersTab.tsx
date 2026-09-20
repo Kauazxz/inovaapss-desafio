@@ -66,7 +66,7 @@ export function UsersTab() {
           <div
             role="status"
             aria-label="Carregando usuários"
-            className="space-y-2 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5"
+            className="space-y-2 rounded-2xl bg-card p-5 shadow-soft ring-1 ring-foreground/5"
           >
             <Skeleton className="h-9 w-full" />
             <Skeleton className="h-9 w-full" />
@@ -98,7 +98,7 @@ export function UsersTab() {
             }
           />
         ) : (
-          <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+          <div className="overflow-hidden rounded-2xl bg-card shadow-soft ring-1 ring-foreground/5">
             <Table>
               <TableHeader>
                 <TableRow>

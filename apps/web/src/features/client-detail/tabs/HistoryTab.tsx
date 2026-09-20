@@ -137,7 +137,7 @@ export function HistoryTab({ overview }: { overview: ClientHealthOverview }) {
         ) : (
           // A linha do tempo mora numa superfície elevada, como as tabelas do sistema; o título
           // fica fora dela.
-          <div className="rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5">
+          <div className="rounded-2xl bg-card p-5 shadow-soft ring-1 ring-foreground/5">
             <ol
               aria-label="Eventos do cliente"
               className="border-l border-border pl-0 [&>li]:-ml-3"

@@ -175,7 +175,7 @@ export function DocumentDetailPage() {
         <h3 id="metadados" className="sr-only">
           Dados do arquivo
         </h3>
-        <dl className="grid gap-4 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+        <dl className="grid gap-4 rounded-2xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
           <MetadataItem label="Arquivo">{doc.fileName}</MetadataItem>
           <MetadataItem label="Tipo">
             {DOCUMENT_KIND_LABELS[doc.kind]}{' '}
@@ -236,7 +236,7 @@ export function DocumentDetailPage() {
           Texto extraído
         </h3>
         {doc.extractedTextPreview ? (
-          <pre className="max-h-96 overflow-auto rounded-xl bg-muted/40 p-4 font-mono text-xs leading-relaxed break-words whitespace-pre-wrap ring-1 ring-foreground/5">
+          <pre className="max-h-96 overflow-auto rounded-2xl bg-muted/40 p-4 font-mono text-xs leading-relaxed break-words whitespace-pre-wrap ring-1 ring-foreground/5">
             {doc.extractedTextPreview}
           </pre>
         ) : (
@@ -272,7 +272,7 @@ export function DocumentDetailPage() {
         </div>
 
         {showForm ? (
-          <div className="rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5">
+          <div className="rounded-2xl bg-card p-5 shadow-soft ring-1 ring-foreground/5">
             <SuggestionForm
               submitting={create.isPending}
               serverError={

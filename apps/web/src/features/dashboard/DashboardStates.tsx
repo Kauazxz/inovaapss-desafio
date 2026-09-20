@@ -33,7 +33,7 @@ export function DashboardError({ error, onRetry }: { error: unknown; onRetry: ()
   return (
     <section
       aria-live="polite"
-      className="flex flex-col items-start gap-4 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 sm:flex-row sm:items-center sm:justify-between"
+      className="flex flex-col items-start gap-4 rounded-2xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 sm:flex-row sm:items-center sm:justify-between"
     >
       <div className="flex min-w-0 items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">

@@ -16,7 +16,7 @@ interface EmptyStateProps {
 export function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps) {
   return (
     <section
-      className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 px-6 py-16 text-center"
+      className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/40 px-6 py-20 text-center"
       aria-live="polite"
     >
       <span className="mb-4 flex size-11 items-center justify-center rounded-full bg-accent text-accent-foreground">

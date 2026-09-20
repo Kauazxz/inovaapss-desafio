@@ -91,11 +91,13 @@
 
 /* ---------- Tokens (modo claro) ---------- */
 :root {
-  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --radius: 0.75rem;
+  --font-sans:
+    'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Inter', system-ui, 'Segoe UI', Roboto,
+    sans-serif;
+  --radius: 1rem;
 
   /* Fundo levemente frio; os cards ficam brancos por cima dele. */
-  --background: oklch(0.985 0.003 210);
+  --background: oklch(0.968 0.002 250);
   --foreground: oklch(0.185 0.012 215);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.185 0.012 215);
@@ -124,11 +126,13 @@
 
   /* Elevação: sombra difusa e de baixa opacidade, no lugar de borda dura. */
   --elevation-soft:
-    0 1px 2px oklch(0.2 0.02 215 / 0.04), 0 6px 16px -10px oklch(0.2 0.02 215 / 0.12);
+    0 1px 1px oklch(0.2 0.02 250 / 0.03), 0 4px 12px -6px oklch(0.2 0.02 250 / 0.08);
   --elevation-float:
-    0 1px 2px oklch(0.2 0.02 215 / 0.05), 0 10px 30px -12px oklch(0.2 0.02 215 / 0.18);
+    0 1px 1px oklch(0.2 0.02 250 / 0.04), 0 8px 28px -10px oklch(0.2 0.02 250 / 0.14),
+    0 24px 48px -24px oklch(0.2 0.02 250 / 0.12);
   --elevation-popover:
-    0 2px 4px oklch(0.2 0.02 215 / 0.06), 0 16px 40px -12px oklch(0.2 0.02 215 / 0.24);
+    0 1px 2px oklch(0.2 0.02 250 / 0.05), 0 12px 36px -12px oklch(0.2 0.02 250 / 0.2),
+    0 32px 64px -32px oklch(0.2 0.02 250 / 0.18);
 
   /* DATAVIZ.md §2.1 — mesmos valores de src/lib/chart-theme.ts */
   --chart-surface: #fcfcfb;
@@ -301,5 +305,22 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    /* Kerning levemente fechado: a mesma frase ocupa menos linha e lê mais calma. */
+    letter-spacing: -0.006em;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  /* Título é desenho, não texto grande: quanto maior, mais fechado o espaçamento. */
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.022em;
+  }
+  ::selection {
+    background-color: color-mix(in oklch, var(--primary) 22%, transparent);
+  }
+  /* Barra de rolagem discreta, que só aparece quando o conteúdo pede. */
+  * {
+    scrollbar-color: color-mix(in oklch, var(--foreground) 18%, transparent) transparent;
+    scrollbar-width: thin;
   }
 }

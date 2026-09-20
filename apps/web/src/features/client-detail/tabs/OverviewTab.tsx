@@ -151,7 +151,7 @@ export function OverviewTab({ overview }: { overview: ClientHealthOverview }) {
         </SectionTitle>
         {/* O resumo em texto é o que a tela responde primeiro: fica numa superfície elevada, em
             coluna no celular e em duas colunas a partir do tablet. */}
-        <div className="grid gap-6 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 md:grid-cols-[auto_1fr]">
+        <div className="grid gap-6 rounded-2xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 md:grid-cols-[auto_1fr]">
           <dl className="min-w-0 space-y-1 text-sm">
             <div className="font-medium">{lines.health}</div>
             <div>{lines.risk}</div>
@@ -206,7 +206,7 @@ export function OverviewTab({ overview }: { overview: ClientHealthOverview }) {
         ) : (
           // Lista de registros mora numa superfície elevada, com o título fora dela; só os
           // gráficos ficam soltos no fundo da página.
-          <div className="rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5">
+          <div className="rounded-2xl bg-card p-5 shadow-soft ring-1 ring-foreground/5">
             <EvidenceList items={evidence.data.items} />
           </div>
         )}

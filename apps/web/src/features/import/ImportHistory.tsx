@@ -76,7 +76,7 @@ export function ImportHistory() {
   // No celular sobram as três colunas que respondem "de onde veio isto": quando, qual arquivo
   // e como terminou. Tamanho e resultado voltam quando há espaço.
   return (
-    <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+    <div className="overflow-hidden rounded-2xl bg-card shadow-soft ring-1 ring-foreground/5">
       <Table aria-label="Importações anteriores">
         <TableHeader>
           <TableRow>

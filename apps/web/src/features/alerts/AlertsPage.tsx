@@ -138,7 +138,7 @@ function AlertRow({
 /** A fila inteira numa superfície só, com um fio separando as linhas. */
 function AlertQueue({ children }: { children: React.ReactNode }) {
   return (
-    <ul className="divide-y divide-border overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+    <ul className="divide-y divide-border overflow-hidden rounded-2xl bg-card shadow-soft ring-1 ring-foreground/5">
       {children}
     </ul>
   );
@@ -180,7 +180,7 @@ export function AlertsPage() {
     return (
       <>
         <PageHeader title="Alertas" />
-        <div className="rounded-xl bg-destructive/10 p-5 ring-1 ring-destructive/20">
+        <div className="rounded-2xl bg-destructive/10 p-5 ring-1 ring-destructive/20">
           <p className="text-sm font-medium text-destructive">
             Não foi possível carregar os alertas.
           </p>

@@ -40,7 +40,7 @@ export function MappingTable({ sheet, headers, onChange, disabled = false }: Map
   // A tabela vai de ponta a ponta do painel: assim a área que rola no celular é a largura
   // inteira do card, e não uma faixa com sobra dos dois lados.
   return (
-    <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+    <div className="overflow-hidden rounded-2xl bg-card shadow-soft ring-1 ring-foreground/5">
       <div className="flex flex-col gap-1 px-4 pt-4 pb-3 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between sm:gap-2 sm:px-5 sm:pt-5">
         <h4 className="min-w-0 text-sm font-medium">
           {sheet.sheet} <span className="text-muted-foreground">→ {label}</span>

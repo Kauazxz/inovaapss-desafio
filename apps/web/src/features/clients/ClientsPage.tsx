@@ -113,7 +113,7 @@ export function ClientsPage() {
           <div
             role="status"
             aria-label="Carregando clientes"
-            className="space-y-3 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5"
+            className="space-y-3 rounded-2xl bg-card p-5 shadow-soft ring-1 ring-foreground/5"
           >
             <Skeleton className="h-9 w-full" />
             <Skeleton className="h-9 w-full" />
@@ -174,7 +174,7 @@ export function ClientsPage() {
         ) : data !== undefined ? (
           <div
             className={cn(
-              'overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5',
+              'overflow-hidden rounded-2xl bg-card shadow-soft ring-1 ring-foreground/5',
               clients.isFetching && 'opacity-60 transition-opacity',
             )}
           >

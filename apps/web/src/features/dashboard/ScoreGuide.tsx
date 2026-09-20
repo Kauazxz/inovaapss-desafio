@@ -20,7 +20,7 @@ function GuideItem({
   children: ReactNode;
 }) {
   return (
-    <article className="rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5">
+    <article className="rounded-2xl bg-card p-5 shadow-soft ring-1 ring-foreground/5">
       <div className="flex items-start gap-3">
         <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">
           {number}
@@ -128,7 +128,7 @@ export function ScoreGuide({
         </GuideItem>
       </div>
 
-      <div className="grid gap-2 rounded-xl bg-muted/50 px-4 py-3 text-sm text-muted-foreground sm:grid-cols-2 sm:gap-x-5 sm:px-5">
+      <div className="grid gap-2 rounded-2xl bg-muted/50 px-4 py-3 text-sm text-muted-foreground sm:grid-cols-2 sm:gap-x-5 sm:px-5">
         <p>
           <strong className="text-foreground">Confiança dos dados:</strong> mostra se há informações
           suficientes e recentes para calcular a saúde atual.
