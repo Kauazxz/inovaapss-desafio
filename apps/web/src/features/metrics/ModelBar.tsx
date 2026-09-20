@@ -115,13 +115,16 @@ export function ModelBar({
                 : `versão ${activeVersion} em vigor`}
             </span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Peso, ordem e normalização são deste modelo: mudar aqui muda o score de todos os
-            clientes — a partir do momento em que você publicar.
-            {draftVersion === null
-              ? ''
-              : ` Há um rascunho v${draftVersion} em aberto; suas mudanças continuam a partir dele.`}
-          </p>
+          {/*
+            A regra "peso e ordem só valem depois de publicar" mora junto da tabela, onde a
+            pessoa mexe nisso. Aqui ficava repetida e empurrava a primeira métrica para baixo
+            da dobra. Sobra o que é exclusivo desta barra: existe um rascunho aberto.
+          */}
+          {draftVersion === null ? null : (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Há um rascunho v{draftVersion} em aberto; suas mudanças continuam a partir dele.
+            </p>
+          )}
         </div>
 
         {/* No celular a soma e o atalho quebram em linhas; a partir de sm ficam lado a lado. */}

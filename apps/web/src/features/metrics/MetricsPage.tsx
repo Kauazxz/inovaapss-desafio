@@ -214,10 +214,7 @@ export function MetricsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Métricas"
-        description="Tudo é métrica. Clique em qualquer dado da tabela para mudar; arraste pela alça para mudar a ordem."
-      >
+      <PageHeader title="Métricas" description="O que o sistema mede, com peso e ordem.">
         <Button
           type="button"
           onClick={() => {
@@ -269,10 +266,12 @@ export function MetricsPage() {
         <form
           role="search"
           aria-label="Buscar e filtrar métricas"
-          className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end"
+          /* No celular os quatro filtros iam um embaixo do outro e tomavam a tela inteira antes
+             da primeira métrica. Em duas colunas ocupam metade da altura, sem esconder nada. */
+          className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:flex-wrap sm:items-end"
           onSubmit={(event) => event.preventDefault()}
         >
-          <div className="relative w-full min-w-0 sm:min-w-56 sm:flex-1 lg:max-w-sm">
+          <div className="relative col-span-2 w-full min-w-0 sm:min-w-56 sm:flex-1 lg:max-w-sm">
             <label htmlFor={searchId} className="sr-only">
               Buscar por nome ou chave
             </label>
@@ -354,9 +353,14 @@ export function MetricsPage() {
         ) : (
           <div className={cn('space-y-3', result.isFetching && 'opacity-60 transition-opacity')}>
             {/* Legenda fora da superfície: a tabela mora numa superfície elevada só dela. */}
+            {/*
+              Esta é a ÚNICA explicação da regra na tela. Antes a mesma coisa aparecia três
+              vezes: no subtítulo, na barra do modelo e aqui — e a primeira métrica só apareceu
+              depois de rolar. Fica aqui porque é onde a pessoa clica para mudar.
+            */}
             <p className="text-sm text-muted-foreground">
-              O cadastro (ativa, nome, tipo, direção) salva na hora. Ordem, peso e normalização são
-              do modelo: mudam aqui e só valem quando você publicar.
+              Clique em qualquer dado para mudar. Ativa, nome, tipo e direção salvam na hora; ordem,
+              peso e normalização são do modelo e só valem quando você publicar.
             </p>
             <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
               <MetricsTable
