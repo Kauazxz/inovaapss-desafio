@@ -20,10 +20,12 @@
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
     "seed:demo": "pnpm -w exec turbo run build --filter=@inovaapss/api... && tsx src/db/seed/demo-auth.ts",
-    "seed:globalsys": "pnpm -w exec turbo run build --filter=@inovaapss/api... && tsx src/db/seed/globalsys-preset.ts"
+    "seed:globalsys": "pnpm -w exec turbo run build --filter=@inovaapss/api... && tsx src/db/seed/globalsys-preset.ts",
+    "seed:globalsys-data": "pnpm -w exec turbo run build --filter=@inovaapss/api... && tsx src/db/seed/globalsys-data.ts"
   },
   "dependencies": {
     "@inovaapss/engine": "workspace:*",
+    "@inovaapss/importer": "workspace:*",
     "@inovaapss/shared": "workspace:*",
     "@inovaapss/validation": "workspace:*",
     "@supabase/supabase-js": "^2.116.0",

@@ -217,6 +217,9 @@ importers:
       '@inovaapss/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@inovaapss/importer':
+        specifier: workspace:*
+        version: link:../../packages/importer
       '@inovaapss/shared':
         specifier: workspace:*
         version: link:../../packages/shared

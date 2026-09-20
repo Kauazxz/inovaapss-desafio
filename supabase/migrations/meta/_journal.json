@@ -15,6 +15,13 @@
       "when": 1789865878337,
       "tag": "20260920005758_round_two_domain",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789877291985,
+      "tag": "20260920040811_scores_and_metric_values",
+      "breakpoints": true
     }
   ]
 }
