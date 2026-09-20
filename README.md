@@ -6,8 +6,9 @@ Projeto do grupo para o desafio INOVAAPPS: um **motor configurável de saúde, r
 clientes** — uma plataforma SaaS multiempresa em que cada organização configura as próprias métricas,
 enxerga quais clientes estão se deteriorando, entende as evidências e sabe em que ordem agir.
 
-> **Status:** Etapas 0 (fundação) e 1 (auth + multiempresa) concluídas; motor de scoring e SLA
-> prontos na parte pura (`packages/engine`, Etapas 4/5) e dashboard com dados de exemplo (Etapa 8).
+> **Status:** Etapas 0 (fundação), 1 (auth + multiempresa) e 7 (importação de planilhas)
+> concluídas; motor de scoring e SLA prontos na parte pura (`packages/engine`, Etapas 4/5) e
+> dashboard com dados de exemplo (Etapa 8).
 > As demais etapas rodam em paralelo por trilhas — acompanhe em **[docs/ETAPAS.md](docs/ETAPAS.md)**.
 
 ---
@@ -95,6 +96,7 @@ mesmo que o CI roda).
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)     | monorepo, fluxo de dados, MVC modular, migrations, portas e scripts                           |
 | [docs/AUTH.md](docs/AUTH.md)                     | login, sessão, organizações, papéis, como criar o primeiro usuário e convidar alguém          |
 | [docs/DADOS.md](docs/DADOS.md)                   | regras de leitura dos dados: quem entra em cada número (MRR, distribuição, linha do tempo)    |
+| [docs/IMPORTS.md](docs/IMPORTS.md)               | importação de planilhas: formatos, datasets, mapeamento de colunas, erros e o que é gravado   |
 | [docs/SCORING.md](docs/SCORING.md)               | fórmulas do motor: health, tendência, persistência, confiança, risco, prioridade, forecast    |
 | [docs/METRICS_ENGINE.md](docs/METRICS_ENGINE.md) | como uma métrica é configurada (tipos, normalização, gatilhos, fórmula segura)                |
 | [docs/SLA_ENGINE.md](docs/SLA_ENGINE.md)         | SLA contratual, meta operacional, consumo e health por chamado                                |

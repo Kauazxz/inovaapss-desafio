@@ -3,8 +3,9 @@
 Como um arquivo XLSX, CSV ou JSON vira linhas validadas de clientes, atendimento mensal, NPS e
 situação de clientes ([SPEC.md](SPEC.md) §34, §44, ajuste A4). Este documento cobre o **núcleo
 puro** (`packages/importer`): leitura, detecção de colunas, mapeamento, coerção, validação e
-relatório. Ele não conhece banco nem HTTP — a API da Etapa 7 (`apps/api/src/modules/imports/`)
-chama estas funções, guarda `import_jobs` / `import_row_errors` e dispara o recálculo.
+relatório. Ele não conhece banco nem HTTP — a API (`apps/api/src/modules/imports/`) chama estas
+funções, guarda `import_jobs` / `import_row_errors` e dispara o recálculo; a **seção 7** descreve
+essa parte e a tela `/import`.
 
 ---
 
@@ -214,30 +215,62 @@ planilha (80 clientes somando R$ 982.964, 1.295 linhas mensais em 18 períodos d
 2026-06, 422 pesquisas com 338 respondidas, 22 cancelados, relatório sem erros) e é pulado com
 aviso se o arquivo não estiver no checkout.
 
-## 7. Como a Etapa 7 (API e web) usa o pacote
+## 7. A API e a tela (Etapa 7)
 
-| Passo do fluxo | Rota (§37)                  | O que faz com o pacote                                                                                                                                                                                                                                                                                                    |
-| -------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Upload         | `POST /imports`             | Valida MIME (`ALLOWED_UPLOAD_MIME_TYPES`) e tamanho, guarda o arquivo no Storage, cria `import_jobs` (`status = uploaded`, `file_type`), chama `readTabular` e responde com as tabelas encontradas (`name`, `headers`, amostra de linhas) e `detectDataset` para cada uma.                                                |
-| Mapeamento     | `GET /imports/:id`          | Devolve `suggestMapping(headers, dataset)`; a interface (`apps/web/src/features/import/`) mostra campo × coluna com a confiança e deixa o usuário trocar. O mapeamento final vai em `mapping_json`.                                                                                                                       |
-| Preview        | `POST /imports/:id/preview` | `importDataset(dataset, rows, mapping, headers)`; responde `report` + primeiras linhas válidas. Nada é gravado além de `summary_json`.                                                                                                                                                                                    |
-| Confirmação    | `POST /imports/:id/confirm` | Repete a validação (nunca confia no preview), grava `import_row_errors` a partir de `report.errors` (`row_number`, `error_code`, `message`, `raw_data_json`), faz upsert pela chave natural em `portfolio_clients` / `metric_values` / `contracts` conforme o dataset, marca `status = done` e dispara o recálculo (§62). |
-| Erros          | `GET /imports/:id`          | `summary_json` = `ImportReport` sem `errors` + contagem; a lista paginada vem de `import_row_errors` (§61).                                                                                                                                                                                                               |
+O pacote é puro; quem guarda, grava e recalcula é o módulo `apps/api/src/modules/imports/`, e
+quem conversa com a pessoa é `apps/web/src/features/import/` (rota `/import`, com botão no
+dashboard). Os quatro passos da tela são as quatro rotas:
 
-Mapeamento para as tabelas (§36): `clients` → `portfolio_clients` (`external_code`, `name` ou
-código, `segment`, `size`) + `contracts`/`plans` (`plan`, `monthly_value`,
-`contracted_sla_hours × 60` em `sla_policies.resolution_minutes`, `contract_start`);
-`monthly_metrics` → uma linha em `metric_values` por campo não nulo, com `period = "AAAA-MM"`,
-`source = CSV | XLSX | JSON` e o `metric_definition_id` do preset (chave do campo = `key` da
-métrica); `nps` → `metric_values` da métrica `nps` com `value = score` e `extra = { answered,
-classification }`; `client_status` → `portfolio_clients.status` e `cancelled_at` (base da
-calibração, §33). Tudo é `upsert` pela chave natural para reimportações serem idempotentes.
+| Passo da tela  | Rota (§37)                  | O que acontece                                                                                                                                                                                                                                                                                                                                                                                   |
+| -------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1. Arquivo     | `POST /imports`             | Valida extensão + MIME (`resolveImportFileType`), tamanho (10 MB) e os primeiros bytes; lê com `readTabular` ANTES de gravar qualquer coisa; sobe o arquivo para o bucket privado `imports` e cria `import_jobs` (`status = uploaded`). Responde com cada tabela do arquivo (cabeçalhos, contagem, amostra) e, para cada uma, `detectDataset` — os quatro datasets com o mapeamento já sugerido. |
+| 2. Mapeamento  | —                           | Acontece no navegador: a sugestão de cada dataset já veio no upload, então trocar de tabela ou de tipo de dado não custa uma requisição. `GET /imports/datasets` dá o catálogo (rótulos, tipos, obrigatoriedade) e `GET /imports/:id` relê o arquivo quando a pessoa recarrega a página.                                                                                                         |
+| 3. Prévia      | `POST /imports/:id/preview` | `applyMapping` + `validateDataset` com o mapeamento escolhido. Responde o relatório, os primeiros 50 erros (linha, campo, código e mensagem em português, com a linha crua) e 10 linhas válidas já tipadas. Grava só `mapping_json` e `summary_json` (`status = previewed`) — nenhum dado da carteira é tocado.                                                                                  |
+| 4. Confirmação | `POST /imports/:id/confirm` | **Revalida o arquivo do zero** (nunca confia na prévia), grava por upsert na chave natural, guarda as linhas recusadas em `import_row_errors`, marca `status = done` e dispara o recálculo (§62). Com linhas recusadas responde `409 IMPORT_HAS_INVALID_ROWS`; `ignoreInvalidRows: true` importa só as válidas.                                                                                  |
+|                | `GET /imports/:id/errors`   | As linhas recusadas, paginadas (§61), com `raw_data_json` para quem for corrigir a origem.                                                                                                                                                                                                                                                                                                       |
+|                | `GET /imports`              | As importações da organização, da mais recente para a mais antiga.                                                                                                                                                                                                                                                                                                                               |
+
+### O que cada dataset grava (§36)
+
+A tradução de coluna para métrica é uma só no projeto: `modules/imports/metric-mapping.ts`, usada
+tanto pela confirmação quanto pela carga da planilha do desafio (`db/seed/globalsys-data.ts`).
+
+| Dataset           | Grava em                                                                  | Chave do upsert                     |
+| ----------------- | ------------------------------------------------------------------------- | ----------------------------------- |
+| `clients`         | `plans` (cria o que faltar), `portfolio_clients` e `contracts`            | `organization_id` + `external_code` |
+| `client_status`   | `portfolio_clients.status`; cancelamento encerra o contrato no fim do mês | `organization_id` + `external_code` |
+| `monthly_metrics` | `metric_values` — uma linha por métrica do preset, incluindo as derivadas | cliente + métrica + `period_start`  |
+| `nps`             | `metric_values` da métrica `nps_dissatisfaction`, com a coluna `answered` | cliente + métrica + `period_start`  |
+
+Decisões que valem em produção:
+
+- **Reimportar atualiza, não duplica.** Tudo é upsert pela chave natural.
+- **Cliente fora da carteira não é inventado.** Uma linha de atendimento ou de NPS cujo
+  `external_code` não existe vira uma linha recusada com o motivo ("importe a tabela de clientes
+  antes"), não um cliente novo sem nome nem contrato.
+- **`status` do cliente só muda pelo `client_status`.** Reimportar o cadastro não ressuscita quem
+  foi cancelado, e cliente arquivado na tela não volta por importação.
+- **Métrica não cadastrada é configuração legítima**, não erro: cada organização escolhe as suas
+  (§6 "tudo é métrica"). O valor simplesmente não é gravado.
+- **Falhar no recálculo não desfaz a importação.** Os dados ficam gravados e a resposta diz que a
+  carteira não foi recalculada e por quê (o caso comum é não haver versão de modelo ativa).
 
 Segurança (§45): o pacote não executa nada do arquivo (sem fórmulas, sem `eval`); o SheetJS é usado
-só para ler células. Limite de linhas por arquivo e tempo de processamento ficam na API.
+só para ler células. Na API: allowlist de extensão + MIME + assinatura de bytes, 10 MB por arquivo,
+`MAX_IMPORT_ROWS` linhas por tabela, bucket privado com o `organization_id` no caminho, e escrita
+só para owner/admin/analyst (viewer não importa). Toda query filtra por `organization_id`.
 
 ## 8. Testes
 
 `pnpm --filter @inovaapss/importer test` — Vitest com cobertura v8 (limiares 90 % linhas /
 funções / statements, 85 % branches). Fixtures pequenas geradas no próprio teste (CSV, JSON, XLSX
 via `writeWorkbook`) mais a planilha real do desafio quando presente.
+
+Fora do pacote:
+
+- `apps/api/src/modules/imports/__tests__/imports.test.ts` — as rotas de ponta a ponta com o
+  núcleo REAL do importador e persistência em memória: upload, mapeamento, prévia, confirmação,
+  idempotência, cliente fora da carteira, recálculo que falha e isolamento entre organizações.
+- `apps/api/src/modules/imports/__tests__/metric-mapping.test.ts` — as regras dos §11, §15 e §16
+  (taxa de reabertura, "não se aplica" e NPS não respondido).
+- `apps/web/src/features/import/__tests__/import.test.tsx` — a tela, com a API dublada.
