@@ -14,14 +14,19 @@ import {
   type RiskDashboardData,
 } from '@inovaapss/shared';
 
+import { apiFetch } from '@/lib/api';
 import {
   buildMockGeneralDashboard,
   buildMockRiskDashboard,
   mockFilterOptions,
 } from '@/lib/mock/dashboard';
 
-/** De onde os dados vêm hoje. A tela mostra uma pílula enquanto for 'mock'. */
-export const DASHBOARD_DATA_SOURCE: 'mock' | 'api' = 'mock';
+/**
+ * De onde os dados vêm. Controlado por VITE_DATA_SOURCE (padrão 'api'); com 'mock' a tela usa os
+ * dados de exemplo e mostra uma pílula avisando. Trocar não exige alterar código.
+ */
+export const DASHBOARD_DATA_SOURCE: 'mock' | 'api' =
+  import.meta.env.VITE_DATA_SOURCE === 'mock' ? 'mock' : 'api';
 
 export interface RiskDashboardQuery {
   filters: DashboardFilters;
@@ -34,7 +39,9 @@ export interface GeneralDashboardQuery {
 }
 
 export async function fetchRiskDashboard(query: RiskDashboardQuery): Promise<RiskDashboardData> {
-  // API real: return apiFetch<RiskDashboardData>(`/api/v1/dashboard/risk?${riskParams(query)}`);
+  if (DASHBOARD_DATA_SOURCE === 'api') {
+    return apiFetch<RiskDashboardData>('/api/v1/dashboard/risk');
+  }
   await Promise.resolve();
   return buildMockRiskDashboard({ filters: query.filters, search: query.search });
 }

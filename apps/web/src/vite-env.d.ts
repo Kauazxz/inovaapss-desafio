@@ -6,6 +6,8 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string;
   readonly VITE_SUPABASE_ANON_KEY?: string;
   readonly VITE_API_URL?: string;
+  /** 'mock' usa os dados de exemplo; qualquer outro valor (ou ausente) usa a API. */
+  readonly VITE_DATA_SOURCE?: 'mock' | 'api';
 }
 
 interface ImportMeta {

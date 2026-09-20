@@ -33,6 +33,9 @@ import {
 } from '../modules/contracts/repository.js';
 import { createContractsRouter, createPlansRouter } from '../modules/contracts/routes.js';
 import { createContractsService, createPlansService } from '../modules/contracts/service.js';
+import { createDashboardRepository } from '../modules/dashboard/repository.js';
+import { createDashboardRouter } from '../modules/dashboard/routes.js';
+import { createDashboardService } from '../modules/dashboard/service.js';
 import { createDocumentsController } from '../modules/documents/controller.js';
 import {
   createDocumentsRepository,
@@ -105,6 +108,11 @@ export const ROUTES: readonly RouteDescriptor[] = [
     method: 'POST',
     path: `${API_V1_PREFIX}/organizations/current/users`,
     description: 'Convida ou cria um usuário na organização (owner ou admin)',
+  },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/dashboard/risk`,
+    description: 'Aba Em risco: KPIs, forecast priorizado e ranking com evidências',
   },
   {
     method: 'GET',
@@ -386,6 +394,16 @@ export function createApiV1Router(deps: ApiV1Dependencies): Router {
           clients: portfolioClientsRepository,
         }),
       ),
+    }),
+  );
+
+  // Dashboard — leitura dos snapshots calculados pelo scoring.
+  router.use(
+    '/dashboard',
+    createDashboardRouter({
+      requireAuth,
+      resolveTenant,
+      service: createDashboardService(createDashboardRepository(getDb)),
     }),
   );
 
