@@ -524,71 +524,74 @@ export function CalibrationPage() {
       )}
 
       {/* ------------------------------------------------------------- histórico */}
-      <section className="space-y-4 rounded-xl bg-card p-4 shadow-soft ring-1 ring-foreground/5 sm:p-5">
+      <section className="space-y-3">
         <h2 className="cn-font-heading text-base font-medium">Execuções anteriores</h2>
         {(execucoes.data?.items ?? []).length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma calibração rodada até agora.</p>
         ) : (
-          // No celular sobram quando, quantos cancelamentos pegou e o botão de abrir.
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Quando</TableHead>
-                <TableHead className="hidden lg:table-cell">Modelo</TableHead>
-                <TableHead className="hidden text-right md:table-cell">Janela</TableHead>
-                <TableHead className="text-right">Cancelamentos pegos</TableHead>
-                <TableHead className="hidden text-right sm:table-cell">Precisão</TableHead>
-                <TableHead className="hidden md:table-cell">Situação</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(execucoes.data?.items ?? []).map((item) => (
-                <TableRow
-                  key={item.id}
-                  className={cn(item.id === runId && 'bg-muted/50')}
-                  data-run-id={item.id}
-                >
-                  <TableCell className="tabular-nums whitespace-nowrap">
-                    {formatDateTime(item.createdAt)}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {item.metricModelName ?? '—'}
-                    {item.version === null ? '' : ` v${item.version}`}
-                  </TableCell>
-                  <TableCell className="hidden text-right tabular-nums md:table-cell">
-                    {formatInteger(item.windowDays)} dias
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {item.churnsCaught === null || item.churnsAnalyzed === null
-                      ? '—'
-                      : `${formatInteger(item.churnsCaught)} de ${formatInteger(item.churnsAnalyzed)}`}
-                  </TableCell>
-                  <TableCell className="hidden text-right tabular-nums sm:table-cell">
-                    {formatRate(item.precision)}
-                  </TableCell>
-                  <TableCell className="hidden whitespace-normal md:table-cell">
-                    {CALIBRATION_RUN_STATUS_LABELS[item.status]}
-                    {item.errorMessage ? (
-                      <span className="block text-xs text-muted-foreground">
-                        {item.errorMessage}
-                      </span>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => trocarExecucao(item.id)}
-                    >
-                      Ver
-                    </Button>
-                  </TableCell>
+          // No celular sobram quando, quantos cancelamentos pegou e o botão de abrir. A tabela
+          // mora numa superfície elevada, como as outras tabelas do sistema.
+          <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Quando</TableHead>
+                  <TableHead className="hidden lg:table-cell">Modelo</TableHead>
+                  <TableHead className="hidden text-right md:table-cell">Janela</TableHead>
+                  <TableHead className="text-right">Cancelamentos pegos</TableHead>
+                  <TableHead className="hidden text-right sm:table-cell">Precisão</TableHead>
+                  <TableHead className="hidden md:table-cell">Situação</TableHead>
+                  <TableHead />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {(execucoes.data?.items ?? []).map((item) => (
+                  <TableRow
+                    key={item.id}
+                    className={cn(item.id === runId && 'bg-muted/50')}
+                    data-run-id={item.id}
+                  >
+                    <TableCell className="tabular-nums whitespace-nowrap">
+                      {formatDateTime(item.createdAt)}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {item.metricModelName ?? '—'}
+                      {item.version === null ? '' : ` v${item.version}`}
+                    </TableCell>
+                    <TableCell className="hidden text-right tabular-nums md:table-cell">
+                      {formatInteger(item.windowDays)} dias
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {item.churnsCaught === null || item.churnsAnalyzed === null
+                        ? '—'
+                        : `${formatInteger(item.churnsCaught)} de ${formatInteger(item.churnsAnalyzed)}`}
+                    </TableCell>
+                    <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                      {formatRate(item.precision)}
+                    </TableCell>
+                    <TableCell className="hidden whitespace-normal md:table-cell">
+                      {CALIBRATION_RUN_STATUS_LABELS[item.status]}
+                      {item.errorMessage ? (
+                        <span className="block text-xs text-muted-foreground">
+                          {item.errorMessage}
+                        </span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => trocarExecucao(item.id)}
+                      >
+                        Ver
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </section>
     </section>
