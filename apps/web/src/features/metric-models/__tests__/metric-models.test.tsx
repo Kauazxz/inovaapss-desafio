@@ -120,6 +120,8 @@ interface ServerState {
   calibrationRuns: { id: string; metricModelVersionId: string; status: string }[];
   patched: { items: unknown[] } | null;
   activated: number | null;
+  /** Versão que o DELETE descartou; null = nenhum rascunho foi descartado. */
+  discarded: number | null;
   rebalanceBody: unknown;
   previewBody: unknown;
 }
