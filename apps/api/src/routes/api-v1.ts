@@ -21,6 +21,9 @@ import { createResolveTenant } from '../middleware/tenant.js';
 import { createAuthController } from '../modules/auth/controller.js';
 import { createAuthRouter } from '../modules/auth/routes.js';
 import { createAuthService } from '../modules/auth/service.js';
+import { createClientHealthRepository } from '../modules/client-health/repository.js';
+import { createClientHealthRouter } from '../modules/client-health/routes.js';
+import { createClientHealthService } from '../modules/client-health/service.js';
 import {
   createContractsController,
   createPlansController,
@@ -118,6 +121,26 @@ export const ROUTES: readonly RouteDescriptor[] = [
     method: 'GET',
     path: `${API_V1_PREFIX}/dashboard/general`,
     description: 'Aba Geral: distribuição por classe, MRR, saúde por dimensão e evolução',
+  },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/clients/:id/scores`,
+    description: 'Métricas do cliente com saúde, peso e quanto cada uma tira do total',
+  },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/clients/:id/evidence`,
+    description: 'Motivos da classificação, ordenados pelo impacto',
+  },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/clients/:id/recommendations`,
+    description: 'O que fazer: playbook de cada métrica que puxa a saúde para baixo',
+  },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/clients/:id/history`,
+    description: 'Evolução da saúde e mudanças de classe',
   },
   {
     method: 'GET',
@@ -369,6 +392,14 @@ export function createApiV1Router(deps: ApiV1Dependencies): Router {
     deps.portfolioClientsRepository ?? createPortfolioClientsRepository(getDb);
   const plansRepository = deps.plansRepository ?? createPlansRepository(getDb);
   const contractsRepository = deps.contractsRepository ?? createContractsRepository(getDb);
+  router.use(
+    '/clients',
+    createClientHealthRouter({
+      requireAuth,
+      resolveTenant,
+      service: createClientHealthService(createClientHealthRepository(getDb)),
+    }),
+  );
   router.use(
     '/clients',
     createPortfolioClientsRouter({
