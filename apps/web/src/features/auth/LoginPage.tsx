@@ -14,7 +14,17 @@ import { type LoginInput, loginSchema } from './schemas';
 import { useAuth } from './use-auth';
 
 /** Mensagens amigáveis para os erros mais comuns do Supabase Auth. */
-function friendlyAuthError(code: string | undefined, message: string): string {
+function friendlyAuthError(error: {
+  code?: string | undefined;
+  message: string;
+  status?: number | undefined;
+}): string {
+  const { code, message, status } = error;
+  // Falha de rede (AuthRetryableFetchError: status 0, "Failed to fetch"/"fetch failed"): o
+  // endereço em VITE_SUPABASE_URL não responde — normalmente .env com placeholder ou sem rede.
+  if (status === 0 || /fetch/i.test(message)) {
+    return 'Não foi possível falar com o serviço de autenticação. Confira sua conexão e o VITE_SUPABASE_URL no .env da raiz (modelo em .env.example).';
+  }
   switch (code) {
     case 'invalid_credentials':
       return 'E-mail ou senha incorretos.';
@@ -69,7 +79,7 @@ export function LoginPage() {
       password: values.password,
     });
     if (error) {
-      setSubmitError(friendlyAuthError(error.code, error.message));
+      setSubmitError(friendlyAuthError(error));
       return;
     }
     navigate(returnTo, { replace: true });

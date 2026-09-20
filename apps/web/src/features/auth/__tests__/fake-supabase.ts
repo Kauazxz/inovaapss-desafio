@@ -44,7 +44,11 @@ export interface FakeSupabase {
 }
 
 export function createFakeSupabase(
-  options: { session?: Session | null; signInError?: { code: string; message: string } } = {},
+  options: {
+    session?: Session | null;
+    /** `status: 0` reproduz a falha de rede do supabase-js (AuthRetryableFetchError). */
+    signInError?: { code?: string; message: string; status?: number };
+  } = {},
 ): FakeSupabase {
   let session: Session | null = options.session ?? null;
   const listeners = new Set<Listener>();

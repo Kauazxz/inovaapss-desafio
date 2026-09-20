@@ -44,9 +44,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if ('error' in result) return; // já está 'unconfigured'
     const { client } = result;
     let active = true;
+    // Se um evento (SIGNED_IN, PASSWORD_RECOVERY...) chegar antes de o getSession() resolver,
+    // ele traz a sessão mais nova: o resultado tardio do getSession() não pode sobrescrevê-lo.
+    let sawEvent = false;
 
     void client.auth.getSession().then(({ data }) => {
-      if (!active) return;
+      if (!active || sawEvent) return;
       setState({
         status: data.session ? 'signed_in' : 'signed_out',
         session: data.session,
@@ -58,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     } = client.auth.onAuthStateChange((event, session) => {
       if (!active) return;
+      sawEvent = true;
       if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
       setState({
         status: session ? 'signed_in' : 'signed_out',

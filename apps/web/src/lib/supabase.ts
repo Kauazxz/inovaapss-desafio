@@ -13,11 +13,19 @@ let client: SupabaseClient | null = null;
 /** Devolve o mesmo client em toda chamada; lança erro legível se faltar VITE_SUPABASE_*. */
 export function getSupabaseClient(): SupabaseClient {
   if (client) return client;
-  const env = parseClientEnv({
-    VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
-    VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
-    VITE_API_URL: import.meta.env.VITE_API_URL,
-  });
+  let env;
+  try {
+    env = parseClientEnv({
+      VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+      VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      VITE_API_URL: import.meta.env.VITE_API_URL,
+    });
+  } catch {
+    // Vazio no .env (como no .env.example) cai aqui: a tela mostra "Autenticação não configurada".
+    throw new Error(
+      'Preencha VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env da raiz (modelo em .env.example) com os valores do painel do Supabase.',
+    );
+  }
   client = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
   });
