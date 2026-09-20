@@ -14,9 +14,15 @@ import {
 import { RankedBarChart, type RankedBarDatum } from '@/components/charts/ranked-bar-chart';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ContractsPanel } from '@/features/contracts';
 import { formatInteger } from '@/lib/format';
 
-import { useClientEvidence, useClientRecommendations, useClientScores } from '../api';
+import {
+  CLIENT_DETAIL_DATA_SOURCE,
+  useClientEvidence,
+  useClientRecommendations,
+  useClientScores,
+} from '../api';
 import { formatDecimal, formatMetricValue, formatSignedDelta, formatWeight } from '../format';
 import { SectionTitle } from '../SectionTitle';
 import { metricScoresTitle } from '../titles';
@@ -272,20 +278,26 @@ export function OverviewTab({ overview }: { overview: ClientHealthOverview }) {
       </section>
 
       {/*
-        Slot dos contratos (Etapa 2): na integração, o componente ContractsPanel({ clientId })
-        de `@/features/contracts` é montado aqui, no lugar do parágrafo abaixo:
-          <ContractsPanel clientId={overview.client.id} />
+        Contratos (Etapa 2): o ContractsPanel lê /api/v1/contracts e precisa do AuthProvider e de
+        um cliente real. Enquanto a tela usa dados de exemplo (ids "mock-*"), fica o resumo do
+        mock; ao trocar CLIENT_DETAIL_DATA_SOURCE para 'api', o painel entra sozinho.
       */}
-      <section id="contratos" aria-labelledby="contratos-title" className="space-y-3">
-        <SectionTitle id="contratos-title" hint="Planos, valores e vigências do cliente.">
-          Contratos
-        </SectionTitle>
-        <p className="text-sm text-muted-foreground">
-          {overview.contract
-            ? `Contrato ${overview.contract.code} · plano ${overview.plan?.name ?? '—'} · ${overview.contract.status.toLowerCase()}. A lista completa de contratos e planos deste cliente aparece aqui quando a Etapa 2 for integrada.`
-            : 'Nenhum contrato cadastrado. A lista de contratos e planos aparece aqui quando a Etapa 2 for integrada.'}
-        </p>
-      </section>
+      {CLIENT_DETAIL_DATA_SOURCE === 'api' ? (
+        <section id="contratos" className="space-y-3">
+          <ContractsPanel clientId={overview.client.id} />
+        </section>
+      ) : (
+        <section id="contratos" aria-labelledby="contratos-title" className="space-y-3">
+          <SectionTitle id="contratos-title" hint="Planos, valores e vigências do cliente.">
+            Contratos
+          </SectionTitle>
+          <p className="text-sm text-muted-foreground">
+            {overview.contract
+              ? `Contrato ${overview.contract.code} · plano ${overview.plan?.name ?? '—'} · ${overview.contract.status.toLowerCase()}. A lista completa de contratos e planos deste cliente entra aqui quando a tela passar a ler a API.`
+              : 'Nenhum contrato cadastrado. A lista de contratos e planos entra aqui quando a tela passar a ler a API.'}
+          </p>
+        </section>
+      )}
     </div>
   );
 }

@@ -12,8 +12,29 @@ import { MetricDetailPage } from '../MetricDetailPage';
 import { MetricsPage } from '../MetricsPage';
 import { parseSeriesText } from '../parse-series';
 
+import type { MetricPrefill } from '@/features/documents/api';
+
 const SLA_ID = '11111111-1111-4111-8111-111111111111';
 const USO_ID = '22222222-2222-4222-8222-222222222222';
+const NEW_ID = '33333333-3333-4333-8333-333333333333';
+
+/** Formato de docs/DOCUMENTS.md §3: o que /documents/:id manda em state.prefill ao aceitar. */
+const PREFILL: MetricPrefill = {
+  name: 'Tempo médio de resolução',
+  slug: 'tempo-medio-de-resolucao',
+  description: 'Horas entre abertura e resolução dos chamados.',
+  category: 'Atendimento',
+  metricType: 'TIME',
+  unit: 'h',
+  direction: 'HIGHER_IS_WORSE',
+  sourceType: 'DOCUMENT',
+  periodicity: 'MONTHLY',
+  weight: 0.16,
+  normalization: null,
+  formula: null,
+  isActive: false,
+  origin: { documentId: 'doc-1', suggestionId: 'sug-1', fileName: 'manual-kpi.docx' },
+};
 
 function definition(
   overrides: Partial<MetricDefinitionListItemDto> &
@@ -117,11 +138,11 @@ const SCORE = {
   },
 };
 
-function renderAt(path: string) {
+function renderAt(path: string, state?: unknown) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[path]}>
+      <MemoryRouter initialEntries={[state === undefined ? path : { pathname: path, state }]}>
         <Routes>
           <Route path="/metrics" element={<MetricsPage />} />
           <Route path="/metrics/:id" element={<MetricDetailPage />} />
@@ -142,9 +163,22 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function mockApi(options: { listStatus?: number; previewStatus?: number } = {}) {
+function mockApi(
+  options: { listStatus?: number; previewStatus?: number; createStatus?: number } = {},
+) {
   fetchMock.mockImplementation(async (input, init) => {
     const url = new URL(String(input));
+    if (url.pathname === '/api/v1/metrics' && init?.method === 'POST') {
+      if (options.createStatus !== undefined && options.createStatus >= 400) {
+        return jsonResponse(options.createStatus, {
+          error: { code: 'SLUG_TAKEN', message: 'Já existe uma métrica com essa chave.' },
+        });
+      }
+      const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+      return jsonResponse(201, {
+        definition: { ...ROWS[0]!, ...body, id: NEW_ID, activePlacement: undefined },
+      });
+    }
     if (url.pathname === '/api/v1/metrics') {
       if (options.listStatus !== undefined && options.listStatus >= 400) {
         return jsonResponse(options.listStatus, {
@@ -167,6 +201,14 @@ function mockApi(options: { listStatus?: number; previewStatus?: number } = {}) 
     }
     if (url.pathname === `/api/v1/metrics/${SLA_ID}`) {
       return jsonResponse(200, DETAIL);
+    }
+    if (url.pathname === `/api/v1/metrics/${NEW_ID}`) {
+      return jsonResponse(200, {
+        ...DETAIL,
+        definition: { ...DETAIL.definition, id: NEW_ID, name: PREFILL.name, slug: PREFILL.slug },
+        activeItem: null,
+        activeModel: null,
+      });
     }
     return jsonResponse(404, { error: { code: 'NOT_FOUND', message: url.pathname } });
   });
@@ -310,5 +352,60 @@ describe('parseSeriesText', () => {
     expect(parseSeriesText('90, 85.5; x\n80')).toEqual([90, 85.5, null, 80]);
     expect(parseSeriesText('90,,80')).toEqual([90, null, 80]);
     expect(parseSeriesText('')).toEqual([]);
+  });
+});
+
+describe('sugestão aceita em /documents (state.prefill)', () => {
+  it('mostra a sugestão e cria a métrica inativa em POST /metrics, indo para o detalhe', async () => {
+    mockApi();
+    const user = userEvent.setup();
+    renderAt('/metrics', { prefill: PREFILL });
+
+    const banner = within(await screen.findByRole('status', { name: /Sugestão aceita/ }));
+    expect(banner.getByText(/do documento manual-kpi.docx/)).toBeInTheDocument();
+    expect(banner.getByText('Tempo médio de resolução')).toBeInTheDocument();
+    expect(banner.getByText('tempo-medio-de-resolucao')).toBeInTheDocument();
+    expect(
+      banner.getByText(/Tempo · Maior é pior · unidade h · peso sugerido 16 %/),
+    ).toBeInTheDocument();
+
+    await user.click(banner.getByRole('button', { name: 'Criar métrica' }));
+
+    await waitFor(() => {
+      expect(requestedUrls().some((url) => url.endsWith(`/api/v1/metrics/${NEW_ID}`))).toBe(true);
+    });
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+    expect(post).toBeDefined();
+    expect(JSON.parse(String(post![1]!.body))).toMatchObject({
+      name: PREFILL.name,
+      slug: PREFILL.slug,
+      metricType: 'TIME',
+      direction: 'HIGHER_IS_WORSE',
+      sourceType: 'DOCUMENT',
+      isActive: false,
+    });
+    expect(
+      await screen.findByRole('heading', { name: 'Tempo médio de resolução' }),
+    ).toBeInTheDocument();
+  });
+
+  it('mostra o erro da API (chave repetida) e permite descartar a sugestão', async () => {
+    mockApi({ createStatus: 409 });
+    const user = userEvent.setup();
+    renderAt('/metrics', { prefill: PREFILL });
+
+    const banner = await screen.findByRole('status', { name: /Sugestão aceita/ });
+    await user.click(within(banner).getByRole('button', { name: 'Criar métrica' }));
+    expect(await within(banner).findByRole('alert')).toHaveTextContent(
+      'Já existe uma métrica com essa chave.',
+    );
+
+    await user.click(within(banner).getByRole('button', { name: 'Descartar' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('status', { name: /Sugestão aceita/ })).not.toBeInTheDocument();
+    });
+    expect(
+      await screen.findByRole('table', { name: 'Métricas da organização' }),
+    ).toBeInTheDocument();
   });
 });

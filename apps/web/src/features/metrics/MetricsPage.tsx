@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils';
 import { DEFAULT_METRICS_QUERY, type MetricsListQuery, useMetrics } from './api';
 import { pct } from './explain';
 import { MetricsEmpty, MetricsError, MetricsLoading } from './MetricsStates';
+import { PrefillBanner } from './PrefillBanner';
 
 const selectClassName =
   'h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
@@ -128,6 +129,8 @@ export function MetricsPage() {
         title="Métricas"
         description="Tudo é métrica: tipo, direção, fonte, normalização e peso de cada indicador da organização."
       />
+
+      <PrefillBanner />
 
       <form
         role="search"

@@ -2,16 +2,17 @@
  * Chamadas de /api/v1/metrics (§37) com TanStack Query. Os tipos são os DTOs de
  * @inovaapss/shared — os mesmos que a API devolve.
  */
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
   MetricDefinitionDetailDto,
+  MetricDefinitionDto,
   MetricDefinitionListItemDto,
   MetricDirection,
   MetricSource,
   MetricType,
 } from '@inovaapss/shared';
-import type { PreviewScoreInput } from '@inovaapss/validation';
+import type { CreateMetricDefinitionInput, PreviewScoreInput } from '@inovaapss/validation';
 
 import { apiFetch } from '@/lib/api';
 
@@ -80,6 +81,15 @@ export function fetchMetrics(query: MetricsListQuery): Promise<MetricsListRespon
   return apiFetch<MetricsListResponse>(`/api/v1/metrics?${metricsSearchParams(query)}`);
 }
 
+export function createMetricDefinition(
+  body: CreateMetricDefinitionInput,
+): Promise<{ definition: MetricDefinitionDto }> {
+  return apiFetch<{ definition: MetricDefinitionDto }>('/api/v1/metrics', {
+    method: 'POST',
+    json: body,
+  });
+}
+
 export function fetchMetric(id: string): Promise<MetricDefinitionDetailDto> {
   return apiFetch<MetricDefinitionDetailDto>(`/api/v1/metrics/${id}`);
 }
@@ -120,5 +130,14 @@ export function useMetric(id: string | undefined) {
 export function usePreviewScore(id: string) {
   return useMutation({
     mutationFn: (body: PreviewScoreInput) => previewMetricScore(id, body),
+  });
+}
+
+/** POST /metrics (owner/admin). Invalida a lista para a nova métrica aparecer na tabela. */
+export function useCreateMetric() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createMetricDefinition,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: metricsKeys.all }),
   });
 }

@@ -127,8 +127,10 @@ métricas, que conhece cada estratégia).
 ```
 
 É o rascunho para `POST /metrics` (§36 `metric_definitions` + peso/normalização). O web navega
-para `/metrics` com `state: { prefill }`; a feature de métricas lê `location.state.prefill` para
-preencher o formulário. `isActive: false` de propósito.
+para `/metrics` com `state: { prefill }`; a feature de métricas lê `location.state.prefill`
+(`features/metrics/PrefillBanner.tsx`) e mostra a sugestão com os botões **Criar métrica** (faz o
+`POST /metrics` com a definição, inativa, e abre `/metrics/:id`) e **Descartar**. Peso, normalização
+e gatilhos entram no modelo pelo configurador (Etapa 10). `isActive: false` de propósito.
 
 ## 4. Banco (§36) — `apps/api/src/db/schema/documents.ts`
 
