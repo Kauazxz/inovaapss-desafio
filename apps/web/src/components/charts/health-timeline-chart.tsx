@@ -175,25 +175,27 @@ export function HealthTimelineChart({ timeline, thresholds, reloading }: HealthT
               tickLine={false}
               tick={{ fill: palette.muted, fontSize: CHART_TYPOGRAPHY.tick.size }}
             />
+            {/* No Recharts, numa linha horizontal, "insideTop" desenha o texto ABAIXO da linha e
+                "insideBottom" ACIMA. O nome da faixa fica acima do seu limite inferior. */}
             <ReferenceLine
               y={thresholds.attention}
               stroke={palette.grid}
-              label={referenceLabel('Normal', 'insideTopRight')}
+              label={referenceLabel('Normal', 'insideBottomRight')}
             />
             <ReferenceLine
               y={thresholds.risk}
               stroke={palette.grid}
-              label={referenceLabel('Atenção', 'insideTopRight')}
+              label={referenceLabel('Atenção', 'insideBottomRight')}
             />
             <ReferenceLine
               y={thresholds.critical}
               stroke={palette.grid}
-              label={referenceLabel('Risco', 'insideTopRight')}
+              label={referenceLabel('Risco', 'insideBottomRight')}
             />
             <ReferenceLine
               y={thresholds.critical}
               stroke="none"
-              label={referenceLabel('Crítico', 'insideBottomRight')}
+              label={referenceLabel('Crítico', 'insideTopRight')}
             />
             <Tooltip
               cursor={{ stroke: palette.grid }}

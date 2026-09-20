@@ -198,11 +198,12 @@ export function RankingTable({ rows, onSelect }: RankingTableProps) {
                 <span className="block">{row.topEvidence}</span>
                 <span className="block text-xs text-muted-foreground">→ {row.suggestedAction}</span>
               </TableCell>
-              <TableCell>
+              <TableCell className="whitespace-nowrap">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="whitespace-nowrap"
                   onClick={() => onSelect(row.clientId)}
                   aria-label={`Analisar ${row.clientName}`}
                 >
