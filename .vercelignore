@@ -1,0 +1,16 @@
+# Nao enviar para a Vercel (o build instala as dependencias la).
+node_modules
+**/node_modules
+dist
+**/dist
+.turbo
+**/.turbo
+coverage
+**/coverage
+.git
+.claude
+docs
+data
+supabase/migrations
+e2e
+*.log
