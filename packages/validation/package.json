@@ -21,6 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@inovaapss/engine": "workspace:*",
     "@inovaapss/shared": "workspace:*",
     "zod": "^4.6.5"
   },

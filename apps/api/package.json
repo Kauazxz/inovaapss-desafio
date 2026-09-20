@@ -22,6 +22,7 @@
     "seed:demo": "pnpm -w exec turbo run build --filter=@inovaapss/api... && tsx src/db/seed/demo-auth.ts"
   },
   "dependencies": {
+    "@inovaapss/engine": "workspace:*",
     "@inovaapss/shared": "workspace:*",
     "@inovaapss/validation": "workspace:*",
     "@supabase/supabase-js": "^2.116.0",

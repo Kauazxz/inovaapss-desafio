@@ -214,6 +214,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@inovaapss/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@inovaapss/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -481,6 +484,9 @@ importers:
 
   packages/validation:
     dependencies:
+      '@inovaapss/engine':
+        specifier: workspace:*
+        version: link:../engine
       '@inovaapss/shared':
         specifier: workspace:*
         version: link:../shared

@@ -203,3 +203,71 @@ Onde ficam os tipos: `MetricConfig` e os tipos de configuração vivem no engine
 (`packages/engine/src/scoring/types.ts`); `ForecastRow`/`ForecastChartData` têm fonte única em
 `packages/shared/src/dashboard/forecast.ts` (API, web e engine consomem o mesmo tipo; o engine só
 os reexporta).
+
+---
+
+## 8. Persistência e API (Etapa 3)
+
+A Etapa 3 persiste a configuração acima e a expõe em `/api/v1/metrics` e `/api/v1/metric-models`
+(§37). O cálculo continua todo em `@inovaapss/engine`; a API só guarda, valida e chama.
+
+### 8.1 Tabelas (`apps/api/src/db/schema/metrics.ts`, §36)
+
+| Tabela                  | O que guarda                                                                                                                                                                                                                                                                                                                           | Restrições                                                                        |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `metric_definitions`    | a métrica em si: `name`, `slug` (= `key` do motor), `description`, `category`, `metric_type`, `unit`, `direction`, `periodicity`, `source_type`, `is_active`                                                                                                                                                                           | `slug` único por organização; enums do Postgres iguais aos de `@inovaapss/shared` |
+| `metric_models`         | o modelo (ex.: "GlobalSys"): `name`, `mode` (MANUAL / ASSISTED / AUTOMATIC, §32), `is_active`                                                                                                                                                                                                                                          | —                                                                                 |
+| `metric_model_versions` | uma versão do modelo: `version` (1, 2, 3...), `status` (`draft` / `active` / `archived`), `effective_from`. Tem `organization_id` para a RLS ser direta                                                                                                                                                                                | `(metric_model_id, version)` único; **uma** ativa por modelo (regra da API)       |
+| `metric_model_items`    | a configuração de uma métrica dentro da versão: `weight`, `current_weight` / `trend_weight` / `persistence_weight` (numeric(6,4)), `normalization_strategy` + `normalization_config_json`, `threshold_config_json` (`{ trend, persistence }`), `critical_trigger_config_json` (`TriggerConfig[]`), `formula_config_json`, `sort_order` | `(version, definition)` único; FK da definição é `restrict` (histórico não some)  |
+
+`metric_values` e os snapshots ficam para a Etapa 4 (precisam de clientes).
+
+RLS (§5) é declarada no próprio Drizzle (`.enableRLS()` + `pgPolicy`) reutilizando as funções da
+migration de auth: `select` para membros (`current_user_organization_ids()`), `insert/update/delete`
+para owner/admin (`current_user_role_in(uuid)`). Em `metric_model_items`, que não tem
+`organization_id`, a policy chega à organização pela versão. A migration é gerada pelo integrador
+com `pnpm --filter @inovaapss/api db:generate` depois do merge.
+
+### 8.2 Validação em duas camadas
+
+1. **Zod** (`packages/validation/src/metrics/`): `normalizationConfigSchema` (uma variante por
+   estratégia, com `.exactOptional()` para casar com os tipos do motor), `thresholdConfigSchema`,
+   `triggerListSchema`, `formulaConfigSchema`; toda regra JSON Logic passa por `isSafeRule` do
+   motor antes de chegar ao banco. Pesos: 0–1 com 4 casas (`modelWeightSchema`).
+2. **Motor** (`apps/api/src/modules/metrics/engine-mapping.ts`): `assertEvaluableConfig` roda
+   `scoreMetric` com uma série de exemplo; `EngineConfigError` vira `400 INVALID_METRIC_CONFIG`
+   com a mensagem em português (faixas vazias, `min ≥ max`, janela inválida, `DELTA_ABSOLUTE` sem
+   `fullDeteriorationChange`...).
+
+`toMetricConfig(definition, item)` é a função que monta o `MetricConfig` da seção 1 — a Etapa 4
+reaproveita a mesma para o scoring com dados reais.
+
+### 8.3 Regras de peso e versão (§31, §41)
+
+- `validateVersionWeights(items)` soma os pesos das métricas **ativas** e exige `1,0000 ± 0,0001`
+  para ativar. Sem isso, `POST .../activate` responde `422 WEIGHTS_MUST_SUM_100` dizendo quanto
+  falta ou sobra. Nunca redistribui em silêncio.
+- `POST /metric-models/:id/rebalance` devolve uma **proposta** proporcional
+  (`proposeRebalancedWeights`), com `saved: false`; aplicar é um `PATCH` no rascunho.
+- Ativar arquiva a versão ativa anterior; nada é apagado. Versões `active` e `archived` são
+  imutáveis (`409 VERSION_NOT_EDITABLE`); um novo rascunho nasce como cópia da ativa.
+- `DELETE /metrics/:id` apaga só se a definição nunca entrou em nenhuma versão; caso contrário
+  apenas desativa (`outcome: deactivated`).
+
+### 8.4 Rotas
+
+| Rota                                                 | Papel                | Observação                                                                       |
+| ---------------------------------------------------- | -------------------- | -------------------------------------------------------------------------------- |
+| `GET /metrics`                                       | membro               | §61 + filtros `type`, `direction`, `source`, `is_active`; traz `activePlacement` |
+| `POST /metrics` · `PATCH /metrics/:id` · `DELETE`    | owner/admin          | `409 SLUG_TAKEN` para chave repetida                                             |
+| `GET /metrics/:id`                                   | membro               | definição + `activeItem` + `activeModel`                                         |
+| `POST /metrics/:id/preview-score`                    | membro               | item + série de exemplo → `MetricScore` do motor (sem banco de valores)          |
+| `GET/POST /metric-models` · `GET /metric-models/:id` | membro / owner-admin | detalhe traz todas as versões com itens                                          |
+| `POST /metric-models/:id/versions`                   | owner/admin          | rascunho (cópia da ativa sem `items`)                                            |
+| `PATCH /metric-models/:id/versions/:version`         | owner/admin          | só rascunho; `items` substitui a lista                                           |
+| `POST /metric-models/:id/versions/:version/activate` | owner/admin          | soma 100 %, arquiva a anterior                                                   |
+| `POST /metric-models/:id/rebalance`                  | membro               | proposta, não salva                                                              |
+
+Contratos em `packages/shared/src/metrics/` (DTOs, rótulos pt-BR, `GLOBALSYS_V1_KEYS`) e no
+OpenAPI (`/api/docs.json`). No web, `/metrics` lista a tabela do §41 e `/metrics/:id` explica a
+configuração em português e simula com `preview-score`; o configurador completo é a Etapa 10.

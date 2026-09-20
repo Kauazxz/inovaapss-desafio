@@ -30,7 +30,7 @@ export interface AppDependencies {
   db?: DbClient;
   supabase?: SupabaseClients;
   /** Testes: dublês de auth/persistência para o /api/v1 (ver routes/api-v1.ts). */
-  apiV1?: Pick<ApiV1Dependencies, 'getUser' | 'organizationsRepository'>;
+  apiV1?: Pick<ApiV1Dependencies, 'getUser' | 'organizationsRepository' | 'metricsRepository'>;
 }
 
 const HEALTH_PATHS = new Set(['/health', '/ready']);

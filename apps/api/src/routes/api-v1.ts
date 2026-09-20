@@ -14,6 +14,13 @@ import { createResolveTenant } from '../middleware/tenant.js';
 import { createAuthController } from '../modules/auth/controller.js';
 import { createAuthRouter } from '../modules/auth/routes.js';
 import { createAuthService } from '../modules/auth/service.js';
+import { createMetricsController } from '../modules/metrics/controller.js';
+import { createMetricsRepository, type MetricsRepository } from '../modules/metrics/repository.js';
+import {
+  createMetricDefinitionsRouter,
+  createMetricModelsRouter,
+} from '../modules/metrics/routes.js';
+import { createMetricsService } from '../modules/metrics/service.js';
 import { createOrganizationsController } from '../modules/organizations/controller.js';
 import {
   createOrganizationsRepository,
@@ -65,6 +72,71 @@ export const ROUTES: readonly RouteDescriptor[] = [
     path: `${API_V1_PREFIX}/organizations/current/users`,
     description: 'Convida ou cria um usuário na organização (owner ou admin)',
   },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/metrics`,
+    description: 'Lista as definições de métrica',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/metrics`,
+    description: 'Cria uma definição (owner ou admin)',
+  },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/metrics/:id`,
+    description: 'Definição e configuração ativa',
+  },
+  {
+    method: 'PATCH',
+    path: `${API_V1_PREFIX}/metrics/:id`,
+    description: 'Atualiza a definição (owner ou admin)',
+  },
+  {
+    method: 'DELETE',
+    path: `${API_V1_PREFIX}/metrics/:id`,
+    description: 'Apaga se nunca usada, senão desativa (owner ou admin)',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/metrics/:id/preview-score`,
+    description: 'Simula o score da métrica com o motor sobre valores de exemplo',
+  },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/metric-models`,
+    description: 'Lista os modelos de métricas',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/metric-models`,
+    description: 'Cria um modelo (owner ou admin)',
+  },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/metric-models/:id`,
+    description: 'Modelo com as versões e itens',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/metric-models/:id/versions`,
+    description: 'Cria um rascunho de versão (owner ou admin)',
+  },
+  {
+    method: 'PATCH',
+    path: `${API_V1_PREFIX}/metric-models/:id/versions/:version`,
+    description: 'Edita um rascunho (owner ou admin)',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/metric-models/:id/versions/:version/activate`,
+    description: 'Ativa a versão: pesos somam 100 %, a anterior é arquivada (owner ou admin)',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/metric-models/:id/rebalance`,
+    description: 'Proposta de pesos redistribuídos proporcionalmente (não salva)',
+  },
 ];
 
 export interface ApiV1Dependencies {
@@ -74,6 +146,8 @@ export interface ApiV1Dependencies {
   getUser?: GetUserByToken;
   /** Testes: substitui a persistência de organizações. */
   organizationsRepository?: OrganizationsRepository;
+  /** Testes: substitui a persistência de métricas e modelos. */
+  metricsRepository?: MetricsRepository;
 }
 
 export function createApiV1Router(deps: ApiV1Dependencies): Router {
@@ -122,6 +196,18 @@ export function createApiV1Router(deps: ApiV1Dependencies): Router {
       resolveTenant,
       controller: createOrganizationsController(organizationsService),
     }),
+  );
+
+  const metricsRepository =
+    deps.metricsRepository ?? createMetricsRepository(() => deps.db.getDb());
+  const metricsController = createMetricsController(createMetricsService(metricsRepository));
+  router.use(
+    '/metrics',
+    createMetricDefinitionsRouter({ requireAuth, resolveTenant, controller: metricsController }),
+  );
+  router.use(
+    '/metric-models',
+    createMetricModelsRouter({ requireAuth, resolveTenant, controller: metricsController }),
   );
 
   return router;

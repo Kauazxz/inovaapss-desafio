@@ -9,3 +9,4 @@
  * migration em supabase/migrations/.
  */
 export * from './organizations.js';
+export * from './metrics.js';
