@@ -22,6 +22,13 @@ export interface PeriodValue {
   value: number | null;
   /** Valor textual (categorias, SCORE_MAP). Opcional. */
   text?: string | null;
+  /**
+   * Métricas que dependem de o cliente responder (NPS, pesquisas — §22): `false` = o cliente foi
+   * consultado e **não respondeu**, uma observação válida, diferente de "não medido"
+   * (`value: null` sem este campo). Com `false`, `value` é ignorado. `true` = respondeu.
+   * Omitido = a métrica não tem o conceito de resposta.
+   */
+  answered?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -288,6 +295,18 @@ export interface TriggerEvaluation {
 // Métrica configurada e resultado por métrica (§8)
 // ---------------------------------------------------------------------------
 
+/**
+ * §22 — o que fazer quando o período atual tem `answered: false` (consultado, não respondeu).
+ * Padrão: manter o último health respondido, com frescor decrescente, por até 3 períodos; depois
+ * a métrica vira N/A. Nunca vira zero.
+ */
+export interface UnansweredPolicy {
+  /** `true` (padrão): mantém o último health respondido. `false`: N/A já no primeiro período. */
+  carryLast?: boolean;
+  /** Por quantos períodos sem resposta o último health ainda é mantido (padrão 3). */
+  maxCarryPeriods?: number;
+}
+
 export interface MetricConfig {
   id: string;
   name: string;
@@ -304,6 +323,8 @@ export interface MetricConfig {
   trend?: TrendConfig;
   persistence?: PersistenceConfig;
   triggers?: TriggerConfig[];
+  /** Comportamento com `answered: false` no período atual (§22). */
+  unanswered?: UnansweredPolicy;
   isActive?: boolean;
   /**
    * Modelo opcional da explicação humana. Placeholders: {name} {value} {previous} {delta}
@@ -316,8 +337,29 @@ export interface MetricInput {
   metric: MetricConfig;
   /** Série cronológica (mais antigo → mais recente). O último elemento é o período atual. */
   series: PeriodValue[];
-  /** Campos extras para gatilhos (`extra.<chave>`), ex.: `{ critical_tickets: 3 }`. */
+  /**
+   * Campos extras para gatilhos (`extra.<chave>`), ex.: `{ critical_tickets: 3 }`.
+   * Quando a série traz `answered`, o motor acrescenta sozinho `unanswered_streak`,
+   * `response_rate`, `behavior_changed`, `periods_since_last_answer` e `last_answered_value`
+   * (os informados aqui têm precedência).
+   */
   extra?: Record<string, number | string | boolean | null>;
+}
+
+/** §22 — comportamento de resposta do cliente numa métrica com `answered` (NPS, pesquisas). */
+export interface ResponseAnalysis {
+  /** O período atual foi respondido. */
+  answered: boolean;
+  /** Períodos consecutivos, terminando no atual, sem resposta. */
+  consecutiveUnanswered: number;
+  /** Fração 0–1 de períodos respondidos no histórico; `null` sem histórico. */
+  responseRate: number | null;
+  /** Último valor respondido e há quantos períodos. */
+  lastAnsweredValue: number | null;
+  periodsSinceLastAnswer: number | null;
+  /** O cliente costumava responder e parou (≥ 2 períodos sem resposta com taxa histórica ≥ 50 %). */
+  behaviorChanged: boolean;
+  reason: string;
 }
 
 export interface ComponentBreakdown {
@@ -344,6 +386,13 @@ export interface MetricScore {
   persistenceHealth: number | null;
   /** 0–100: proporção do peso dos componentes que puderam ser calculados. */
   confidence: number;
+  /**
+   * 0–1: frescor do dado (§25). 1 = período atual medido/respondido; menor quando o health vem
+   * de um período anterior (`answered: false` com o último health respondido mantido).
+   */
+  freshness: number;
+  /** Análise de resposta (§22) quando a série traz `answered`; `null` nas demais métricas. */
+  response: ResponseAnalysis | null;
   components: ComponentBreakdown;
   currentValue: number | null;
   previousValue: number | null;

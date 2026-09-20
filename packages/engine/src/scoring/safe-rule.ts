@@ -8,6 +8,11 @@ import type { JsonLogicRule, RuleContext } from './types.js';
  * Operadores JSON Logic permitidos em CUSTOM_SAFE_RULE e em gatilhos.
  * Fica de fora, de propósito, o `method` (chama métodos arbitrários de objetos) e qualquer
  * operador registrado por `add_operation`. Nunca há `eval` (§2, §9, §45).
+ *
+ * Também ficam de fora `merge` e `cat`: são os únicos operadores que produzem um resultado
+ * maior que a entrada, e dentro de `reduce` dobram o acumulador a cada período do histórico
+ * (2^n itens — esgotam a memória do processo com uma regra "válida"). Voltam só com caso de uso
+ * real e uma versão limitada registrada pelo motor.
  */
 export const ALLOWED_RULE_OPERATORS: ReadonlySet<string> = new Set([
   'var',
@@ -40,15 +45,21 @@ export const ALLOWED_RULE_OPERATORS: ReadonlySet<string> = new Set([
   'all',
   'some',
   'none',
-  'merge',
   'in',
-  'cat',
   'substr',
 ]);
 
 const FORBIDDEN_PATH_SEGMENTS = new Set(['constructor', '__proto__', 'prototype']);
 const MAX_NODES = 500;
 const MAX_DEPTH = 30;
+/**
+ * Quantos períodos de `history`/`series` uma regra enxerga (os mais recentes). Limita o custo de
+ * `map`/`filter`/`reduce`/`all`/`some`/`none` sobre a série: a janela de tendência e de
+ * persistência é 3 (§10, §11); 60 períodos são cinco anos mensais.
+ */
+export const MAX_RULE_SERIES_LENGTH = 60;
+/** Operadores que recebem caminhos do contexto como argumento (além de `var`). */
+const PATH_OPERATORS = new Set(['var', 'missing', 'missing_some']);
 
 function assertSafePath(path: unknown): void {
   if (typeof path !== 'string') return;
@@ -57,6 +68,15 @@ function assertSafePath(path: unknown): void {
       throw new UnsafeRuleError(`Regra recusada: caminho "${path}" não é permitido.`);
     }
   }
+}
+
+/** Confere todos os textos literais dentro dos argumentos (`missing: ['a', 'b']`, `missing_some: [1, [...]]`). */
+function assertSafePaths(args: unknown): void {
+  if (Array.isArray(args)) {
+    for (const item of args) assertSafePaths(item);
+    return;
+  }
+  assertSafePath(args);
 }
 
 function walk(node: unknown, depth: number, counter: { nodes: number }): void {
@@ -83,9 +103,9 @@ function walk(node: unknown, depth: number, counter: { nodes: number }): void {
     throw new UnsafeRuleError(`Regra recusada: operador "${operator}" não é permitido.`);
   }
   const args = (node as Record<string, unknown>)[operator];
+  if (PATH_OPERATORS.has(operator)) assertSafePaths(args);
   if (operator === 'var') {
     const first = Array.isArray(args) ? args[0] : args;
-    assertSafePath(first);
     if (first !== null && typeof first === 'object') {
       throw new UnsafeRuleError('Regra recusada: o caminho de "var" deve ser um texto literal.');
     }
@@ -115,10 +135,13 @@ export function isSafeRule(rule: JsonLogicRule): boolean {
   }
 }
 
-/** Copia o contexto para objetos sem protótipo: nada de `constructor` acessível pela regra. */
+/**
+ * Copia o contexto para objetos sem protótipo (nada de `constructor` acessível pela regra) e
+ * corta `history`/`series` aos últimos `MAX_RULE_SERIES_LENGTH` períodos.
+ */
 function sanitizeContext(context: RuleContext): Record<string, unknown> {
   const clone = (input: unknown): unknown => {
-    if (Array.isArray(input)) return input.map(clone);
+    if (Array.isArray(input)) return input.slice(-MAX_RULE_SERIES_LENGTH).map(clone);
     if (input !== null && typeof input === 'object') {
       const out: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
       for (const [key, value] of Object.entries(input)) {

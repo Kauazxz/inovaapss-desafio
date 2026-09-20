@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { scoreClient } from './client-score.js';
-import { missedMeetingRate, npsHealth } from './derived.js';
+import { missedMeetingRate } from './derived.js';
 
 import type { MetricConfig, MetricInput, PeriodValue } from './types.js';
 
@@ -154,6 +154,23 @@ const inputs = (
     series: series(values[metric.id] ?? []),
   }));
 
+/** Marca os períodos indicados da métrica como "consultado, não respondeu" (§22). */
+const unanswered = (metrics: MetricInput[], metricId: string, periods: number[]): MetricInput[] =>
+  metrics.map((m) =>
+    m.metric.id !== metricId
+      ? m
+      : {
+          ...m,
+          series: m.series.map((p, i) =>
+            periods.includes(i) ? { ...p, value: null, answered: false } : { ...p, answered: true },
+          ),
+        },
+  );
+
+const NPS = 'nps_dissatisfaction';
+const npsOf = (result: ReturnType<typeof scoreClient>) =>
+  result.metrics.find((m) => m.metricId === NPS);
+
 describe('critérios de aceite do motor (§55)', () => {
   it('GlobalSys v1 soma 100 % e tem 10 métricas', () => {
     expect(GLOBALSYS_V1).toHaveLength(10);
@@ -206,16 +223,114 @@ describe('critérios de aceite do motor (§55)', () => {
     }
   });
 
-  it('NPS sem resposta não vira zero: a métrica é N/A e só a confiança cai', () => {
-    const values = {
-      ...healthyValues,
-      nps_dissatisfaction: [100, 100, null, npsHealth(false, null)],
-    };
-    const result = scoreClient({ clientId: 'nps', metrics: inputs(values) });
-    const nps = result.metrics.find((m) => m.metricId === 'nps_dissatisfaction');
-    expect(nps?.metricHealth).toBeNull();
-    expect(result.overallHealth).toBe(100);
-    expect(result.analysisConfidence).toBe(97);
+  it('NPS sem resposta não vira ausência automática nem zero: [90, 90, 90, não respondeu] ≠ [90, 90, 90, null]', () => {
+    const values = { ...healthyValues, [NPS]: [90, 90, 90, null] };
+
+    // "Sem dado": o período não foi medido → N/A, só a confiança cai (97 %).
+    const noData = scoreClient({ clientId: 'nps-null', metrics: inputs(values) });
+    const noDataNps = npsOf(noData);
+    expect(noDataNps?.metricHealth).toBeNull();
+    expect(noDataNps?.response).toBeNull();
+    expect(noDataNps?.explanation.summary).toMatch(/sem dado/);
+    expect(noData.overallHealth).toBe(100);
+    expect(noData.analysisConfidence).toBe(97);
+
+    // "Não respondeu": observação válida → mantém o último health respondido (90) com frescor
+    // 0,75; a métrica continua no health geral e a confiança cai menos do que com ausência.
+    const notAnswered = scoreClient({
+      clientId: 'nps-unanswered',
+      metrics: unanswered(inputs(values), NPS, [3]),
+      config: { periodLabel: 'mês' },
+    });
+    const nps = npsOf(notAnswered);
+    expect(nps?.currentHealth).toBe(90);
+    expect(nps?.metricHealth).not.toBeNull();
+    expect(nps?.metricHealth).not.toBe(0);
+    expect(nps?.freshness).toBe(0.75);
+    expect(nps?.response).toMatchObject({
+      answered: false,
+      consecutiveUnanswered: 1,
+      lastAnsweredValue: 90,
+      periodsSinceLastAnswer: 1,
+      behaviorChanged: false,
+    });
+    expect(nps?.explanation.summary).toBe(
+      'Insatisfação / NPS: sem resposta neste mês (última resposta 90 há 1 mês, mantida com frescor reduzido).',
+    );
+    expect(notAnswered.overallHealth as number).toBeLessThan(100);
+    expect(notAnswered.overallHealth as number).toBeGreaterThan(99);
+    expect(notAnswered.analysisConfidence).toBe(99.25);
+    expect(notAnswered.analysisConfidence).toBeGreaterThan(noData.analysisConfidence);
+
+    // Os dois casos são distinguíveis pela evidência.
+    const evidenceNoData = noData.evidence.find((d) => d.metricId === NPS);
+    const evidenceNotAnswered = notAnswered.evidence.find((d) => d.metricId === NPS);
+    expect(evidenceNoData?.humanExplanation).not.toBe(evidenceNotAnswered?.humanExplanation);
+  });
+
+  it('sequência sem responder: mudança de comportamento vira gatilho; além da janela vira N/A (nunca zero)', () => {
+    const values = { ...healthyValues, [NPS]: [90, 90, null, null] };
+    const trigger: MetricConfig['triggers'] = [
+      {
+        id: 'nps-silencio',
+        kind: 'THRESHOLD',
+        name: 'Cliente parou de responder o NPS',
+        field: 'extra.unanswered_streak',
+        operator: '>=',
+        threshold: 2,
+        priorityFloor: 50,
+        message: '{name}: {extra.unanswered_streak} períodos sem resposta.',
+      },
+    ];
+
+    const stopped = scoreClient({
+      clientId: 'nps-stopped',
+      metrics: unanswered(inputs(values, { [NPS]: { triggers: trigger } }), NPS, [2, 3]),
+      commercialImpact: 0,
+    });
+    const nps = npsOf(stopped);
+    expect(nps?.response?.behaviorChanged).toBe(true);
+    expect(nps?.response?.consecutiveUnanswered).toBe(2);
+    expect(nps?.freshness).toBe(0.5);
+    expect(nps?.metricHealth).not.toBeNull();
+    expect(nps?.explanation.summary).toMatch(
+      /2 períodos seguidos sem responder; o cliente costumava responder/,
+    );
+    expect(stopped.triggers.hits.map((h) => h.message)).toEqual([
+      'Cliente parou de responder o NPS: 2 períodos sem resposta.',
+    ]);
+    expect(stopped.priorityScore).toBe(50);
+    // O gatilho não mexe no health (§27).
+    expect(stopped.overallHealth as number).toBeGreaterThan(99);
+
+    // Política configurável (§65): com 1 período de tolerância, 2 sem resposta → N/A, não zero.
+    const expired = scoreClient({
+      clientId: 'nps-expired',
+      metrics: unanswered(
+        inputs(values, { [NPS]: { unanswered: { maxCarryPeriods: 1 } } }),
+        NPS,
+        [2, 3],
+      ),
+    });
+    const expiredNps = npsOf(expired);
+    expect(expiredNps?.metricHealth).toBeNull();
+    expect(expiredNps?.freshness).toBe(1);
+    expect(expiredNps?.response?.consecutiveUnanswered).toBe(2);
+    expect(expiredNps?.explanation.summary).toMatch(/sem resposta neste período/);
+    expect(expired.overallHealth).toBe(100);
+    expect(expired.analysisConfidence).toBe(97);
+
+    // Sem manter o último health (`carryLast: false`), N/A no primeiro período sem resposta.
+    const strict = scoreClient({
+      clientId: 'nps-strict',
+      metrics: unanswered(
+        inputs(values, { [NPS]: { unanswered: { carryLast: false } } }),
+        NPS,
+        [2, 3],
+      ),
+    });
+    expect(npsOf(strict)?.metricHealth).toBeNull();
+    expect(strict.analysisConfidence).toBe(97);
   });
 
   it('reuniões previstas = 0 → N/A na métrica, sem penalizar nem premiar', () => {

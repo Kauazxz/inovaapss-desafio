@@ -2,6 +2,8 @@ import { clampScore } from '@inovaapss/shared';
 
 import { isFiniteNumber, round } from '../shared/math.js';
 
+import type { ResponseAnalysis } from './types.js';
+
 /**
  * Métricas derivadas do preset GlobalSys (§13–§22, §70). Funções puras: entrada ausente ou
  * inválida devolve `null` (N/A) — nunca zero por falta de dado.
@@ -80,56 +82,52 @@ export interface NpsPeriod {
   score: number | null;
 }
 
-export interface NpsResponseAnalysis {
+export interface NpsResponseAnalysis extends ResponseAnalysis {
   /** Health do período atual (`null` quando não respondeu). */
   health: number | null;
-  answered: boolean;
-  /** Períodos consecutivos, terminando no atual, sem resposta. */
-  consecutiveUnanswered: number;
-  /** Fração 0–1 de períodos respondidos no histórico; `null` sem histórico. */
-  responseRate: number | null;
-  /** Última nota conhecida (NPS 0–10) e há quantos períodos. */
+  /** Última nota conhecida (NPS 0–10). Igual a `lastAnsweredValue`. */
   lastAnsweredScore: number | null;
-  periodsSinceLastAnswer: number | null;
-  /** O cliente costumava responder e parou (≥ 2 períodos sem resposta com taxa histórica ≥ 50 %). */
-  behaviorChanged: boolean;
-  reason: string;
+}
+
+/** Um período de uma métrica que depende de resposta: respondeu? com que valor? */
+export interface ResponsePeriod {
+  answered: boolean;
+  value: number | null;
 }
 
 /**
- * §22 — análise do comportamento de resposta ao NPS. A sequência sem resposta é um sinal que a
- * organização pode usar em gatilhos (`extra.nps_unanswered_streak`), mas o health nunca vira zero
- * automaticamente por falta de resposta.
+ * §22 — análise genérica do comportamento de resposta (NPS, pesquisas, qualquer métrica com
+ * `answered`): sequência sem resposta, taxa histórica, último valor respondido e mudança de
+ * comportamento. É o que `scoreMetric` usa para distinguir "não respondeu" de "sem dado".
  */
-export function analyzeNpsResponses(history: readonly NpsPeriod[]): NpsResponseAnalysis {
+export function analyzeResponses(history: readonly ResponsePeriod[]): ResponseAnalysis {
   if (history.length === 0) {
     return {
-      health: null,
       answered: false,
       consecutiveUnanswered: 0,
       responseRate: null,
-      lastAnsweredScore: null,
+      lastAnsweredValue: null,
       periodsSinceLastAnswer: null,
       behaviorChanged: false,
-      reason: 'Sem histórico de NPS.',
+      reason: 'Sem histórico de respostas.',
     };
   }
-  const current = history[history.length - 1] as NpsPeriod;
+  const current = history[history.length - 1] as ResponsePeriod;
   const answeredCount = history.filter((p) => p.answered).length;
   const responseRate = round(answeredCount / history.length, 4);
 
   let consecutiveUnanswered = 0;
   for (let i = history.length - 1; i >= 0; i -= 1) {
-    if ((history[i] as NpsPeriod).answered) break;
+    if ((history[i] as ResponsePeriod).answered) break;
     consecutiveUnanswered += 1;
   }
 
-  let lastAnsweredScore: number | null = null;
+  let lastAnsweredValue: number | null = null;
   let periodsSinceLastAnswer: number | null = null;
   for (let i = history.length - 1; i >= 0; i -= 1) {
-    const p = history[i] as NpsPeriod;
-    if (p.answered && isFiniteNumber(p.score)) {
-      lastAnsweredScore = p.score;
+    const p = history[i] as ResponsePeriod;
+    if (p.answered && isFiniteNumber(p.value)) {
+      lastAnsweredValue = p.value;
       periodsSinceLastAnswer = history.length - 1 - i;
       break;
     }
@@ -140,24 +138,46 @@ export function analyzeNpsResponses(history: readonly NpsPeriod[]): NpsResponseA
     earlier.length > 0 ? earlier.filter((p) => p.answered).length / earlier.length : 0;
   const behaviorChanged = consecutiveUnanswered >= 2 && earlier.length >= 2 && earlierRate >= 0.5;
 
-  const health = npsHealth(current.answered, current.score);
   let reason: string;
   if (current.answered) {
-    reason = `NPS respondido: nota ${isFiniteNumber(current.score) ? current.score : '—'}.`;
+    reason = 'Respondido neste período.';
   } else if (behaviorChanged) {
-    reason = `Cliente costumava responder ao NPS e não responde há ${consecutiveUnanswered} períodos: mudança de comportamento (N/A, não zero).`;
+    reason = `Cliente costumava responder e não responde há ${consecutiveUnanswered} períodos: mudança de comportamento (não é zero).`;
   } else {
-    reason = `NPS sem resposta há ${consecutiveUnanswered} período(s): N/A (não é zero).`;
+    reason = `Sem resposta há ${consecutiveUnanswered} período(s) (não é zero).`;
   }
 
   return {
-    health,
     answered: current.answered,
     consecutiveUnanswered,
     responseRate,
-    lastAnsweredScore,
+    lastAnsweredValue,
     periodsSinceLastAnswer,
     behaviorChanged,
     reason,
   };
+}
+
+/**
+ * §22 — análise do comportamento de resposta ao NPS (`analyzeResponses` com o health da nota).
+ * A sequência sem resposta chega aos gatilhos como `extra.unanswered_streak`; o health nunca vira
+ * zero automaticamente por falta de resposta.
+ */
+export function analyzeNpsResponses(history: readonly NpsPeriod[]): NpsResponseAnalysis {
+  const analysis = analyzeResponses(history.map((p) => ({ answered: p.answered, value: p.score })));
+  const current = history[history.length - 1];
+  const health = current ? npsHealth(current.answered, current.score) : null;
+
+  let reason: string;
+  if (current === undefined) {
+    reason = 'Sem histórico de NPS.';
+  } else if (analysis.answered) {
+    reason = `NPS respondido: nota ${isFiniteNumber(current.score) ? current.score : '—'}.`;
+  } else if (analysis.behaviorChanged) {
+    reason = `Cliente costumava responder ao NPS e não responde há ${analysis.consecutiveUnanswered} períodos: mudança de comportamento (N/A, não zero).`;
+  } else {
+    reason = `NPS sem resposta há ${analysis.consecutiveUnanswered} período(s): N/A (não é zero).`;
+  }
+
+  return { ...analysis, health, lastAnsweredScore: analysis.lastAnsweredValue, reason };
 }

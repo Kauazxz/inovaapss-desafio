@@ -1,12 +1,13 @@
 import { DEFAULT_COMPONENT_WEIGHTS, type ComponentWeights } from '@inovaapss/shared';
 
-import { explainMetric, type ExplainOptions } from './explain.js';
+import { analyzeResponses } from './derived.js';
+import { explainMetric, explainUnanswered, type ExplainOptions } from './explain.js';
 import { buildRuleContext, normalize } from './normalization.js';
 import { computePersistence } from './persistence.js';
 import { computeTrend } from './trend.js';
 import { evaluateTriggers } from './triggers.js';
 import { EngineConfigError } from '../shared/errors.js';
-import { formatNumber, formatSigned } from '../shared/format.js';
+import { formatNumber, formatSigned, pluralize } from '../shared/format.js';
 import { isFiniteNumber, round } from '../shared/math.js';
 
 import type {
@@ -15,9 +16,80 @@ import type {
   MetricScore,
   NormalizationResult,
   PeriodValue,
+  ResponseAnalysis,
+  UnansweredPolicy,
 } from './types.js';
 
 export type ScoreMetricOptions = ExplainOptions;
+
+/** §22 — padrão: manter o último health respondido por até 3 períodos sem resposta. */
+export const DEFAULT_UNANSWERED_POLICY: Required<UnansweredPolicy> = {
+  carryLast: true,
+  maxCarryPeriods: 3,
+};
+
+/** Frescor de um health mantido de `periodsSince` períodos atrás: 0,75 · 0,5 · 0,25 com o padrão 3. */
+export function carriedFreshness(periodsSince: number, maxCarryPeriods: number): number {
+  return round(Math.max(0, 1 - periodsSince / (maxCarryPeriods + 1)), 4);
+}
+
+interface UnansweredResolution {
+  response: ResponseAnalysis;
+  /** Health mantido do último período respondido, ou `null` (N/A). */
+  carriedHealth: number | null;
+  /** Índice, na série ordenada, do período de onde o health foi mantido. */
+  carriedFrom: number | null;
+  freshness: number;
+}
+
+/**
+ * §22 — o período atual tem `answered: false`: o cliente foi consultado e não respondeu. Não é
+ * "sem dado": analisa o histórico de resposta e, pela política da métrica, mantém o último health
+ * respondido com frescor reduzido (até `maxCarryPeriods`), senão N/A. Nunca zero.
+ */
+function resolveUnanswered(
+  series: readonly PeriodValue[],
+  values: readonly (number | null)[],
+  healths: readonly (number | null)[],
+  policy: UnansweredPolicy | undefined,
+): UnansweredResolution {
+  const response = analyzeResponses(
+    series.map((p, i) => ({
+      answered: p.answered ?? values[i] !== null,
+      value: values[i] ?? null,
+    })),
+  );
+  const { carryLast, maxCarryPeriods } = { ...DEFAULT_UNANSWERED_POLICY, ...policy };
+  if (!Number.isInteger(maxCarryPeriods) || maxCarryPeriods < 0) {
+    throw new EngineConfigError('unanswered.maxCarryPeriods deve ser um inteiro ≥ 0.');
+  }
+  const since = response.periodsSinceLastAnswer;
+  if (!carryLast || since === null || since > maxCarryPeriods) {
+    return { response, carriedHealth: null, carriedFrom: null, freshness: 1 };
+  }
+  const from = series.length - 1 - since;
+  const carried = healths[from];
+  if (!isFiniteNumber(carried)) {
+    return { response, carriedHealth: null, carriedFrom: null, freshness: 1 };
+  }
+  return {
+    response,
+    carriedHealth: carried,
+    carriedFrom: from,
+    freshness: carriedFreshness(since, maxCarryPeriods),
+  };
+}
+
+/** Campos que o motor acrescenta a `extra` quando a série traz `answered` (gatilhos e modelos de texto). */
+function responseExtra(response: ResponseAnalysis): Record<string, number | boolean | null> {
+  return {
+    unanswered_streak: response.consecutiveUnanswered,
+    response_rate: response.responseRate,
+    behavior_changed: response.behaviorChanged,
+    periods_since_last_answer: response.periodsSinceLastAnswer,
+    last_answered_value: response.lastAnsweredValue,
+  };
+}
 
 /** Ordena a série por `periodEnd` (estável; datas inválidas mantêm a ordem de chegada). */
 export function sortSeries(series: readonly PeriodValue[]): PeriodValue[] {
@@ -107,7 +179,12 @@ export function scoreMetric(input: MetricInput, options: ScoreMetricOptions = {}
     throw new EngineConfigError(`Métrica ${metric.name}: peso inválido.`);
   }
   const series = sortSeries(input.series);
-  const values = series.map((p) => (isFiniteNumber(p.value) ? p.value : null));
+  // `answered: false` = consultado e não respondeu (§22): o valor é ignorado, mas o período não
+  // é "sem dado" — é tratado logo abaixo, depois da normalização.
+  const values = series.map((p) =>
+    p.answered !== false && isFiniteNumber(p.value) ? p.value : null,
+  );
+  const tracksResponses = series.some((p) => p.answered !== undefined);
 
   // current_health por período, usando só o que se sabia até aquele período (§59).
   const normalizations: NormalizationResult[] = series.map((period, index) =>
@@ -124,7 +201,7 @@ export function scoreMetric(input: MetricInput, options: ScoreMetricOptions = {}
   const healthSeries = normalizations.map((n) => n.health);
 
   const current = series[series.length - 1];
-  const normalization: NormalizationResult = normalizations[normalizations.length - 1] ?? {
+  let normalization: NormalizationResult = normalizations[normalizations.length - 1] ?? {
     health: null,
     strategy: metric.normalization.strategy,
     baseline: null,
@@ -133,6 +210,31 @@ export function scoreMetric(input: MetricInput, options: ScoreMetricOptions = {}
   };
   const currentValue = values[values.length - 1] ?? null;
   const previousValue = values.length >= 2 ? (values[values.length - 2] ?? null) : null;
+
+  let response: ResponseAnalysis | null = null;
+  let freshness = 1;
+  let extra = input.extra;
+  if (tracksResponses) {
+    const resolved = resolveUnanswered(series, values, healthSeries, metric.unanswered);
+    response = resolved.response;
+    extra = { ...responseExtra(response), ...input.extra };
+    if (current?.answered === false) {
+      if (resolved.carriedHealth !== null && resolved.carriedFrom !== null) {
+        const from = normalizations[resolved.carriedFrom] as NormalizationResult;
+        freshness = resolved.freshness;
+        normalization = {
+          ...from,
+          reason: `Sem resposta neste período: mantido o último health respondido (há ${pluralize(response.periodsSinceLastAnswer ?? 0, 'período')}) com frescor ${formatNumber(freshness * 100, 0)} %.`,
+        };
+        healthSeries[healthSeries.length - 1] = resolved.carriedHealth;
+      } else {
+        normalization = {
+          ...normalization,
+          reason: `${response.reason} Métrica N/A neste período (não é zero).`,
+        };
+      }
+    }
+  }
 
   const trend = computeTrend(
     {
@@ -159,22 +261,23 @@ export function scoreMetric(input: MetricInput, options: ScoreMetricOptions = {}
       direction: metric.direction,
     },
     {},
-    input.extra,
+    extra,
   );
   ruleContext.health = normalization.health;
   const triggers = evaluateTriggers(metric.triggers, ruleContext, metric.id);
 
-  const summary = explainMetric(
-    {
-      metric,
-      currentValue,
-      previousValue,
-      normalization,
-      trend,
-      ...(input.extra ? { extra: input.extra } : {}),
-    },
-    options,
-  );
+  const explainInput = {
+    metric,
+    currentValue,
+    previousValue,
+    normalization,
+    trend,
+    ...(extra ? { extra } : {}),
+  };
+  const summary =
+    response !== null && current?.answered === false && !metric.explanationTemplate
+      ? explainUnanswered({ ...explainInput, response, carried: freshness < 1 }, options)
+      : explainMetric(explainInput, options);
 
   const componentTexts: string[] = [
     normalization.health === null
@@ -192,9 +295,14 @@ export function scoreMetric(input: MetricInput, options: ScoreMetricOptions = {}
   for (const reason of [normalization.reason, trend.reason, persistence.reason]) {
     if (reason) notes.push(reason);
   }
+  if (response !== null) notes.push(response.reason);
   if (combined.metricHealth === null) {
     notes.push(
       'Métrica não avaliada neste período (N/A): não entra no health geral e reduz a confiança.',
+    );
+  } else if (freshness < 1) {
+    notes.push(
+      `Health mantido do último período respondido: entra no health geral com frescor ${formatNumber(freshness * 100, 0)} % (reduz a confiança, não a saúde).`,
     );
   } else if (combined.confidence < 100) {
     notes.push(
@@ -215,6 +323,8 @@ export function scoreMetric(input: MetricInput, options: ScoreMetricOptions = {}
     trendHealth: trend.health,
     persistenceHealth: persistence.health,
     confidence: combined.confidence,
+    freshness,
+    response,
     components: combined.components,
     currentValue,
     previousValue,

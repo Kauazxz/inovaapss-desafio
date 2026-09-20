@@ -164,6 +164,8 @@ export function buildForecastChart(
     thresholds: thresholdsFromBands(bands),
     trendWindow: options.trendWindow ?? DEFAULT_TREND_WINDOW_PERIODS,
     periodLabel: options.periodLabel ?? 'período',
-    crossingCount: limited.filter((r) => r.crossesDown).length,
+    // Conta sobre TODAS as linhas, antes do corte: o título "N clientes devem cruzar…" fala do
+    // recorte inteiro, não só das linhas desenhadas (DATAVIZ.md §5.4).
+    crossingCount: rows.filter((r) => r.crossesDown).length,
   };
 }

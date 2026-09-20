@@ -379,7 +379,10 @@ describe('CUSTOM_SAFE_RULE', () => {
   });
 
   it('resultado não numérico é N/A; output value sem then é erro de configuração', () => {
-    const text = normalize(better(1), { strategy: 'CUSTOM_SAFE_RULE', rule: { cat: ['a'] } });
+    const text = normalize(better(1), {
+      strategy: 'CUSTOM_SAFE_RULE',
+      rule: { substr: ['abc', 1] },
+    });
     expect(text.health).toBeNull();
     expect(text.reason).toMatch(/não devolveu um número/);
     expect(() =>

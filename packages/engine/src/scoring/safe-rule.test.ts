@@ -7,6 +7,7 @@ import {
   evaluateSafeRuleAsBoolean,
   evaluateSafeRuleAsNumber,
   isSafeRule,
+  MAX_RULE_SERIES_LENGTH,
 } from './safe-rule.js';
 import { UnsafeRuleError } from '../shared/errors.js';
 
@@ -49,7 +50,55 @@ describe('regras seguras (JSON Logic, §9 CUSTOM_SAFE_RULE)', () => {
   it('recusa caminhos perigosos e caminhos não literais em var', () => {
     expect(() => assertSafeRule({ var: 'params.constructor' })).toThrow(UnsafeRuleError);
     expect(() => assertSafeRule({ var: '__proto__.polluted' })).toThrow(UnsafeRuleError);
-    expect(() => assertSafeRule({ var: [{ cat: ['va', 'lue'] }] })).toThrow(UnsafeRuleError);
+    expect(() => assertSafeRule({ var: [{ substr: ['value', 0] }] })).toThrow(UnsafeRuleError);
+  });
+
+  it('recusa caminhos perigosos também em missing e missing_some', () => {
+    expect(() => assertSafeRule({ missing: ['history.constructor'] })).toThrow(UnsafeRuleError);
+    expect(() => assertSafeRule({ missing: 'params.__proto__' })).toThrow(UnsafeRuleError);
+    expect(() => assertSafeRule({ missing_some: [1, ['value', 'extra.prototype']] })).toThrow(
+      UnsafeRuleError,
+    );
+    expect(isSafeRule({ missing: ['value', 'previous'] })).toBe(true);
+    expect(evaluateSafeRule({ missing: ['value', 'params.nada'] }, ctx)).toEqual(['params.nada']);
+  });
+
+  it('recusa operadores que crescem o resultado (merge/cat): sem 2^n via reduce', () => {
+    const doubling = {
+      reduce: [
+        { var: 'history' },
+        { merge: [{ var: 'accumulator' }, { var: 'accumulator' }] },
+        [1],
+      ],
+    };
+    expect(isSafeRule(doubling)).toBe(false);
+    expect(() => assertSafeRule(doubling)).toThrow(/merge/);
+    expect(
+      isSafeRule({ reduce: [{ var: 'history' }, { cat: [{ var: 'accumulator' }, 'x'] }, ''] }),
+    ).toBe(false);
+    expect(ALLOWED_RULE_OPERATORS.has('merge')).toBe(false);
+    expect(ALLOWED_RULE_OPERATORS.has('cat')).toBe(false);
+    // reduce continua disponível para somas e contagens.
+    expect(
+      evaluateSafeRuleAsNumber(
+        { reduce: [{ var: 'history' }, { '+': [{ var: 'accumulator' }, { var: 'current' }] }, 0] },
+        ctx,
+      ),
+    ).toBe(15);
+  });
+
+  it('a regra só enxerga os últimos períodos de history/series', () => {
+    const long: RuleContext = {
+      ...ctx,
+      history: Array.from({ length: MAX_RULE_SERIES_LENGTH + 40 }, (_, i) => i),
+      series: Array.from({ length: MAX_RULE_SERIES_LENGTH + 40 }, (_, i) => i),
+    };
+    const count = { reduce: [{ var: 'history' }, { '+': [{ var: 'accumulator' }, 1] }, 0] };
+    expect(evaluateSafeRuleAsNumber(count, long)).toBe(MAX_RULE_SERIES_LENGTH);
+    const countSeries = { reduce: [{ var: 'series' }, { '+': [{ var: 'accumulator' }, 1] }, 0] };
+    expect(evaluateSafeRuleAsNumber(countSeries, long)).toBe(MAX_RULE_SERIES_LENGTH);
+    // O último período (o atual) é preservado.
+    expect(evaluateSafeRule({ var: 'history.59' }, long)).toBe(MAX_RULE_SERIES_LENGTH + 39);
   });
 
   it('recusa nós malformados, regras grandes demais e profundas demais', () => {
@@ -70,7 +119,7 @@ describe('regras seguras (JSON Logic, §9 CUSTOM_SAFE_RULE)', () => {
   it('coage o resultado: booleano vira 1/0, texto vira null', () => {
     expect(evaluateSafeRuleAsNumber({ '>': [{ var: 'value' }, 1] }, ctx)).toBe(1);
     expect(evaluateSafeRuleAsNumber({ '<': [{ var: 'value' }, 1] }, ctx)).toBe(0);
-    expect(evaluateSafeRuleAsNumber({ cat: ['a', 'b'] }, ctx)).toBeNull();
+    expect(evaluateSafeRuleAsNumber({ substr: ['abc', 1] }, ctx)).toBeNull();
     expect(evaluateSafeRuleAsNumber({ '/': [1, 0] }, ctx)).toBeNull();
   });
 

@@ -185,16 +185,41 @@ risk_score           = 100 − overall_health
 
 Com o preset GlobalSys v1 (pesos de §71, soma **1,00**):
 
-| Caso                                     | overall_health | risk | Classe  | Confiança |
-| ---------------------------------------- | -------------: | ---: | ------- | --------: |
-| 10 métricas em 100                       |            100 |    0 | Normal  |     100 % |
-| `critical_tickets` (peso 0,18) sem dado  |            100 |    0 | Normal  |      82 % |
-| NPS (0,03) sem resposta, resto em 100    |            100 |    0 | Normal  |      97 % |
-| reuniões previstas = 0 (0,05), resto 100 |            100 |    0 | Normal  |      95 % |
-| duas métricas 0,5/0,5 em 80 e 65         |           72,5 | 27,5 | Atenção |     100 % |
-| nenhuma métrica avaliada                 |            N/A |  N/A | —       |       0 % |
+| Caso                                                             | overall_health | risk | Classe  | Confiança |
+| ---------------------------------------------------------------- | -------------: | ---: | ------- | --------: |
+| 10 métricas em 100                                               |            100 |    0 | Normal  |     100 % |
+| `critical_tickets` (peso 0,18) sem dado                          |            100 |    0 | Normal  |      82 % |
+| NPS (0,03) **sem dado** (`value: null`), resto em 100            |            100 |    0 | Normal  |      97 % |
+| NPS (0,03) **não respondido** (`answered: false`), última nota 9 |          99,76 | 0,24 | Normal  |   99,25 % |
+| reuniões previstas = 0 (0,05), resto 100                         |            100 |    0 | Normal  |      95 % |
+| duas métricas 0,5/0,5 em 80 e 65                                 |           72,5 | 27,5 | Atenção |     100 % |
+| nenhuma métrica avaliada                                         |            N/A |  N/A | —       |       0 % |
 
 Classes pelas faixas configuráveis (`DEFAULT_HEALTH_BANDS` 80/60/40 em `@inovaapss/shared`).
+
+### 7.1 "Não respondeu" não é "sem dado" (§22, §55)
+
+Métricas que dependem de o cliente responder (NPS, pesquisas) marcam cada período com
+`answered: true | false` em `PeriodValue`. `answered: false` é **uma observação válida**: o cliente
+foi consultado e não respondeu. O motor não a colapsa em ausência:
+
+| Período atual                                          | current_health                                                       | frescor | Evidência                                                                                  |
+| ------------------------------------------------------ | -------------------------------------------------------------------- | ------: | ------------------------------------------------------------------------------------------ |
+| `value: null` (não medido)                             | N/A — sai do overall, reduz a confiança                              |       1 | "NPS: sem dado no período."                                                                |
+| `answered: false`, última nota há 1 período            | o último health respondido, mantido (`unanswered.carryLast`, padrão) |    0,75 | "NPS: sem resposta neste mês (última resposta 90 há 1 mês, mantida com frescor reduzido)." |
+| `answered: false` há 2 períodos, costumava responder   | idem                                                                 |     0,5 | "… (2 meses seguidos sem responder; o cliente costumava responder; última resposta …)"     |
+| `answered: false` além de `maxCarryPeriods` (padrão 3) | N/A                                                                  |       1 | "NPS: sem resposta neste mês (…)" — continua diferente de "sem dado"                       |
+
+O frescor é `1 − períodos_desde_a_última_resposta / (maxCarryPeriods + 1)` e entra em
+`disponibilidade_i` (§25): a confiança cai, **a saúde não**. Em nenhum caso o health vira zero.
+A análise (`MetricScore.response`: sequência sem resposta, taxa de resposta, mudança de
+comportamento) chega aos gatilhos como `extra.unanswered_streak`, `extra.behavior_changed`,
+`extra.response_rate`, `extra.periods_since_last_answer` e `extra.last_answered_value` — ex.:
+"cliente parou de responder há 2 períodos" vira um gatilho `THRESHOLD` em
+`extra.unanswered_streak >= 2` com piso de prioridade, sem tocar no health (§27). Política por
+métrica em `MetricConfig.unanswered` (`carryLast`, `maxCarryPeriods`), configurável (§65).
+Testes: "NPS sem resposta não vira ausência automática nem zero" e "sequência sem responder"
+em `client-score.test.ts`.
 
 ---
 
@@ -266,9 +291,12 @@ crossesDown = classe(projetado) ∈ {Risco, Crítico} e pior que a atual
 | `[40, 50, 60]`      |        70 | Risco → Atenção          | não         |
 | `[60]`              |       N/A | — (confiança "low")      | não         |
 
-`buildForecastChart` ordena por `priority_score` desc, conta os cruzamentos (título do gráfico) e
-devolve os thresholds das faixas vigentes. Os tipos `ForecastRow`/`ForecastChartData` estão em
-`packages/engine/src/scoring/types.ts`; `packages/shared/src/dashboard` pode reexportá-los.
+`buildForecastChart` ordena por `priority_score` desc, conta os cruzamentos sobre **todas** as
+linhas do recorte (o título "N clientes devem cruzar…" não muda quando a UI corta em 10/25 com
+`limit`) e devolve os thresholds das faixas vigentes. Os tipos `ForecastRow`/`ForecastChartData`
+têm fonte única em `packages/shared/src/dashboard/forecast.ts` (consumida por API, web e engine);
+`packages/engine/src/scoring/types.ts` apenas os reexporta, e a projeção vive em
+`packages/engine/src/scoring/forecast.ts` (Etapa 4).
 
 ---
 

@@ -23,6 +23,7 @@ export function scoreClient(input: ClientScoreInput): ClientScoreResult {
     weight: s.weight,
     metricHealth: s.metricHealth,
     confidence: s.confidence,
+    freshness: s.freshness,
   }));
   const overall = computeOverallHealth(contributions, config.overall ?? {}, config.healthBands);
 

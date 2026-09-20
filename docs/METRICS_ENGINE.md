@@ -24,14 +24,16 @@ interface MetricConfig {
   trend?: TrendConfig; // seção 3
   persistence?: PersistenceConfig; // seção 3
   triggers?: TriggerConfig[]; // seção 4
+  unanswered?: { carryLast?: boolean; maxCarryPeriods?: number }; // seção 6 (§22)
   explanationTemplate?: string; // seção 5
   isActive?: boolean; // false = fora do cálculo
 }
 ```
 
-A série de valores chega como `PeriodValue[]` (`{ periodEnd, value, text? }`, do mais antigo ao
-mais recente; `value: null` = período sem dado) e campos auxiliares para gatilhos e textos em
-`extra` (ex.: `{ critical_tickets: 3, missed: 2 }`).
+A série de valores chega como `PeriodValue[]` (`{ periodEnd, value, text?, answered? }`, do mais
+antigo ao mais recente; `value: null` = período **sem dado**; `answered: false` = o cliente foi
+consultado e **não respondeu**, só em métricas com esse conceito — seção 6) e campos auxiliares
+para gatilhos e textos em `extra` (ex.: `{ critical_tickets: 3, missed: 2 }`).
 
 ---
 
@@ -54,12 +56,15 @@ meta zero, operador proibido) → `EngineConfigError`/`UnsafeRuleError` — a Et
 ### Fórmula segura (`CUSTOM_SAFE_RULE`)
 
 - JSON Logic, sem `eval`, sem `method`, sem operadores registrados. Allowlist em
-  `ALLOWED_RULE_OPERATORS` (`var`, `if`, comparações, aritmética, `min/max`, `map/filter/reduce`,
-  `in`, `cat`, `substr`...).
+  `ALLOWED_RULE_OPERATORS` (`var`, `missing`, `if`, comparações, aritmética, `min/max`,
+  `map/filter/reduce/all/some/none`, `in`, `substr`). Fora, de propósito, `merge` e `cat`: são os
+  únicos que produzem resultado maior que a entrada e, dentro de `reduce`, dobrariam o acumulador
+  a cada período (2^n — negação de serviço por regra configurada).
 - Contexto visível: `value`, `text`, `previous`, `baseline`, `history[]`, `series[]`, `params.*`,
-  `extra.*`, `health` (nos gatilhos). Objetos sem protótipo: `constructor`/`__proto__` são
-  recusados na regra e removidos do contexto.
-- Limites: 500 nós, profundidade 30.
+  `extra.*`, `health` (nos gatilhos). Objetos sem protótipo: `constructor`/`__proto__`/`prototype`
+  são recusados na regra (em `var`, `missing` e `missing_some`) e removidos do contexto.
+- Limites: 500 nós, profundidade 30, e a regra só enxerga os últimos 60 períodos de
+  `history`/`series` (`MAX_RULE_SERIES_LENGTH`).
 - `isSafeRule(rule)` para validar no formulário sem avaliar.
 
 Exemplo — health = 100 se o valor ficou dentro de 20 % do baseline, senão 40:
@@ -153,12 +158,22 @@ Funções em `derived.ts` produzem o valor bruto antes da normalização (a API 
 | `slaCompliancePct(within, resolved, pct?)` | `pct` informado, senão `within / max(resolved,1) × 100`            | entrada ausente         |
 | `missedMeetingRate(planned, completed)`    | `(planned − completed) / planned × 100`                            | **`planned = 0`** (§21) |
 | `npsHealth(answered, score)`               | `clamp(score × 10, 0, 100)`                                        | **não respondeu** (§22) |
-| `analyzeNpsResponses(history)`             | sequência sem resposta, taxa de resposta, mudança de comportamento | —                       |
+| `analyzeResponses(history)`                | sequência sem resposta, taxa de resposta, mudança de comportamento | —                       |
+| `analyzeNpsResponses(history)`             | o mesmo, com o health da nota e textos de NPS                      | —                       |
 | Métrica 2 (SLA)                            | [SLA_ENGINE.md](SLA_ENGINE.md) `aggregateClientSla`                | sem chamado avaliável   |
 
-NPS sem resposta e reuniões sem previsão viram N/A na métrica: não entram no overall e reduzem a
-confiança (97 % e 95 % com o preset), nunca viram zero. A sequência sem resposta pode alimentar um
-gatilho via `extra.nps_unanswered_streak`.
+Reuniões sem previsão viram N/A na métrica: não entram no overall e reduzem a confiança (95 % com
+o preset), nunca viram zero.
+
+**NPS sem resposta não é ausência** (§22, §55): a API grava o período com `answered: false` (e
+`value: null`) em vez de omitir o valor. O `scoreMetric` então (1) mantém o último health
+respondido com frescor reduzido por até `unanswered.maxCarryPeriods` períodos (padrão 3; depois
+N/A) — a confiança cai, a saúde não; (2) preenche `MetricScore.response` e os campos
+`extra.unanswered_streak`, `extra.response_rate`, `extra.behavior_changed`,
+`extra.periods_since_last_answer` e `extra.last_answered_value` para gatilhos e modelos de texto;
+(3) escreve a evidência "NPS: sem resposta neste mês (…)", diferente de "sem dado no período".
+Exemplo de gatilho: `THRESHOLD` em `extra.unanswered_streak >= 2` com `priorityFloor` — "cliente
+costumava responder e parou". Números em [SCORING.md §7.1](SCORING.md).
 
 ---
 
@@ -184,6 +199,7 @@ Recomendações para a Etapa 3:
    `client-score.test.ts` traz um exemplo completo com normalizações ilustrativas; os thresholds
    reais vêm da calibração com a planilha, §44).
 
-Pendência anotada: `ForecastRow`/`ForecastChartData`, `MetricConfig` e os tipos de configuração
-vivem no engine; `packages/shared` pode reexportá-los (`dashboard/forecast.ts`) quando o front
-precisar sem depender do motor.
+Onde ficam os tipos: `MetricConfig` e os tipos de configuração vivem no engine
+(`packages/engine/src/scoring/types.ts`); `ForecastRow`/`ForecastChartData` têm fonte única em
+`packages/shared/src/dashboard/forecast.ts` (API, web e engine consomem o mesmo tipo; o engine só
+os reexporta).

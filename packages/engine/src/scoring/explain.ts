@@ -1,7 +1,7 @@
 import { fillTemplate, formatNumber, formatSigned, pluralize } from '../shared/format.js';
 import { isFiniteNumber } from '../shared/math.js';
 
-import type { MetricConfig, NormalizationResult, TrendResult } from './types.js';
+import type { MetricConfig, NormalizationResult, ResponseAnalysis, TrendResult } from './types.js';
 
 export interface ExplainInput {
   metric: Pick<MetricConfig, 'name' | 'unit' | 'direction' | 'explanationTemplate'>;
@@ -104,4 +104,37 @@ export function explainMetric(input: ExplainInput, options: ExplainOptions = {})
   }
 
   return `${name}: ${withUnit(currentValue, metric.unit)} no período atual.`;
+}
+
+export interface ExplainUnansweredInput extends ExplainInput {
+  response: ResponseAnalysis;
+  /** O health do último período respondido foi mantido (com frescor reduzido). */
+  carried: boolean;
+}
+
+/**
+ * §22 — explicação quando o cliente foi consultado e não respondeu: diferente de "sem dado".
+ * Ex.: "NPS: sem resposta neste mês (2 meses seguidos; o cliente costumava responder; última
+ * resposta 9 há 2 meses, mantida com frescor reduzido)."
+ */
+export function explainUnanswered(input: ExplainUnansweredInput, options: ExplainOptions = {}) {
+  const { metric, response } = input;
+  const periodLabel = options.periodLabel ?? 'período';
+  const details: string[] = [];
+  if (response.consecutiveUnanswered >= 2) {
+    details.push(
+      `${pluralize(response.consecutiveUnanswered, periodLabel)} seguidos sem responder`,
+    );
+  }
+  if (response.behaviorChanged) details.push('o cliente costumava responder');
+  if (isFiniteNumber(response.lastAnsweredValue) && response.periodsSinceLastAnswer !== null) {
+    const ago = pluralize(response.periodsSinceLastAnswer, periodLabel);
+    details.push(
+      `última resposta ${withUnit(response.lastAnsweredValue, metric.unit)} há ${ago}${input.carried ? ', mantida com frescor reduzido' : ''}`,
+    );
+  } else if (response.lastAnsweredValue === null) {
+    details.push('nenhuma resposta no histórico');
+  }
+  const suffix = details.length > 0 ? ` (${details.join('; ')})` : '';
+  return `${metric.name}: sem resposta neste ${periodLabel}${suffix}.`;
 }

@@ -153,10 +153,17 @@ describe('payload do gráfico', () => {
     expect(chart.periodLabel).toBe('mês');
   });
 
-  it('limite de linhas', () => {
+  it('limite de linhas: o título continua contando quem cruza fora do corte', () => {
     const chart = buildForecastChart(clients, { limit: 2 });
     expect(chart.rows).toHaveLength(2);
     expect(chart.periodLabel).toBe('período');
     expect(buildForecastChart([]).crossingCount).toBe(0);
+
+    // Só "gama" cruza (Risco → Crítico) e está na 2ª posição; com limit 1 ela sai das linhas,
+    // mas o título "N clientes devem cruzar…" fala do recorte inteiro (DATAVIZ.md §5.4).
+    const cut = buildForecastChart(clients, { limit: 1 });
+    expect(cut.rows.map((r) => r.clientId)).toEqual(['alfa']);
+    expect(cut.rows.some((r) => r.crossesDown)).toBe(false);
+    expect(cut.crossingCount).toBe(1);
   });
 });
