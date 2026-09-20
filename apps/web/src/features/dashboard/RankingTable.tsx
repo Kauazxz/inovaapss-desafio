@@ -70,8 +70,18 @@ function TrendIcon({ trend }: { trend: HealthTrend }) {
   );
 }
 
+/**
+ * Valor mensal ponderado pelo risco (`mrr × risco / 100`): o quanto da receita está em jogo.
+ * É a chave de ordenação da coluna "Valor mensal" — um contrato grande com risco baixo pode
+ * pesar mais que um contrato pequeno com risco alto, e vice-versa.
+ */
+function revenueAtRisk(row: RankingRow): number {
+  return (row.mrr * row.riskScore) / 100;
+}
+
 function compare(a: RankingRow, b: RankingRow, key: SortKey): number {
   if (key === 'clientName') return a.clientName.localeCompare(b.clientName);
+  if (key === 'mrr') return revenueAtRisk(a) - revenueAtRisk(b);
   const left = a[key];
   const right = b[key];
   // Sem projeção vai para o fim, em qualquer direção.
@@ -83,7 +93,8 @@ function compare(a: RankingRow, b: RankingRow, key: SortKey): number {
 /**
  * Tabela de ranking (§39): Prioridade, Cliente, Health (número + pílula da classe), Health
  * projetado e Confiança da projeção (irmã do gráfico — DATAVIZ.md §5.1), Risco, Confiança,
- * Valor mensal, Principal evidência (com a ação sugerida), Ação.
+ * Valor mensal, Principal evidência (com a ação sugerida), Ação. Nasce na ordem de prioridade;
+ * "Valor mensal" ordena pela receita em risco (valor × risco), não pelo valor bruto do contrato.
  */
 export function RankingTable({ rows, onSelect }: RankingTableProps) {
   const [sort, setSort] = useState<SortState>({ key: 'position', direction: 'asc' });
@@ -193,7 +204,12 @@ export function RankingTable({ rows, onSelect }: RankingTableProps) {
               <TableCell className="text-right tabular-nums">
                 {formatPercent(row.confidence)}
               </TableCell>
-              <TableCell className="text-right tabular-nums">{formatCurrency(row.mrr)}</TableCell>
+              <TableCell className="text-right tabular-nums">
+                <span className="block">{formatCurrency(row.mrr)}</span>
+                <span className="block text-xs text-muted-foreground">
+                  {formatCurrency(revenueAtRisk(row))} em risco
+                </span>
+              </TableCell>
               <TableCell className="max-w-72 whitespace-normal">
                 <span className="block">{row.topEvidence}</span>
                 <span className="block text-xs text-muted-foreground">→ {row.suggestedAction}</span>

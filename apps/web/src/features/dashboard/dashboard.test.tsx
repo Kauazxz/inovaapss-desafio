@@ -192,8 +192,11 @@ describe('tabela de ranking', () => {
       );
 
       await userEvent.click(screen.getByRole('button', { name: 'Valor mensal' }));
-      const richest = [...mock.ranking].sort((a, b) => b.mrr - a.mrr)[0]!;
-      expect(tableClientRows()[0]).toHaveTextContent(richest.clientName);
+      // Ordena pela receita em risco (valor × risco), não pelo valor bruto do contrato.
+      const exposed = [...mock.ranking].sort(
+        (a, b) => (b.mrr * b.riskScore) / 100 - (a.mrr * a.riskScore) / 100,
+      )[0]!;
+      expect(tableClientRows()[0]).toHaveTextContent(exposed.clientName);
       expect(screen.getByRole('columnheader', { name: /valor mensal/i })).toHaveAttribute(
         'aria-sort',
         'descending',
