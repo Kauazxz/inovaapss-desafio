@@ -10,7 +10,6 @@ export default defineConfig({
      * precisam de estado limpo entre arquivos.
      */
     pool: 'threads',
-    poolOptions: { threads: { useAtomics: true } },
     fsModuleCache: true,
   },
 });

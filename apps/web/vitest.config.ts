@@ -20,7 +20,6 @@ export default mergeConfig(
        * de começar sem sessão. O ganho seria de poucos segundos; a confiança vale mais.
        */
       pool: 'threads',
-      poolOptions: { threads: { useAtomics: true } },
       /** Guarda a transformação entre execuções: a segunda rodada não recompila tudo de novo. */
       fsModuleCache: true,
       globals: false,
