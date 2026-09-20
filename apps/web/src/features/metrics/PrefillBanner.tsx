@@ -58,18 +58,18 @@ export function PrefillBanner({ onReview }: { onReview?: (prefill: MetricPrefill
     <section
       role="status"
       aria-labelledby="prefill-title"
-      className="mb-4 flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border bg-muted/40 p-4"
+      className="flex flex-col gap-4 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 sm:flex-row sm:items-start sm:justify-between"
     >
       <div className="flex min-w-0 items-start gap-3">
         <FileText aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
         <div className="min-w-0 space-y-1">
-          <h2 id="prefill-title" className="text-sm font-semibold">
+          <h2 id="prefill-title" className="cn-font-heading text-base leading-snug font-medium">
             Sugestão aceita
             {prefill.origin.fileName !== null ? ` do documento ${prefill.origin.fileName}` : ''}
           </h2>
-          <p className="text-sm">
+          <p className="text-sm break-words">
             <span className="font-medium">{prefill.name}</span>{' '}
-            <code className="rounded bg-muted px-1 text-xs">{prefill.slug}</code> ·{' '}
+            <code className="rounded-md bg-muted px-1.5 py-0.5 text-xs">{prefill.slug}</code> ·{' '}
             {details.join(' · ')}
           </p>
           {prefill.description !== null && prefill.description !== '' ? (
@@ -86,7 +86,8 @@ export function PrefillBanner({ onReview }: { onReview?: (prefill: MetricPrefill
           ) : null}
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      {/* No celular as três ações empilham em linhas que caibam; a partir de sm ficam ao lado. */}
+      <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
         <Button type="button" size="sm" onClick={confirm} disabled={create.isPending}>
           {create.isPending ? 'Criando…' : 'Criar métrica'}
         </Button>

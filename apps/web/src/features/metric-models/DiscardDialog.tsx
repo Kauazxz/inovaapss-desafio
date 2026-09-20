@@ -58,7 +58,8 @@ export function DiscardDialog({
         </ul>
 
         {error ? (
-          <p className="text-sm text-class-critical" role="alert">
+          // Erro é `text-destructive`; as cores de saúde ficam reservadas ao risco do cliente.
+          <p className="text-sm text-destructive" role="alert">
             {error}
           </p>
         ) : null}

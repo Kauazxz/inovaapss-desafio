@@ -101,7 +101,8 @@ export function MetricModelDetailPage() {
         </Button>
       </PageHeader>
 
-      <p className="mb-4 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+      {/* O mesmo aviso, com o mesmo acabamento da lista de modelos — duas telas irmãs. */}
+      <p className="mb-6 rounded-xl bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
         Editar aqui vale para a organização inteira: a partir da ativação, todos os clientes passam
         a ser pontuados por esta configuração. As versões anteriores e os scores que elas geraram
         ficam guardados — cada score histórico continua sabendo qual versão o gerou.
@@ -128,9 +129,10 @@ export function MetricModelDetailPage() {
       ) : (
         <>
           {shown.status === 'draft' ? null : (
-            <div className="mb-4">
+            <div className="mb-6">
               <Button
                 type="button"
+                className="w-full sm:w-auto"
                 disabled={createVersion.isPending || draftVersion !== null}
                 onClick={newVersion}
               >

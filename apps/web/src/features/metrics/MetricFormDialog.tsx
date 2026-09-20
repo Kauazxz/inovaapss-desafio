@@ -46,8 +46,9 @@ import { suggestSlug } from './slug';
 
 import type { MetricPrefill } from '@/features/documents/api';
 
+// Mesmo acabamento do <Input>: superfície `bg-card`, borda de campo e o anel de foco.
 const textareaClassName =
-  'min-h-20 w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive dark:bg-input/30';
+  'min-h-20 w-full min-w-0 rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive dark:bg-input/30';
 
 interface FormValues {
   name: string;
@@ -335,11 +336,13 @@ function MetricForm({
           </FormField>
         </div>
 
-        <label className="flex items-center gap-2 text-sm">
+        {/* Texto longo: no celular ele quebra em duas linhas e a caixa fica alinhada à primeira. */}
+        <label className="flex items-start gap-2 text-sm">
           <input
             type="checkbox"
             checked={values.isActive}
             onChange={(event) => set('isActive', event.target.checked)}
+            className="mt-0.5 size-4 shrink-0 accent-primary focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
           />
           Métrica ativa (entra no cálculo e na soma dos pesos do modelo)
         </label>
@@ -366,7 +369,9 @@ function MetricForm({
 export function MetricFormDialog({ open, ...props }: MetricFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+      {/* Formulário longo: o próprio DialogContent já rola sozinho e no celular ocupa quase
+          tudo sem colar na borda (w-[calc(100%-2rem)] max-h-[calc(100dvh-2rem)]). */}
+      <DialogContent className="sm:max-w-2xl">
         <MetricForm {...props} />
       </DialogContent>
     </Dialog>

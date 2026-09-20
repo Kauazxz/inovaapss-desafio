@@ -26,9 +26,9 @@ import { SimulatePanel } from './SimulatePanel';
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-sm font-medium">{value}</dd>
+      <dd className="text-sm font-medium break-words">{value}</dd>
     </div>
   );
 }
@@ -36,7 +36,7 @@ function Field({ label, value }: { label: string; value: string }) {
 function ConfigList({ title, lines }: { title: string; lines: string[] }) {
   return (
     <section aria-labelledby={`cfg-${title}`} className="space-y-1">
-      <h3 id={`cfg-${title}`} className="text-sm font-semibold">
+      <h3 id={`cfg-${title}`} className="text-sm font-medium">
         {title}
       </h3>
       <ul className="list-disc space-y-0.5 pl-5 text-sm text-muted-foreground">
@@ -52,8 +52,9 @@ function Detail({ data }: { data: MetricDefinitionDetailDto }) {
   const { definition, activeItem, activeModel } = data;
   const triggers = activeItem === null ? [] : describeTriggers(activeItem.criticalTriggerConfig);
   return (
-    <div className="space-y-8">
-      <dl className="grid grid-cols-2 gap-4 border-b border-border pb-6 md:grid-cols-4">
+    <div className="space-y-6">
+      {/* Uma coluna no celular, duas no tablet, quatro no monitor (§8 do guia). */}
+      <dl className="grid gap-x-6 gap-y-5 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="Chave" value={definition.slug} />
         <Field label="Tipo" value={METRIC_TYPE_LABELS[definition.metricType]} />
         <Field label="Unidade" value={definition.unit ?? '—'} />
@@ -73,7 +74,9 @@ function Detail({ data }: { data: MetricDefinitionDetailDto }) {
         />
       </dl>
 
-      <div className="space-y-6">
+      {/* As seções de configuração são agrupamento semântico: uma superfície só, sem caixa
+          dentro de caixa. */}
+      <div className="space-y-5 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5">
         <ConfigList title="Direção" lines={[describeDirection(definition.direction)]} />
         {activeItem === null ? (
           <p className="text-sm text-muted-foreground">
@@ -92,7 +95,7 @@ function Detail({ data }: { data: MetricDefinitionDetailDto }) {
         )}
       </div>
 
-      <div className="border-t border-border pt-6">
+      <div className="rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5">
         <SimulatePanel definition={definition} item={activeItem} />
       </div>
     </div>

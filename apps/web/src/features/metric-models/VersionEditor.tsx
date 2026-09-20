@@ -84,6 +84,13 @@ function clampPercent(value: number): number {
   return Math.min(100, Math.max(0, value));
 }
 
+// A tabela do configurador tem onze colunas — a mais larga do sistema. No celular ficam só as
+// quatro que respondem "que métrica é, quanto ela pesa e o que fazer com ela"; o resto volta
+// conforme sobra espaço (§8 do guia). A classe vai no par <TableHead> + <TableCell> da coluna.
+const HIDDEN_UNTIL_MD = 'hidden md:table-cell';
+const HIDDEN_UNTIL_LG = 'hidden lg:table-cell';
+const HIDDEN_UNTIL_XL = 'hidden xl:table-cell';
+
 export interface VersionEditorProps {
   modelId: string;
   version: MetricModelVersionDto;
@@ -164,21 +171,23 @@ export function VersionEditor({
         </p>
       ) : null}
 
+      {/* A soma fica visível o tempo todo (§41). No celular empilha; do sm para cima a versão
+          vai para a direita. O anel avisa quando a soma não fecha. */}
       <div
         role="status"
         aria-label="Soma dos pesos"
         className={cn(
-          'mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3',
-          check.ok ? 'border-border' : 'border-destructive',
+          'mb-6 flex flex-col gap-2 rounded-xl bg-card p-4 shadow-soft ring-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-5',
+          check.ok ? 'ring-foreground/5' : 'ring-destructive/40',
         )}
       >
-        <div>
-          <p className={cn('text-sm font-semibold', check.ok ? '' : 'text-destructive')}>
+        <div className="min-w-0">
+          <p className={cn('text-sm font-medium', check.ok ? '' : 'text-destructive')}>
             Soma dos pesos: {percent(check.total)}
           </p>
           <p className="text-xs text-muted-foreground">{check.message}</p>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground sm:shrink-0 sm:text-right">
           Versão {version.version} ·{' '}
           {METRIC_MODEL_VERSION_STATUS_LABELS[version.status].toLowerCase()}
           {editable ? '' : ' · imutável'}
@@ -186,14 +195,16 @@ export function VersionEditor({
       </div>
 
       {editable ? (
-        <div className="mb-4 flex flex-wrap items-end gap-2">
-          <div className="flex flex-col gap-1">
+        // Barra de ações: no celular o campo ocupa a linha inteira e os botões se acomodam
+        // abaixo; do sm para cima tudo volta para a mesma faixa (§8 do guia).
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="flex w-full min-w-0 flex-col gap-1 sm:w-64">
             <label htmlFor="add-metric" className="text-xs text-muted-foreground">
               Adicionar métrica à versão
             </label>
             <select
               id="add-metric"
-              className={cn(selectClassName, 'w-64')}
+              className={selectClassName}
               value={toAdd}
               onChange={(event) => setToAdd(event.target.value)}
             >
@@ -205,60 +216,64 @@ export function VersionEditor({
               ))}
             </select>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={toAdd === ''}
-            onClick={() => {
-              setDraft((items) => [...items, newDraftItem(toAdd)]);
-              setToAdd('');
-            }}
-          >
-            <Plus aria-hidden="true" />
-            Adicionar
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={rebalance.isPending || draft.length === 0}
-            onClick={askRebalance}
-          >
-            <Scale aria-hidden="true" />
-            {rebalance.isPending ? 'Calculando…' : 'Redistribuir pesos'}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!dirty || updateVersion.isPending}
-            onClick={() =>
-              updateVersion.mutate({
-                modelId,
-                version: version.version,
-                items: draftToItems(draft),
-              })
-            }
-          >
-            {updateVersion.isPending ? 'Salvando…' : 'Salvar rascunho'}
-          </Button>
-          <Button
-            type="button"
-            disabled={!check.ok || dirty || activateVersion.isPending}
-            onClick={() => setActivateOpen(true)}
-          >
-            Ativar versão
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={discardVersion.isPending}
-            onClick={() => setDiscardOpen(true)}
-          >
-            <Trash2 aria-hidden="true" />
-            Descartar rascunho
-          </Button>
-          {dirty ? (
-            <span className="text-xs text-muted-foreground">Salve o rascunho antes de ativar.</span>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={toAdd === ''}
+              onClick={() => {
+                setDraft((items) => [...items, newDraftItem(toAdd)]);
+                setToAdd('');
+              }}
+            >
+              <Plus aria-hidden="true" />
+              Adicionar
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={rebalance.isPending || draft.length === 0}
+              onClick={askRebalance}
+            >
+              <Scale aria-hidden="true" />
+              {rebalance.isPending ? 'Calculando…' : 'Redistribuir pesos'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!dirty || updateVersion.isPending}
+              onClick={() =>
+                updateVersion.mutate({
+                  modelId,
+                  version: version.version,
+                  items: draftToItems(draft),
+                })
+              }
+            >
+              {updateVersion.isPending ? 'Salvando…' : 'Salvar rascunho'}
+            </Button>
+            <Button
+              type="button"
+              disabled={!check.ok || dirty || activateVersion.isPending}
+              onClick={() => setActivateOpen(true)}
+            >
+              Ativar versão
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={discardVersion.isPending}
+              onClick={() => setDiscardOpen(true)}
+            >
+              <Trash2 aria-hidden="true" />
+              Descartar rascunho
+            </Button>
+            {dirty ? (
+              <span className="text-xs text-muted-foreground">
+                Salve o rascunho antes de ativar.
+              </span>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -282,159 +297,172 @@ export function VersionEditor({
           description="Escolha as métricas que compõem o score e distribua os pesos até somarem 100 %."
         />
       ) : (
-        <Table aria-label="Métricas do modelo">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Ativa</TableHead>
-              <TableHead className="text-right">Ordem</TableHead>
-              <TableHead>Métrica</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead className="text-right">Peso empresa</TableHead>
-              <TableHead className="text-right">Peso sugerido</TableHead>
-              <TableHead className="text-right">Peso final</TableHead>
-              <TableHead>Direção</TableHead>
-              <TableHead>Normalização</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {draft.map((item, index) => {
-              const definition = definitionsById.get(item.metricDefinitionId);
-              const name = definition?.name ?? 'Métrica removida';
-              const counts = item.included && (definition?.isActive ?? false);
-              // A proposta de redistribuição está na tela agora e ganha da calibração, que é
-              // a leitura de fundo do histórico.
-              const suggested =
-                proposedById.get(item.metricDefinitionId) ??
-                calibration?.weightByMetricId.get(item.metricDefinitionId);
-              return (
-                <TableRow key={item.metricDefinitionId} data-metric-id={item.metricDefinitionId}>
-                  <TableCell>
-                    <input
-                      type="checkbox"
-                      checked={item.included}
-                      disabled={!editable}
-                      aria-label={`Incluir ${name} nesta versão`}
-                      onChange={(event) =>
-                        setDraft((items) =>
-                          patchDraftItem(items, item.metricDefinitionId, {
-                            included: event.target.checked,
-                          }),
-                        )
-                      }
-                    />
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{index + 1}</TableCell>
-                  <TableCell>
-                    <Link
-                      to={`/metrics/${item.metricDefinitionId}`}
-                      className="font-medium underline-offset-4 hover:underline"
-                    >
-                      {name}
-                    </Link>
-                    <span className="block text-xs text-muted-foreground">
-                      {definition?.slug ?? '—'}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {definition === undefined ? '—' : METRIC_TYPE_LABELS[definition.metricType]}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {editable ? (
-                      <Input
-                        className="ml-auto h-8 w-24 text-right tabular-nums"
-                        inputMode="decimal"
-                        aria-label={`Peso de ${name} em porcentagem`}
-                        value={
-                          weightText[item.metricDefinitionId] ??
-                          String(weightToPercent(item.weight))
-                        }
-                        onChange={(event) => {
-                          const typed = event.target.value;
-                          setWeightText((texts) => ({
-                            ...texts,
-                            [item.metricDefinitionId]: typed,
-                          }));
-                          const raw = Number(typed.replace(',', '.'));
-                          const weight =
-                            typed.trim() === '' || !Number.isFinite(raw)
-                              ? 0
-                              : percentToWeight(clampPercent(raw));
+        <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+          <Table aria-label="Métricas do modelo">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ativa</TableHead>
+                <TableHead className={cn(HIDDEN_UNTIL_LG, 'text-right')}>Ordem</TableHead>
+                <TableHead>Métrica</TableHead>
+                <TableHead className={HIDDEN_UNTIL_LG}>Tipo</TableHead>
+                <TableHead className="text-right">Peso empresa</TableHead>
+                <TableHead className={cn(HIDDEN_UNTIL_MD, 'text-right')}>Peso sugerido</TableHead>
+                <TableHead className={cn(HIDDEN_UNTIL_MD, 'text-right')}>Peso final</TableHead>
+                <TableHead className={HIDDEN_UNTIL_XL}>Direção</TableHead>
+                <TableHead className={HIDDEN_UNTIL_LG}>Normalização</TableHead>
+                <TableHead className={HIDDEN_UNTIL_MD}>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {draft.map((item, index) => {
+                const definition = definitionsById.get(item.metricDefinitionId);
+                const name = definition?.name ?? 'Métrica removida';
+                const counts = item.included && (definition?.isActive ?? false);
+                // A proposta de redistribuição está na tela agora e ganha da calibração, que é
+                // a leitura de fundo do histórico.
+                const suggested =
+                  proposedById.get(item.metricDefinitionId) ??
+                  calibration?.weightByMetricId.get(item.metricDefinitionId);
+                return (
+                  <TableRow key={item.metricDefinitionId} data-metric-id={item.metricDefinitionId}>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        className="size-4 accent-primary focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                        checked={item.included}
+                        disabled={!editable}
+                        aria-label={`Incluir ${name} nesta versão`}
+                        onChange={(event) =>
                           setDraft((items) =>
-                            patchDraftItem(items, item.metricDefinitionId, { weight }),
-                          );
-                        }}
-                      />
-                    ) : (
-                      <span className="tabular-nums">{percent(item.weight)}</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {suggested === undefined ? '—' : percent(suggested)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {counts ? percent(item.weight) : '—'}
-                  </TableCell>
-                  <TableCell>
-                    {definition === undefined ? '—' : METRIC_DIRECTION_LABELS[definition.direction]}
-                  </TableCell>
-                  <TableCell>
-                    {NORMALIZATION_STRATEGY_LABELS[item.normalization.strategy]}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {statusOf(
-                      item,
-                      definition,
-                      activeWeights.get(item.metricDefinitionId),
-                      editable,
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={!editable || index === 0}
-                        aria-label={`Subir ${name}`}
-                        onClick={() => setDraft((items) => moveDraftItem(items, index, -1))}
-                      >
-                        <ArrowUp aria-hidden="true" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={!editable || index === draft.length - 1}
-                        aria-label={`Descer ${name}`}
-                        onClick={() => setDraft((items) => moveDraftItem(items, index, 1))}
-                      >
-                        <ArrowDown aria-hidden="true" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`Configurar ${name}`}
-                        onClick={() =>
-                          setOpenMetricId((currentId) =>
-                            currentId === item.metricDefinitionId ? null : item.metricDefinitionId,
+                            patchDraftItem(items, item.metricDefinitionId, {
+                              included: event.target.checked,
+                            }),
                           )
                         }
+                      />
+                    </TableCell>
+                    <TableCell className={cn(HIDDEN_UNTIL_LG, 'text-right tabular-nums')}>
+                      {index + 1}
+                    </TableCell>
+                    <TableCell className="min-w-40 whitespace-normal">
+                      <Link
+                        to={`/metrics/${item.metricDefinitionId}`}
+                        className="rounded-md font-medium underline-offset-4 hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
                       >
-                        <Settings2 aria-hidden="true" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                        {name}
+                      </Link>
+                      <span className="block text-xs text-muted-foreground">
+                        {definition?.slug ?? '—'}
+                      </span>
+                    </TableCell>
+                    <TableCell className={HIDDEN_UNTIL_LG}>
+                      {definition === undefined ? '—' : METRIC_TYPE_LABELS[definition.metricType]}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {editable ? (
+                        <Input
+                          className="ml-auto w-20 text-right tabular-nums sm:w-24"
+                          inputMode="decimal"
+                          aria-label={`Peso de ${name} em porcentagem`}
+                          value={
+                            weightText[item.metricDefinitionId] ??
+                            String(weightToPercent(item.weight))
+                          }
+                          onChange={(event) => {
+                            const typed = event.target.value;
+                            setWeightText((texts) => ({
+                              ...texts,
+                              [item.metricDefinitionId]: typed,
+                            }));
+                            const raw = Number(typed.replace(',', '.'));
+                            const weight =
+                              typed.trim() === '' || !Number.isFinite(raw)
+                                ? 0
+                                : percentToWeight(clampPercent(raw));
+                            setDraft((items) =>
+                              patchDraftItem(items, item.metricDefinitionId, { weight }),
+                            );
+                          }}
+                        />
+                      ) : (
+                        <span className="tabular-nums">{percent(item.weight)}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className={cn(HIDDEN_UNTIL_MD, 'text-right tabular-nums')}>
+                      {suggested === undefined ? '—' : percent(suggested)}
+                    </TableCell>
+                    <TableCell className={cn(HIDDEN_UNTIL_MD, 'text-right tabular-nums')}>
+                      {counts ? percent(item.weight) : '—'}
+                    </TableCell>
+                    <TableCell className={HIDDEN_UNTIL_XL}>
+                      {definition === undefined
+                        ? '—'
+                        : METRIC_DIRECTION_LABELS[definition.direction]}
+                    </TableCell>
+                    <TableCell className={HIDDEN_UNTIL_LG}>
+                      {NORMALIZATION_STRATEGY_LABELS[item.normalization.strategy]}
+                    </TableCell>
+                    <TableCell className={cn(HIDDEN_UNTIL_MD, 'text-muted-foreground')}>
+                      {statusOf(
+                        item,
+                        definition,
+                        activeWeights.get(item.metricDefinitionId),
+                        editable,
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {/* Alvo de toque de 36 px no celular; a partir de sm o botão encolhe (§9). */}
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="size-9 sm:size-7"
+                          disabled={!editable || index === 0}
+                          aria-label={`Subir ${name}`}
+                          onClick={() => setDraft((items) => moveDraftItem(items, index, -1))}
+                        >
+                          <ArrowUp aria-hidden="true" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="size-9 sm:size-7"
+                          disabled={!editable || index === draft.length - 1}
+                          aria-label={`Descer ${name}`}
+                          onClick={() => setDraft((items) => moveDraftItem(items, index, 1))}
+                        >
+                          <ArrowDown aria-hidden="true" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="size-9 sm:size-7"
+                          aria-label={`Configurar ${name}`}
+                          onClick={() =>
+                            setOpenMetricId((currentId) =>
+                              currentId === item.metricDefinitionId
+                                ? null
+                                : item.metricDefinitionId,
+                            )
+                          }
+                        >
+                          <Settings2 aria-hidden="true" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
-      <p className="mt-2 text-xs text-muted-foreground">
+      <p className="mt-3 text-xs text-muted-foreground">
         {suggestedWeightNote(calibration, proposal !== null)} Peso final é o que realmente entra na
         conta: uma métrica desativada não soma.
       </p>

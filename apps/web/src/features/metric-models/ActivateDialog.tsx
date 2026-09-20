@@ -58,7 +58,7 @@ export function ActivateDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold">
+          <h3 className="text-sm font-medium">
             O que muda{activeVersion === null ? '' : ` em relação à versão ${activeVersion}`}
           </h3>
           {changes.length === 0 ? (
@@ -75,7 +75,7 @@ export function ActivateDialog({
               ))}
             </ul>
           )}
-          <p className="rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">
+          <p className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
             Vale para a organização inteira
             {clientCount === null ? '' : ` (${clientCount} clientes na carteira)`}, não para um
             cliente só. Os scores passados continuam com a versão que os gerou; para pontuar o

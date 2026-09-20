@@ -263,11 +263,11 @@ export function ItemConfigPanel({
   return (
     <aside
       aria-label={`Configuração de ${definition.name}`}
-      className="space-y-5 rounded-xl border border-border bg-muted/20 p-4"
+      className="space-y-5 rounded-xl bg-card p-4 shadow-soft ring-1 ring-foreground/5 sm:p-5"
     >
       <div className="flex items-start justify-between gap-2">
-        <div>
-          <h3 className="text-base font-semibold">{definition.name}</h3>
+        <div className="min-w-0">
+          <h3 className="text-base font-medium">{definition.name}</h3>
           <p className="text-xs text-muted-foreground">
             {METRIC_TYPE_LABELS[definition.metricType]} ·{' '}
             {METRIC_DIRECTION_LABELS[definition.direction]} · {definition.slug}
@@ -276,7 +276,8 @@ export function ItemConfigPanel({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
+          size="icon-sm"
+          className="size-9 shrink-0 sm:size-7"
           onClick={onClose}
           aria-label="Fechar painel"
         >
@@ -285,7 +286,7 @@ export function ItemConfigPanel({
       </div>
 
       {readOnly ? (
-        <p className="rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">
+        <p className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
           Esta versão já foi ativada ou arquivada e é imutável (§32). Para mudar a configuração,
           crie uma nova versão a partir da ativa.
         </p>
@@ -306,7 +307,8 @@ export function ItemConfigPanel({
         title="Composição do score"
         description="Health da métrica = atual × p1 + tendência × p2 + persistência × p3. Só a proporção importa."
       >
-        <div className="grid grid-cols-3 gap-3">
+        {/* Três frações curtas: uma coluna no celular, as três lado a lado a partir do sm. */}
+        <div className="grid gap-3 sm:grid-cols-3">
           <TextField
             label="Atual"
             type="number"
@@ -335,7 +337,7 @@ export function ItemConfigPanel({
         title="Tendência e persistência"
         description="Janelas e método. Em branco, o motor usa o padrão (3 períodos)."
       >
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <TextField
             label="Janela da tendência"
             type="number"
@@ -395,7 +397,7 @@ export function ItemConfigPanel({
       ) : null}
 
       {readOnly ? null : (
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancelar
           </Button>

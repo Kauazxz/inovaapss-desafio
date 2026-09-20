@@ -53,73 +53,81 @@ export function VersionsPanel({
       : compareItems(activeVersion.items, compared.items, nameOf);
 
   return (
-    <section aria-labelledby="versoes-titulo" className="space-y-3">
+    <section aria-labelledby="versoes-titulo" className="space-y-4">
       <div>
-        <h3 id="versoes-titulo" className="text-base font-semibold">
+        <h3 id="versoes-titulo" className="text-base font-medium">
           Versões
         </h3>
-        <p className="text-sm text-muted-foreground">
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Versões ativadas e arquivadas são imutáveis. Elas ficam guardadas com os scores que
           geraram, e cada score histórico sabe qual versão o calculou.
         </p>
       </div>
 
-      <Table aria-label="Versões do modelo">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="text-right">Versão</TableHead>
-            <TableHead>Situação</TableHead>
-            <TableHead>Em vigor desde</TableHead>
-            <TableHead className="text-right">Métricas</TableHead>
-            <TableHead className="text-right">Soma dos pesos</TableHead>
-            <TableHead className="text-right">Ações</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {versions.map((version) => (
-            <TableRow key={version.id} data-version={version.version}>
-              <TableCell className="text-right tabular-nums">{version.version}</TableCell>
-              <TableCell>{METRIC_MODEL_VERSION_STATUS_LABELS[version.status]}</TableCell>
-              <TableCell>{dateOf(version.effectiveFrom)}</TableCell>
-              <TableCell className="text-right tabular-nums">{version.items.length}</TableCell>
-              <TableCell className="text-right tabular-nums">{totalOf(version)}</TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={selected === version.version}
-                    onClick={() => onSelect(version.version)}
-                  >
-                    Abrir
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={activeVersion === null || activeVersion.version === version.version}
-                    onClick={() =>
-                      setComparing((current) =>
-                        current === version.version ? null : version.version,
-                      )
-                    }
-                  >
-                    Comparar com a ativa
-                  </Button>
-                </div>
-              </TableCell>
+      {/* No celular sobram versão, situação, soma dos pesos e as ações; data e contagem de
+          métricas voltam conforme sobra largura (§8 do guia). */}
+      <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+        <Table aria-label="Versões do modelo">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-right">Versão</TableHead>
+              <TableHead>Situação</TableHead>
+              <TableHead className="hidden md:table-cell">Em vigor desde</TableHead>
+              <TableHead className="hidden text-right lg:table-cell">Métricas</TableHead>
+              <TableHead className="text-right">Soma dos pesos</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {versions.map((version) => (
+              <TableRow key={version.id} data-version={version.version}>
+                <TableCell className="text-right tabular-nums">{version.version}</TableCell>
+                <TableCell>{METRIC_MODEL_VERSION_STATUS_LABELS[version.status]}</TableCell>
+                <TableCell className="hidden tabular-nums md:table-cell">
+                  {dateOf(version.effectiveFrom)}
+                </TableCell>
+                <TableCell className="hidden text-right tabular-nums lg:table-cell">
+                  {version.items.length}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">{totalOf(version)}</TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={selected === version.version}
+                      onClick={() => onSelect(version.version)}
+                    >
+                      Abrir
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={activeVersion === null || activeVersion.version === version.version}
+                      onClick={() =>
+                        setComparing((current) =>
+                          current === version.version ? null : version.version,
+                        )
+                      }
+                    >
+                      Comparar com a ativa
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
 
       {compared !== null && activeVersion !== null ? (
         <div
           aria-label={`Diferenças entre a versão ${activeVersion.version} e a versão ${compared.version}`}
-          className="space-y-2 rounded-xl border border-border p-4"
+          className="space-y-2 rounded-xl bg-card p-4 shadow-soft ring-1 ring-foreground/5 sm:p-5"
         >
-          <h4 className="text-sm font-semibold">
+          <h4 className="text-sm font-medium">
             Da versão {activeVersion.version} para a versão {compared.version}
           </h4>
           {changes.length === 0 ? (

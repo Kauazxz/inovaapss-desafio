@@ -40,9 +40,11 @@ function itemToInput(item: MetricModelItemDto | null): PreviewScoreInput['item']
 
 function Score({ label, value }: { label: string; value: number | null }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-2xl font-semibold tabular-nums">
+      {/* Número grande solto: figuras proporcionais, `tabular-nums` só em tabela
+          (DATAVIZ.md §2.2). Não quebra linha no meio do número. */}
+      <dd className="text-2xl font-semibold tracking-tight whitespace-nowrap">
         {value === null ? 'N/A' : number.format(value)}
       </dd>
     </div>
@@ -88,7 +90,7 @@ export function SimulatePanel({
   return (
     <section aria-labelledby="simular-titulo" className="space-y-4">
       <div>
-        <h3 id="simular-titulo" className="text-base font-semibold">
+        <h3 id="simular-titulo" className="cn-font-heading text-base leading-snug font-medium">
           Simular
         </h3>
         <p className="text-sm text-muted-foreground">
@@ -100,14 +102,16 @@ export function SimulatePanel({
       </div>
 
       <form
-        className="flex flex-wrap items-end gap-2"
+        className="flex flex-col gap-2 sm:flex-row sm:items-end"
         onSubmit={(event) => {
           event.preventDefault();
           run();
         }}
       >
-        <div className="flex min-w-64 flex-1 flex-col gap-1">
-          <Label htmlFor={valuesId}>
+        <div className="flex w-full min-w-0 flex-col gap-1 sm:flex-1">
+          {/* Rótulo longo: `leading-snug` no lugar do `leading-none` do componente, senão as
+              linhas ficam coladas quando ele quebra no celular. */}
+          <Label htmlFor={valuesId} className="leading-snug">
             Valores por período, do mais antigo ao mais recente (separe por vírgula, decimal com
             ponto; "x" = sem dado)
           </Label>
@@ -124,7 +128,7 @@ export function SimulatePanel({
             </p>
           ) : null}
         </div>
-        <Button type="submit" disabled={preview.isPending}>
+        <Button type="submit" className="w-full sm:w-auto" disabled={preview.isPending}>
           <Play aria-hidden="true" />
           {preview.isPending ? 'Simulando…' : 'Simular'}
         </Button>
@@ -140,7 +144,7 @@ export function SimulatePanel({
         <div className="space-y-4" aria-live="polite">
           <dl
             aria-label="Componentes do score"
-            className="grid grid-cols-2 gap-4 border-b border-border pb-4 md:grid-cols-5"
+            className="grid gap-x-6 gap-y-5 border-b border-border pb-4 sm:grid-cols-3 lg:grid-cols-5"
           >
             <Score label="Atual" value={score.currentHealth} />
             <Score label="Tendência" value={score.trendHealth} />

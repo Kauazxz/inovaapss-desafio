@@ -58,7 +58,7 @@ export function NormalizationEditor({
       />
 
       {state.strategy === 'LINEAR_RANGE' ? (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <TextField
             label="Mínimo"
             type="number"
@@ -92,7 +92,7 @@ export function NormalizationEditor({
       ) : null}
 
       {state.strategy === 'RATIO_TO_TARGET' ? (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <TextField
             label="Meta"
             type="number"
@@ -125,7 +125,9 @@ export function NormalizationEditor({
       ) : null}
 
       {state.strategy === 'BASELINE_DEVIATION' ? (
-        <div className="grid grid-cols-2 gap-3">
+        // Sete campos: uma coluna no celular, duas no tablet e três no monitor — densidade sem
+        // aperto (§8 do guia).
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <TextField
             label="Janela do baseline (períodos)"
             type="number"
@@ -179,7 +181,7 @@ export function NormalizationEditor({
       ) : null}
 
       {state.strategy === 'BOOLEAN_MAP' ? (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <TextField
             label="Health quando sim"
             type="number"
@@ -204,11 +206,12 @@ export function NormalizationEditor({
             ela que recebe tudo o que sobrar.
           </p>
           {state.bands.map((band, index) => (
+            // `min-w-0` nos dois campos: sem ele o rótulo longo estoura a largura da tela.
             <div key={index} className="flex items-end gap-2">
               <TextField
                 label={`Até (faixa ${index + 1})`}
                 type="number"
-                className="flex-1"
+                className="min-w-0 flex-1"
                 disabled={disabled}
                 value={band.upTo}
                 onChange={(value) =>
@@ -221,7 +224,7 @@ export function NormalizationEditor({
               <TextField
                 label="Health"
                 type="number"
-                className="flex-1"
+                className="min-w-0 flex-1"
                 disabled={disabled}
                 value={band.health}
                 onChange={(value) =>
@@ -234,7 +237,8 @@ export function NormalizationEditor({
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
+                size="icon-sm"
+                className="size-9 sm:size-7"
                 disabled={disabled || state.bands.length <= 1}
                 aria-label={`Remover a faixa ${index + 1}`}
                 onClick={() =>
@@ -266,7 +270,7 @@ export function NormalizationEditor({
             <div key={index} className="flex items-end gap-2">
               <TextField
                 label={`Categoria ${index + 1}`}
-                className="flex-1"
+                className="min-w-0 flex-1"
                 disabled={disabled}
                 value={entry.key}
                 onChange={(value) =>
@@ -279,7 +283,7 @@ export function NormalizationEditor({
               <TextField
                 label="Health"
                 type="number"
-                className="flex-1"
+                className="min-w-0 flex-1"
                 disabled={disabled}
                 value={entry.health}
                 onChange={(value) =>
@@ -294,7 +298,8 @@ export function NormalizationEditor({
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
+                size="icon-sm"
+                className="size-9 sm:size-7"
                 disabled={disabled}
                 aria-label={`Remover a categoria ${index + 1}`}
                 onClick={() =>

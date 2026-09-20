@@ -48,13 +48,16 @@ export function TriggersEditor({
       ) : null}
 
       {rows.map((row, index) => (
-        <div key={index} className="space-y-3 rounded-lg border border-border p-3">
+        // Cada gatilho é um bloco preenchido, não uma caixa de borda: o painel em volta já é a
+        // superfície elevada e caixa dentro de caixa embaralha a leitura.
+        <div key={index} className="space-y-3 rounded-xl bg-muted/40 p-3 sm:p-4">
           <div className="flex items-start justify-between gap-2">
             <span className="text-xs font-medium text-muted-foreground">Gatilho {index + 1}</span>
             <Button
               type="button"
               variant="ghost"
-              size="sm"
+              size="icon-sm"
+              className="size-9 shrink-0 sm:size-7"
               disabled={disabled}
               aria-label={`Remover o gatilho ${index + 1}`}
               onClick={() => onChange(rows.filter((_, i) => i !== index))}
@@ -62,7 +65,7 @@ export function TriggersEditor({
               <Trash2 aria-hidden="true" />
             </Button>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <TextField
               label="Identificador"
               disabled={disabled}
@@ -92,7 +95,7 @@ export function TriggersEditor({
           </div>
 
           {row.kind === 'THRESHOLD' ? (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid gap-3 sm:grid-cols-3">
               <TextField
                 label="Campo"
                 disabled={disabled}
@@ -118,7 +121,7 @@ export function TriggersEditor({
           ) : null}
 
           {row.kind === 'STREAK' ? (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid gap-3 sm:grid-cols-3">
               <SelectField
                 label="Operador"
                 disabled={disabled}
@@ -152,7 +155,7 @@ export function TriggersEditor({
             />
           ) : null}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <TextField
               label="Piso de prioridade"
               type="number"

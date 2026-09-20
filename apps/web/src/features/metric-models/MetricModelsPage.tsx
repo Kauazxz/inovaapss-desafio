@@ -26,6 +26,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { MetricsError, MetricsLoading } from '@/features/metrics/MetricsStates';
+import { cn } from '@/lib/utils';
 
 import {
   useAllMetricDefinitions,
@@ -45,6 +46,12 @@ function draftVersionOf(summary: MetricModelSummary): MetricModelVersionDto | nu
   return summary.detail?.versions.find((version) => version.status === 'draft') ?? null;
 }
 
+// Colunas de apoio saem do caminho no celular (§8 do guia). O que sobra conta a história:
+// qual modelo, qual versão está em vigor, se a soma fecha e o que dá para fazer. A mesma
+// classe vai no <TableHead> e no <TableCell> da coluna, senão a tabela desalinha.
+const HIDDEN_UNTIL_MD = 'hidden md:table-cell';
+const HIDDEN_UNTIL_LG = 'hidden lg:table-cell';
+
 function ModelRow({
   summary,
   definitionsById,
@@ -62,10 +69,10 @@ function ModelRow({
 
   return (
     <TableRow data-model-id={summary.model.id}>
-      <TableCell>
+      <TableCell className="min-w-40 whitespace-normal">
         <Link
           to={`/metric-models/${summary.model.id}`}
-          className="font-medium underline-offset-4 hover:underline"
+          className="rounded-md font-medium underline-offset-4 hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
         >
           {summary.model.name}
         </Link>
@@ -73,17 +80,17 @@ function ModelRow({
           {summary.model.isActive ? 'Modelo ativo' : 'Modelo desativado'}
         </span>
       </TableCell>
-      <TableCell>{WEIGHT_MODE_LABELS[summary.mode]}</TableCell>
+      <TableCell className={HIDDEN_UNTIL_LG}>{WEIGHT_MODE_LABELS[summary.mode]}</TableCell>
       <TableCell className="tabular-nums">
         {summary.isPending ? '…' : active === null ? 'Nenhuma' : `versão ${active.version}`}
       </TableCell>
-      <TableCell className="text-right tabular-nums">
+      <TableCell className={cn(HIDDEN_UNTIL_MD, 'text-right tabular-nums')}>
         {active === null ? '—' : active.items.length}
       </TableCell>
       <TableCell className="text-right tabular-nums">
         {check === null ? '—' : percent(check.total)}
       </TableCell>
-      <TableCell className="text-muted-foreground">
+      <TableCell className={cn(HIDDEN_UNTIL_MD, 'text-muted-foreground')}>
         {draft === null ? 'Sem rascunho aberto' : `Rascunho v${draft.version} em aberto`}
       </TableCell>
       <TableCell className="text-right">
@@ -156,30 +163,32 @@ export function MetricModelsPage() {
             }
           />
         ) : (
-          <Table aria-label="Modelos de métricas">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Modelo</TableHead>
-                <TableHead>Modo de peso</TableHead>
-                <TableHead>Versão ativa</TableHead>
-                <TableHead className="text-right">Métricas</TableHead>
-                <TableHead className="text-right">Soma dos pesos</TableHead>
-                <TableHead>Rascunho</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {summaries.map((summary) => (
-                <ModelRow
-                  key={summary.model.id}
-                  summary={summary}
-                  definitionsById={definitionsById}
-                  creating={createVersion.isPending}
-                  onNewVersion={(modelId) => createVersion.mutate({ modelId })}
-                />
-              ))}
-            </TableBody>
-          </Table>
+          <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+            <Table aria-label="Modelos de métricas">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Modelo</TableHead>
+                  <TableHead className={HIDDEN_UNTIL_LG}>Modo de peso</TableHead>
+                  <TableHead>Versão ativa</TableHead>
+                  <TableHead className={cn(HIDDEN_UNTIL_MD, 'text-right')}>Métricas</TableHead>
+                  <TableHead className="text-right">Soma dos pesos</TableHead>
+                  <TableHead className={HIDDEN_UNTIL_MD}>Rascunho</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {summaries.map((summary) => (
+                  <ModelRow
+                    key={summary.model.id}
+                    summary={summary}
+                    definitionsById={definitionsById}
+                    creating={createVersion.isPending}
+                    onNewVersion={(modelId) => createVersion.mutate({ modelId })}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </div>
 
