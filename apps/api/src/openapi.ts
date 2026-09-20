@@ -511,6 +511,10 @@ export const openapiDocument: OpenAPIV3_1.Document = {
       name: 'imports',
       description: 'Importação de planilhas: upload, mapeamento, prévia e confirmação (§34, A4)',
     },
+    {
+      name: 'assistant',
+      description: 'Agente IA: perguntas sobre o relatório da carteira (§35, §39 + A5)',
+    },
   ],
   security: [{ bearerAuth: [] }],
   paths: {
@@ -1412,6 +1416,40 @@ export const openapiDocument: OpenAPIV3_1.Document = {
           '409': errorResponse(
             'Sem mapeamento (IMPORT_NOT_MAPPED), já confirmada (IMPORT_ALREADY_CONFIRMED) ou com linhas recusadas (IMPORT_HAS_INVALID_ROWS)',
           ),
+        },
+      },
+    },
+    '/api/v1/assistant/status': {
+      get: {
+        tags: ['assistant'],
+        summary: 'O Agente IA está configurado nesta instância?',
+        operationId: 'getAssistantStatus',
+        description:
+          'A tela chama isto antes de mostrar o campo de pergunta. Sem OPENAI_API_KEY no servidor, `configured` é false e a tela explica o que configurar em vez de quebrar.',
+        responses: {
+          '200': jsonResponse('Situação do Agente', 'AssistantStatus'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+        },
+      },
+    },
+    '/api/v1/assistant/ask': {
+      post: {
+        tags: ['assistant'],
+        summary: 'Pergunta sobre o relatório da carteira',
+        operationId: 'askAssistant',
+        description:
+          'O servidor monta um briefing com os MESMOS dados do dashboard (KPIs, distribuição, dimensões, evolução e ranking com evidências) da organização do tenant e manda junto da pergunta. O modelo só enxerga esse material: não consulta banco nem internet, e é instruído a dizer quando a informação não está lá. A IA escolhe apenas a perspectiva do Canvas de Decisão; os números, séries e clientes do canvas são resolvidos pela API a partir dos snapshots do tenant. Com `documentId`, o texto extraído daquele documento entra no contexto. O servidor não guarda a conversa — o histórico vem no corpo. Limite de 30 perguntas por usuário a cada 5 minutos.',
+        requestBody: jsonBody('AskAssistantBody'),
+        responses: {
+          '200': jsonResponse('Resposta do Agente', 'AskAssistantResult'),
+          '400': { $ref: '#/components/responses/ValidationError' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': errorResponse('Documento não encontrado ou ainda sem texto extraído'),
+          '429': { $ref: '#/components/responses/RateLimited' },
+          '502': errorResponse('A OpenAI recusou ou está fora do ar (OPENAI_ERROR)'),
+          '503': errorResponse('OPENAI_API_KEY não configurada (OPENAI_NOT_CONFIGURED)'),
         },
       },
     },
@@ -2336,6 +2374,108 @@ export const openapiDocument: OpenAPIV3_1.Document = {
               ok: { type: 'boolean' },
               reason: { type: 'string' },
               clients: { type: 'integer' },
+            },
+          },
+        },
+      },
+      AssistantStatus: {
+        type: 'object',
+        required: ['configured', 'model', 'canReadDocuments'],
+        properties: {
+          configured: { type: 'boolean' },
+          model: { type: ['string', 'null'], example: 'gpt-4o-mini' },
+          canReadDocuments: { type: 'boolean' },
+        },
+      },
+      AssistantMessage: {
+        type: 'object',
+        required: ['role', 'content'],
+        properties: {
+          role: { type: 'string', enum: ['user', 'assistant'] },
+          content: { type: 'string', maxLength: 2000 },
+        },
+      },
+      AskAssistantBody: {
+        type: 'object',
+        required: ['question'],
+        properties: {
+          question: {
+            type: 'string',
+            minLength: 3,
+            maxLength: 2000,
+            example: 'Com quem eu preciso falar hoje, e por quê?',
+          },
+          documentId: {
+            type: 'string',
+            format: 'uuid',
+            description: 'Documento da organização a considerar junto do relatório.',
+          },
+          history: {
+            type: 'array',
+            maxItems: 20,
+            description: 'Conversa anterior; o servidor não guarda sessão.',
+            items: { $ref: '#/components/schemas/AssistantMessage' },
+          },
+        },
+      },
+      AskAssistantResult: {
+        type: 'object',
+        required: ['answer', 'model', 'canvas', 'context'],
+        properties: {
+          answer: { type: 'string' },
+          model: { type: 'string' },
+          canvas: { $ref: '#/components/schemas/AssistantCanvas' },
+          context: {
+            type: 'object',
+            required: ['clientsInRanking', 'periodEnd', 'documentName'],
+            description: 'Sobre o que o Agente respondeu, para a pessoa poder conferir.',
+            properties: {
+              clientsInRanking: { type: 'integer' },
+              periodEnd: { type: 'string' },
+              documentName: { type: ['string', 'null'] },
+            },
+          },
+          usage: {
+            type: 'object',
+            properties: {
+              promptTokens: { type: 'integer' },
+              completionTokens: { type: 'integer' },
+            },
+          },
+        },
+      },
+      AssistantCanvas: {
+        type: 'object',
+        required: ['preset', 'title', 'summary', 'generatedAt', 'widgets'],
+        description:
+          'Painel visual preenchido exclusivamente com dados dos DTOs do dashboard. O modelo escolhe o preset, mas não fornece valores.',
+        properties: {
+          preset: {
+            type: 'string',
+            enum: ['risk', 'revenue', 'forecast', 'dimensions', 'portfolio'],
+          },
+          title: { type: 'string' },
+          summary: { type: 'string' },
+          generatedAt: { type: 'string' },
+          widgets: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['type'],
+              properties: {
+                type: {
+                  type: 'string',
+                  enum: [
+                    'metrics',
+                    'forecast',
+                    'dimensions',
+                    'timeline',
+                    'distribution',
+                    'priorities',
+                  ],
+                },
+              },
+              additionalProperties: true,
             },
           },
         },

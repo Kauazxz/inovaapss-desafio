@@ -1,5 +1,6 @@
 import {
   Bell,
+  Bot,
   FileText,
   Gauge,
   LayoutDashboard,
@@ -23,6 +24,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/clients', label: 'Clientes', icon: Users },
   { to: '/alerts', label: 'Alertas', icon: Bell },
+  { to: '/assistant', label: 'Agente IA', icon: Bot },
   { to: '/metrics', label: 'Métricas', icon: Gauge },
   { to: '/metric-models', label: 'Modelos de métricas', icon: SlidersHorizontal },
   { to: '/import', label: 'Importar dados', icon: Upload },

@@ -39,6 +39,22 @@ export const serverEnvSchema = z.object({
       'DATABASE_URL precisa começar com postgresql://',
     ),
   ANTHROPIC_API_KEY: optionalString,
+  /**
+   * §35 + A5 — chave da OpenAI para a leitura assistida de documentos e para o Agente IA.
+   * Só o backend lê: nunca vai para o navegador nem para log. Sem ela, a API continua
+   * funcionando no fluxo manual e o Agente responde que não está configurado.
+   */
+  OPENAI_API_KEY: optionalString,
+  /** Modelo usado nas duas funções. Sem valor, vale o padrão do código. */
+  OPENAI_MODEL: optionalString,
+  /**
+   * Endereço da Web API do Unstructured (https://github.com/Unstructured-IO/unstructured-api),
+   * que lê PDF, DOCX, XLSX, PPTX, imagens e e-mail. Ex.: http://localhost:8000 numa instância
+   * local via Docker. Sem ela, a API usa os extratores locais (unpdf, mammoth, xlsx).
+   */
+  UNSTRUCTURED_API_URL: optionalUrl,
+  /** Chave da instância do Unstructured, quando ela exigir (cabeçalho unstructured-api-key). */
+  UNSTRUCTURED_API_KEY: optionalString,
   SENTRY_DSN: optionalUrl,
 });
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

@@ -32,3 +32,8 @@ if (typeof window.matchMedia !== 'function') {
       dispatchEvent: () => false,
     }) as MediaQueryList;
 }
+
+// O jsdom não implementa scrollIntoView (a conversa do Agente IA rola até a última mensagem).
+if (typeof Element.prototype.scrollIntoView !== 'function') {
+  Element.prototype.scrollIntoView = function scrollIntoView(): void {};
+}

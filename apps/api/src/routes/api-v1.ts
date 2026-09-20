@@ -9,9 +9,12 @@
 import { Router } from 'express';
 
 import { API_VERSION } from '../config/version.js';
+import { createOpenAiClient, type OpenAiClient } from '../infrastructure/ai/openai-client.js';
 import {
   createManualMetricExtractionProvider,
+  createOpenAiMetricExtractionProvider,
   createTextExtractor,
+  createUnstructuredTextExtractor,
   type MetricExtractionProvider,
   type TextExtractor,
 } from '../infrastructure/extraction/index.js';
@@ -21,6 +24,10 @@ import { createRequireAuth, type GetUserByToken, supabaseGetUser } from '../midd
 import { createResolveTenant } from '../middleware/tenant.js';
 import { createAlertsRouter } from '../modules/alerts/routes.js';
 import { createAlertsService } from '../modules/alerts/service.js';
+import { createAssistantController } from '../modules/assistant/controller.js';
+import { createAssistantDocumentLoader } from '../modules/assistant/document-loader.js';
+import { createAssistantRouter } from '../modules/assistant/routes.js';
+import { createAssistantService } from '../modules/assistant/service.js';
 import { createAuthController } from '../modules/auth/controller.js';
 import { createAuthRouter } from '../modules/auth/routes.js';
 import { createAuthService } from '../modules/auth/service.js';
@@ -39,7 +46,10 @@ import {
 } from '../modules/contracts/repository.js';
 import { createContractsRouter, createPlansRouter } from '../modules/contracts/routes.js';
 import { createContractsService, createPlansService } from '../modules/contracts/service.js';
-import { createDashboardRepository } from '../modules/dashboard/repository.js';
+import {
+  createDashboardRepository,
+  type DashboardRepository,
+} from '../modules/dashboard/repository.js';
 import { createDashboardRouter } from '../modules/dashboard/routes.js';
 import { createDashboardService } from '../modules/dashboard/service.js';
 import { createDocumentsController } from '../modules/documents/controller.js';
@@ -358,6 +368,16 @@ export const ROUTES: readonly RouteDescriptor[] = [
     path: `${API_V1_PREFIX}/imports/{id}/errors`,
     description: 'Linhas recusadas da importação, com o motivo',
   },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/assistant/status`,
+    description: 'Se o Agente IA está configurado nesta instância e com que modelo',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/assistant/ask`,
+    description: 'Pergunta ao Agente IA sobre o relatório da carteira',
+  },
 ];
 
 export interface ApiV1Dependencies {
@@ -387,8 +407,23 @@ export interface ApiV1Dependencies {
   importStorage?: DocumentStorage;
   /** Testes: substitui o recálculo disparado ao confirmar uma importação (§62). */
   recalculate?: RecalculatePortfolio;
+  /** Testes: substitui a leitura dos snapshots do dashboard (base do Agente IA). */
+  dashboardRepository?: DashboardRepository;
+  /** Testes: substitui o cliente da OpenAI. `null` simula a instância sem chave configurada. */
+  openAiClient?: OpenAiClient | null;
+  /** Testes: desliga o rate limit próprio do Agente IA. */
+  assistantRateLimit?: boolean;
   /** Variáveis para os serviços que dependem de configuração (e-mail, URL do painel). */
-  env?: Pick<ApiEnv, 'RESEND_API_KEY' | 'EMAIL_FROM' | 'WEB_BASE_URL'>;
+  env?: Pick<
+    ApiEnv,
+    | 'RESEND_API_KEY'
+    | 'EMAIL_FROM'
+    | 'WEB_BASE_URL'
+    | 'OPENAI_API_KEY'
+    | 'OPENAI_MODEL'
+    | 'UNSTRUCTURED_API_URL'
+    | 'UNSTRUCTURED_API_KEY'
+  >;
   /** Testes: substitui o envio de e-mail. */
   mailer?: Mailer;
 }
@@ -514,22 +549,54 @@ export function createApiV1Router(deps: ApiV1Dependencies): Router {
   );
 
   // Dashboard — leitura dos snapshots calculados pelo scoring.
+  const dashboardService = createDashboardService(
+    deps.dashboardRepository ?? createDashboardRepository(getDb),
+  );
   router.use(
     '/dashboard',
-    createDashboardRouter({
-      requireAuth,
-      resolveTenant,
-      service: createDashboardService(createDashboardRepository(getDb)),
-    }),
+    createDashboardRouter({ requireAuth, resolveTenant, service: dashboardService }),
   );
 
+  // ---------------------------------------------------------------------- IA
+  // A chave só existe no backend. Sem ela, nada quebra: a leitura de documentos continua nos
+  // extratores locais, a descoberta de métricas fica no fluxo manual (§35) e o Agente IA
+  // responde 503 explicando o que configurar.
+  const openAiClient: OpenAiClient | null =
+    deps.openAiClient !== undefined
+      ? deps.openAiClient
+      : deps.env?.OPENAI_API_KEY
+        ? createOpenAiClient({
+            apiKey: deps.env.OPENAI_API_KEY,
+            model: deps.env.OPENAI_MODEL,
+          })
+        : null;
+
+  const localTextExtractor = createTextExtractor();
+  const textExtractor: TextExtractor =
+    deps.textExtractor ??
+    (deps.env?.UNSTRUCTURED_API_URL
+      ? createUnstructuredTextExtractor({
+          apiUrl: deps.env.UNSTRUCTURED_API_URL,
+          apiKey: deps.env.UNSTRUCTURED_API_KEY,
+          fallback: localTextExtractor,
+        })
+      : localTextExtractor);
+
+  const documentsRepository =
+    deps.documentsRepository ?? createDocumentsRepository(() => deps.db.getDb());
+  const documentStorage =
+    deps.documentStorage ??
+    createSupabaseDocumentStorage({ getClient: () => deps.supabase.getAdmin() });
+
   const documentsService = createDocumentsService({
-    repository: deps.documentsRepository ?? createDocumentsRepository(() => deps.db.getDb()),
-    storage:
-      deps.documentStorage ??
-      createSupabaseDocumentStorage({ getClient: () => deps.supabase.getAdmin() }),
-    textExtractor: deps.textExtractor ?? createTextExtractor(),
-    provider: deps.metricExtractionProvider ?? createManualMetricExtractionProvider(),
+    repository: documentsRepository,
+    storage: documentStorage,
+    textExtractor,
+    provider:
+      deps.metricExtractionProvider ??
+      (openAiClient === null
+        ? createManualMetricExtractionProvider()
+        : createOpenAiMetricExtractionProvider({ client: openAiClient })),
   });
   router.use(
     createDocumentsRouter({
@@ -562,6 +629,29 @@ export function createApiV1Router(deps: ApiV1Dependencies): Router {
       requireAuth,
       resolveTenant,
       controller: createImportsController(importsService),
+    }),
+  );
+
+  // Agente IA — pergunta e resposta sobre o relatório que o dashboard já mostra.
+  router.use(
+    '/assistant',
+    createAssistantRouter({
+      requireAuth,
+      resolveTenant,
+      rateLimitEnabled: deps.assistantRateLimit ?? true,
+      controller: createAssistantController(
+        createAssistantService({
+          dashboard: dashboardService,
+          client: openAiClient,
+          documents: createAssistantDocumentLoader({
+            repository: documentsRepository,
+            storage: documentStorage,
+          }),
+          organizationName: async (tenant) =>
+            (await organizationsRepository.findById(tenant.organizationId))?.name ??
+            'sua organização',
+        }),
+      ),
     }),
   );
 

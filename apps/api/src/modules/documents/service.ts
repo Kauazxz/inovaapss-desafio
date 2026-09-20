@@ -287,7 +287,11 @@ export function createDocumentsService(deps: DocumentsServiceDependencies): Docu
 
       let extracted: ExtractedText;
       try {
-        extracted = await textExtractor.extract({ buffer, kind: record.kind });
+        extracted = await textExtractor.extract({
+          buffer,
+          kind: record.kind,
+          fileName: record.fileName,
+        });
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Falha desconhecida na extração.';
         await repository.updateDocument(tenant.organizationId, id, {
