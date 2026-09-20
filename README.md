@@ -6,8 +6,9 @@ Projeto do grupo para o desafio INOVAAPPS: um **motor configurável de saúde, r
 clientes** — uma plataforma SaaS multiempresa em que cada organização configura as próprias métricas,
 enxerga quais clientes estão se deteriorando, entende as evidências e sabe em que ordem agir.
 
-> **Status:** Etapa 0 (fundação) concluída; as próximas etapas rodam em paralelo por trilhas.
-> Acompanhe em **[docs/ETAPAS.md](docs/ETAPAS.md)**.
+> **Status:** Etapas 0 (fundação) e 1 (auth + multiempresa) concluídas; motor de scoring e SLA
+> prontos na parte pura (`packages/engine`, Etapas 4/5) e dashboard com dados de exemplo (Etapa 8).
+> As demais etapas rodam em paralelo por trilhas — acompanhe em **[docs/ETAPAS.md](docs/ETAPAS.md)**.
 
 ---
 
@@ -32,14 +33,15 @@ vencem o resto em caso de conflito).
 
 ## Stack
 
-| Camada                 | Tecnologia                                                                                                   | Estado                                                 |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
-| Monorepo               | **pnpm** workspaces + **Turborepo**, TypeScript, ESLint, Prettier, Husky + lint-staged                       | **pronto** (Etapa 0)                                   |
-| API                    | **Express** + **Drizzle ORM** + Zod + Pino, Vitest + Supertest, OpenAPI                                      | esqueleto pronto (`/health`, `/ready`, `/api/docs`)    |
-| Web                    | **React** + **Vite** + **Tailwind** + **shadcn/ui**, React Router, TanStack Query, React Hook Form, Recharts | esqueleto pronto (rotas §38, dashboard com mock)       |
-| Banco / Auth / Storage | **Supabase** (Postgres, Auth, Storage), migrations geradas pelo Drizzle em `supabase/migrations/`            | **funcionando** — deploy automático por GitHub Actions |
-| Hospedagem web         | **Vercel**                                                                                                   | a conectar — [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)  |
-| Hospedagem API         | **Railway ou Render** (Dockerfile)                                                                           | a conectar — [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)  |
+| Camada                 | Tecnologia                                                                                                   | Estado                                                                                              |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| Monorepo               | **pnpm** workspaces + **Turborepo**, TypeScript, ESLint, Prettier, Husky + lint-staged                       | **pronto** (Etapa 0)                                                                                |
+| API                    | **Express** + **Drizzle ORM** + Zod + Pino, Vitest + Supertest, OpenAPI                                      | Etapa 1 pronta: auth (JWT do Supabase), tenant, RBAC, organizações (`/api/v1/me`, `/organizations`) |
+| Motor                  | `packages/engine` — scoring, SLA e forecast puros, com testes                                                | Etapas 4/5 (parte pura) prontas; acoplamento ao banco pendente                                      |
+| Web                    | **React** + **Vite** + **Tailwind** + **shadcn/ui**, React Router, TanStack Query, React Hook Form, Recharts | login, recuperação de senha, onboarding e dashboard com dados de exemplo (mock)                     |
+| Banco / Auth / Storage | **Supabase** (Postgres, Auth, Storage), migrations geradas pelo Drizzle em `supabase/migrations/`            | **funcionando** — deploy automático por GitHub Actions                                              |
+| Hospedagem web         | **Vercel**                                                                                                   | **no ar**: https://inovaapss-desafio.vercel.app (todo push na `main`) — ainda sem API publicada     |
+| Hospedagem API         | **Railway ou Render** (Dockerfile)                                                                           | a conectar — [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)                                               |
 
 O deploy do banco é **automático**: todo push na `main` que mexe em `supabase/` é aplicado pelo
 GitHub Actions. Guia em **[docs/SUPABASE.md](docs/SUPABASE.md)**.
@@ -64,6 +66,12 @@ O `pnpm dev` compila `packages/shared` e `packages/validation` antes de subir a 
 então funciona num clone recém-instalado. Para rodar um pacote sozinho (`pnpm --filter @inovaapss/api dev`),
 rode `pnpm build` na raiz uma vez antes — e de novo sempre que alguém mexer em `packages/`.
 
+**Para entrar** (a tela de login pede um usuário): preencha no `.env` as variáveis do Supabase e
+crie o primeiro usuário pelo seed de demonstração — **[docs/AUTH.md, seção 5](docs/AUTH.md#5-como-criar-o-primeiro-usuário)**
+(`pnpm --filter @inovaapss/api seed:demo`, credenciais só no shell) — ou pelo painel do Supabase
+(_Authentication → Users → Add user_). Com as `VITE_SUPABASE_*` vazias o front mostra "Autenticação
+não configurada" em vez de quebrar.
+
 Antes de commitar (e o CI roda o mesmo):
 
 ```powershell
@@ -85,6 +93,10 @@ mesmo que o CI roda).
 | [docs/SPEC.md](docs/SPEC.md)                     | a especificação completa do produto e das etapas                                              |
 | [docs/ETAPAS.md](docs/ETAPAS.md)                 | quadro de etapas: quem está em qual, dependências, o que pode rodar em paralelo               |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)     | monorepo, fluxo de dados, MVC modular, migrations, portas e scripts                           |
+| [docs/AUTH.md](docs/AUTH.md)                     | login, sessão, organizações, papéis, como criar o primeiro usuário e convidar alguém          |
+| [docs/SCORING.md](docs/SCORING.md)               | fórmulas do motor: health, tendência, persistência, confiança, risco, prioridade, forecast    |
+| [docs/METRICS_ENGINE.md](docs/METRICS_ENGINE.md) | como uma métrica é configurada (tipos, normalização, gatilhos, fórmula segura)                |
+| [docs/SLA_ENGINE.md](docs/SLA_ENGINE.md)         | SLA contratual, meta operacional, consumo e health por chamado                                |
 | [docs/DATAVIZ.md](docs/DATAVIZ.md)               | guia de visualização (sem pizza, cinza + uma cor de destaque, gráfico de forecast priorizado) |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)         | o que já sobe sozinho e o passo a passo para conectar Vercel e Render/Railway                 |
 | [docs/SUPABASE.md](docs/SUPABASE.md)             | banco, deploy automático e migrations                                                         |

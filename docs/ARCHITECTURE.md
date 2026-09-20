@@ -13,13 +13,13 @@ Gerenciador: **pnpm** (ajuste A9) com workspaces. Orquestração: **Turborepo**.
 ```text
 /
 ├─ apps/
-│  ├─ api/        @inovaapss/api  — Express + Drizzle + Zod + Pino (esqueleto pronto: /health, /ready, /api/docs, Dockerfile)
-│  └─ web/        @inovaapss/web  — React + Vite + Tailwind + shadcn/ui + Recharts (esqueleto pronto: rotas §38, dashboard com mock)
+│  ├─ api/        @inovaapss/api  — Express + Drizzle + Zod + Pino (Etapa 1: auth, tenant, RBAC, organizations; /health, /ready, /api/docs, Dockerfile)
+│  └─ web/        @inovaapss/web  — React + Vite + Tailwind + shadcn/ui + Recharts (login, recuperação de senha, onboarding, dashboard com mock)
 ├─ packages/
 │  ├─ config/     @inovaapss/config     — tsconfig, eslint e prettier compartilhados
 │  ├─ shared/     @inovaapss/shared     — tipos, enums e constantes de domínio (HealthClass, MetricType, direções...)
 │  ├─ validation/ @inovaapss/validation — schemas Zod compartilhados entre api e web
-│  └─ engine/     @inovaapss/engine     — previsto (Etapas 4/5/12): lógica PURA de scoring, SLA, forecast e backtest — sem banco, sem HTTP
+│  └─ engine/     @inovaapss/engine     — lógica PURA de scoring, SLA e forecast (Etapas 4/5, prontas e testadas); backtest (Etapa 12) previsto — sem banco, sem HTTP
 ├─ supabase/
 │  ├─ config.toml            — já existe
 │  ├─ migrations/            — SQL versionado, gerado pelo Drizzle (ajuste A8)
@@ -112,9 +112,9 @@ modulo/
 └─ __tests__/      ← Vitest + Supertest
 ```
 
-Módulos previstos (§3 + ajustes): `auth`, `organizations`, `portfolio-clients`, `contracts`,
-`metrics`, `scoring`, `sla`, `imports`, `documents`, `alerts`, `recommendations`, `calibration`,
-`dashboard`, `client-health`. Cada módulo tem **um** arquivo de schema Drizzle em
+Módulos (§3 + ajustes): `auth` e `organizations` já existem (Etapa 1); previstos:
+`portfolio-clients`, `contracts`, `metrics`, `scoring`, `sla`, `imports`, `documents`, `alerts`,
+`recommendations`, `calibration`, `dashboard`, `client-health`. Cada módulo tem **um** arquivo de schema Drizzle em
 `apps/api/src/db/schema/<modulo>.ts`, reexportado em `db/schema/index.ts` — assim duas etapas nunca
 editam o mesmo arquivo de schema (convenção completa em [ETAPAS.md](ETAPAS.md)).
 
@@ -124,8 +124,8 @@ Transversais:
 apps/api/src/
 ├─ app.ts               ← monta o Express (helmet, cors, rate limit, pino-http, rotas /api/v1, /health, /ready, /api/docs)
 ├─ server.ts            ← listen(PORT)
-├─ middleware/          ← auth (JWT do Supabase), tenant, rbac, error-handler, request-id
-├─ infrastructure/      ← supabase (client com service_role), db (Drizzle), storage, logger, extraction (MetricExtractionProvider)
+├─ middleware/          ← auth (JWT do Supabase), tenant, rbac, http-errors, error-handler, request-id
+├─ infrastructure/      ← supabase.ts (dois clients: anon para validar o JWT, service_role para a Admin API — só no backend), db (Drizzle), storage, logger, extraction (MetricExtractionProvider)
 ├─ db/schema/           ← um arquivo por módulo + index.ts
 ├─ db/seed/             ← GlobalSys v1 e organização demo
 └─ shared/              ← utilitários e erros comuns
@@ -170,18 +170,21 @@ Estado de servidor com TanStack Query; formulários com React Hook Form + Zod (s
 ## 7. Segurança e observabilidade (resumo)
 
 - Supabase Auth emite o JWT; a API valida, resolve tenant e papel (`owner` / `admin` / `analyst` / `viewer`).
-- RLS em todas as tabelas de negócio; `service_role` só no backend.
+- A API acessa o banco como `service_role`/`postgres`, que **ignora RLS**: o isolamento entre
+  organizações é feito pelo middleware de tenant + filtro por `organization_id` em toda query. O
+  RLS em todas as tabelas de negócio é a **segunda barreira**, para quem acessar o banco direto
+  pela API do Supabase com o JWT do usuário ([AUTH.md §7](AUTH.md)). `service_role` só no backend.
 - Helmet, CORS restrito à origem do web, rate limiting, MIME allowlist (XLSX, CSV, JSON, PDF, DOCX,
   MD/TXT — ajuste A4) e limite de upload.
 - Pino com request id; `/health` e `/ready`; audit log em peso, threshold, modelo e SLA.
 
 ## 8. Deploy (resumo — detalhes em DEPLOYMENT.md)
 
-| Parte                  | Onde                                         | Estado                                                                     |
-| ---------------------- | -------------------------------------------- | -------------------------------------------------------------------------- |
-| Banco / Auth / Storage | Supabase                                     | **funcionando** — migrations aplicadas pelo GitHub Actions                 |
-| Web                    | Vercel (root `apps/web`)                     | **previsto** — precisa de uma pessoa conectar o repo                       |
-| API                    | Railway ou Render (Dockerfile em `apps/api`) | **previsto** — idem                                                        |
-| CI                     | GitHub Actions `ci.yml`                      | **criado na Etapa 0** — lint, typecheck, test, build e nome das migrations |
+| Parte                  | Onde                                         | Estado                                                                        |
+| ---------------------- | -------------------------------------------- | ----------------------------------------------------------------------------- |
+| Banco / Auth / Storage | Supabase                                     | **funcionando** — migrations aplicadas pelo GitHub Actions                    |
+| Web                    | Vercel (root `apps/web`)                     | **funcionando** — https://inovaapss-desafio.vercel.app, a cada push na `main` |
+| API                    | Railway ou Render (Dockerfile em `apps/api`) | **previsto** — precisa de uma pessoa conectar o repo (DEPLOYMENT.md §4)       |
+| CI                     | GitHub Actions `ci.yml`                      | **criado na Etapa 0** — lint, typecheck, test, build e nome das migrations    |
 
 Pipeline alvo (§50): lint → typecheck → tests → build → migration check → deploy API → deploy web.

@@ -77,6 +77,10 @@ pnpm sync
 
 Se aparecer "Tudo sincronizado", esta tudo certo.
 
+Para **rodar o projeto** (API + site) e **entrar** na tela de login, siga a secao
+["Como rodar" do README](../README.md#como-rodar): `.env`, `pnpm dev` e o seed que cria o
+primeiro usuario ([AUTH.md, secao 5](AUTH.md#5-como-criar-o-primeiro-usuário)).
+
 ## Parte 4b — As regras de commit (3 linhas)
 
 1. **Mensagem no padrao Conventional Commits**: `tipo(escopo): o que foi feito`, primeira linha em

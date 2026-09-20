@@ -20,16 +20,20 @@ Nada disso precisa ser refeito.
 
 ## 2. O que falta
 
-| Parte                                                  | Ferramenta                                                  | Quem faz             | Quando                                         |
-| ------------------------------------------------------ | ----------------------------------------------------------- | -------------------- | ---------------------------------------------- |
-| CI (lint, typecheck, test, build, migrations × schema) | GitHub Actions `ci.yml`                                     | **pronto** (Etapa 0) | —                                              |
-| Web em produção com preview por push                   | **Vercel**                                                  | **pessoa**           | agora (seção 3)                                |
-| API em produção                                        | **Render** ou **Railway**, com o `Dockerfile` de `apps/api` | **pessoa**           | agora — o esqueleto da API já existe (seção 4) |
-| Variáveis de ambiente em cada serviço                  | painel de cada um                                           | **pessoa**           | junto com os passos acima                      |
-| Seed de demonstração, README final                     | —                                                           | agente (Etapa 14)    | fim                                            |
+| Parte                                                  | Ferramenta                                                  | Quem faz             | Quando                                                                       |
+| ------------------------------------------------------ | ----------------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------- |
+| CI (lint, typecheck, test, build, migrations × schema) | GitHub Actions `ci.yml`                                     | **pronto** (Etapa 0) | —                                                                            |
+| Web em produção com preview por push                   | **Vercel**                                                  | **pronto**           | https://inovaapss-desafio.vercel.app — todo push na `main` publica (seção 3) |
+| API em produção                                        | **Render** ou **Railway**, com o `Dockerfile` de `apps/api` | **pessoa**           | agora — a API da Etapa 1 (auth + organizações) já existe (seção 4)           |
+| `VITE_API_URL` na Vercel apontando para a API          | painel da Vercel                                            | **pessoa**           | logo depois da API subir (seção 4, passo 7)                                  |
+| Variáveis de ambiente da API                           | painel do Render/Railway                                    | **pessoa**           | junto com o passo acima                                                      |
+| Seed de demonstração, README final                     | —                                                           | trilha 14            | fim                                                                          |
 
-Enquanto a API não estiver no ar, o web na Vercel pode apontar `VITE_API_URL` para uma URL
-temporária; nada quebra no build.
+**Estado atual em produção:** o web na Vercel já tem `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`
+do projeto real, então o **login funciona**; mas `VITE_API_URL` ainda é o padrão
+(`http://localhost:3001`), porque a API não foi publicada. Resultado: depois do login, o
+`GET /api/v1/me` falha e a tela mostra "Não foi possível carregar sua organização". Isso se resolve
+com a seção 4 (subir a API) + editar `VITE_API_URL` na Vercel e fazer Redeploy.
 
 ---
 
@@ -45,9 +49,10 @@ Você precisa: conta no GitHub com acesso ao repositório `Kauazxz/inovaapss-des
 4. Na tela "Configure Project":
    - **Root Directory**: clique em **Edit** e escolha **`apps/web`**.
    - **Framework Preset**: deve detectar **Vite** sozinho. Se não, escolha Vite.
-   - **Build Command**: `pnpm build`
-   - **Output Directory**: `dist`
-   - **Install Command**: deixe o padrão — a Vercel detecta o `pnpm-lock.yaml` da raiz e usa pnpm.
+   - **Build Command**, **Install Command** e **Output Directory**: **não altere no painel** — vêm
+     do `apps/web/vercel.json` versionado (`pnpm install --frozen-lockfile`,
+     `pnpm --filter @inovaapss/web... build`, `dist`), que constrói os pacotes internos antes do
+     web. O arquivo vence o que estiver no painel.
    - Abra **Environment Variables** e adicione as três da seção 5 (web).
 5. Clique em **Deploy**. O primeiro build leva 1–3 minutos.
 6. Deu verde? A URL aparece na tela (algo como `inovaapss-desafio.vercel.app`). Anote — ela entra

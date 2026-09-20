@@ -330,10 +330,10 @@ e MRR alto). Delta melhora: seta para a direita, cinza. Ômega não tem históri
 
 ### 5.4 Estrutura de dados esperada
 
-Fica em `packages/shared/src/forecast.ts` (tipos; o pacote usa um arquivo plano por domínio,
-reexportado em `index.ts`) e é o retorno de `GET /dashboard/risk` no campo `forecast`. O cálculo da
-projeção é puro e vive em `packages/engine/src/forecast/` (Etapa 8 — a Etapa 4 fica com
-`packages/engine/src/scoring/`).
+Fica em `packages/shared/src/dashboard/forecast.ts` (tipos, fonte única consumida por API, web e
+engine; reexportado em `packages/shared/src/index.ts`) e é o retorno de `GET /dashboard/risk` no
+campo `forecast`. O cálculo da projeção é puro e vive em `packages/engine/src/scoring/forecast.ts`
+(nasceu na Etapa 4, junto com o resto do scoring; a Etapa 8 só consome os tipos do shared).
 
 ```ts
 import type { HealthClass, PriorityClass } from './scoring.js';
