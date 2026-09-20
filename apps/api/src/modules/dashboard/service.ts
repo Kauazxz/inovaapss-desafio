@@ -8,8 +8,12 @@ import { buildForecastRow } from '@inovaapss/engine';
 import {
   DEFAULT_HEALTH_BANDS,
   DEFAULT_PRIORITY_WEIGHTS,
+  type ClassDistributionItem,
+  type DimensionHealth,
   type ForecastRow,
+  type GeneralDashboardData,
   type HealthClass,
+  type HealthTimePoint,
   type RankingRow,
   type RiskDashboardData,
 } from '@inovaapss/shared';
@@ -47,8 +51,45 @@ function trendOf(history: (number | null)[]): RankingRow['trend'] {
   return delta > 0 ? 'up' : 'down';
 }
 
+/** Categoria da métrica → dimensão exibida na aba Geral. Vem do preset; o "outras" pega o resto. */
+const DIMENSION_LABELS: Record<string, string> = {
+  Atendimento: 'Atendimento',
+  SLA: 'SLA',
+  Adoção: 'Uso',
+  Relacionamento: 'Relacionamento',
+  Financeiro: 'Financeiro',
+  Satisfação: 'NPS',
+};
+
+/** "2026-06-30" → "jun/26". */
+function shortLabel(periodEnd: string): string {
+  const meses = [
+    'jan',
+    'fev',
+    'mar',
+    'abr',
+    'mai',
+    'jun',
+    'jul',
+    'ago',
+    'set',
+    'out',
+    'nov',
+    'dez',
+  ];
+  const [year, month] = periodEnd.split('-');
+  const index = Number(month) - 1;
+  return `${meses[index] ?? month}/${(year ?? '').slice(2)}`;
+}
+
+function media(valores: number[]): number | null {
+  if (valores.length === 0) return null;
+  return Number((valores.reduce((total, v) => total + v, 0) / valores.length).toFixed(2));
+}
+
 export interface DashboardService {
   risk(organizationId: string): Promise<RiskDashboardData>;
+  general(organizationId: string): Promise<GeneralDashboardData>;
 }
 
 export function createDashboardService(repository: DashboardRepository): DashboardService {
@@ -184,6 +225,124 @@ export function createDashboardService(repository: DashboardRepository): Dashboa
         ranking: rows,
         classCounts,
         generatedAt: generatedAt || new Date(0).toISOString(),
+      };
+    },
+
+    async general(organizationId) {
+      const clients = await repository.listClients(organizationId);
+      const snapshots = await repository.listSnapshots(
+        organizationId,
+        clients.map((c) => c.id),
+      );
+      const metricHealth = await repository.listMetricHealth(organizationId);
+
+      const currency = clients.find((c) => c.currency)?.currency ?? 'BRL';
+
+      // Último snapshot de cada cliente → distribuição e KPIs.
+      const latestByClient = new Map<string, SnapshotRow>();
+      const periodsSet = new Set<string>();
+      for (const snapshot of snapshots) {
+        periodsSet.add(snapshot.periodEnd);
+        latestByClient.set(snapshot.portfolioClientId, snapshot);
+      }
+      const periods = [...periodsSet].sort();
+      const lastPeriod = periods[periods.length - 1] ?? '';
+
+      const counts: Record<HealthClass, { count: number; mrr: number }> = {
+        CRITICAL: { count: 0, mrr: 0 },
+        RISK: { count: 0, mrr: 0 },
+        ATTENTION: { count: 0, mrr: 0 },
+        NORMAL: { count: 0, mrr: 0 },
+      };
+      let mrrTotal = 0;
+      let ativos = 0;
+      let cancelados = 0;
+
+      for (const client of clients) {
+        const mrr = Number(client.monthlyValue ?? 0);
+        mrrTotal += mrr;
+        if (client.status === 'active') ativos += 1;
+        if (client.status === 'cancelled') cancelados += 1;
+        const latest = latestByClient.get(client.id);
+        const classe = latest?.healthClass as HealthClass | undefined;
+        if (classe && counts[classe]) {
+          counts[classe].count += 1;
+          counts[classe].mrr += mrr;
+        }
+      }
+
+      const totalClassificados = Object.values(counts).reduce((t, c) => t + c.count, 0) || 1;
+      const distribution: ClassDistributionItem[] = (
+        ['CRITICAL', 'RISK', 'ATTENTION', 'NORMAL'] as HealthClass[]
+      ).map((healthClass) => ({
+        healthClass,
+        count: counts[healthClass].count,
+        share: Number((counts[healthClass].count / totalClassificados).toFixed(4)),
+        mrr: Math.round(counts[healthClass].mrr),
+      }));
+
+      // Saúde por dimensão no último período de cada cliente.
+      const porDimensao = new Map<string, { valores: number[]; clientes: Set<string> }>();
+      const ultimoPorCliente = new Map<string, string>();
+      for (const row of metricHealth) {
+        const atual = ultimoPorCliente.get(row.portfolioClientId);
+        if (atual === undefined || row.periodEnd > atual) {
+          ultimoPorCliente.set(row.portfolioClientId, row.periodEnd);
+        }
+      }
+      for (const row of metricHealth) {
+        if (row.metricHealth === null) continue;
+        if (ultimoPorCliente.get(row.portfolioClientId) !== row.periodEnd) continue;
+        const key = row.category ?? 'Outras';
+        const bucket = porDimensao.get(key) ?? { valores: [], clientes: new Set<string>() };
+        bucket.valores.push(row.metricHealth);
+        bucket.clientes.add(row.portfolioClientId);
+        porDimensao.set(key, bucket);
+      }
+      const dimensions: DimensionHealth[] = [...porDimensao.entries()]
+        .map(([key, bucket]) => ({
+          key,
+          label: DIMENSION_LABELS[key] ?? key,
+          health: media(bucket.valores),
+          clientCount: bucket.clientes.size,
+        }))
+        .sort((a, b) => (a.health ?? 101) - (b.health ?? 101));
+
+      // Evolução: média da carteira por período.
+      const porPeriodo = new Map<string, number[]>();
+      for (const snapshot of snapshots) {
+        if (snapshot.overallHealth === null) continue;
+        const lista = porPeriodo.get(snapshot.periodEnd) ?? [];
+        lista.push(snapshot.overallHealth);
+        porPeriodo.set(snapshot.periodEnd, lista);
+      }
+      const portfolio: HealthTimePoint[] = periods.map((periodEnd) => ({
+        periodEnd,
+        label: shortLabel(periodEnd),
+        health: media(porPeriodo.get(periodEnd) ?? []),
+      }));
+
+      return {
+        kpis: {
+          mrr: { value: Math.round(mrrTotal), delta: null },
+          activeClients: { value: ativos, delta: null },
+          cancelledClients: { value: cancelados, delta: null },
+          currency,
+        },
+        distribution,
+        targetBand: { min: minOfClass('NORMAL'), max: 100 },
+        dimensions,
+        timeline: {
+          portfolio,
+          client: null,
+          clientOptions: clients.map((c) => ({ clientId: c.id, clientName: c.name })),
+        },
+        thresholds: {
+          attention: minOfClass('NORMAL'),
+          risk: minOfClass('ATTENTION'),
+          critical: minOfClass('RISK'),
+        },
+        generatedAt: lastPeriod || new Date(0).toISOString(),
       };
     },
   };

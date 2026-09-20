@@ -3,9 +3,16 @@
  *
  * Só consulta: quem calcula é o módulo scoring. Toda query filtra por organization_id.
  */
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, max } from 'drizzle-orm';
 
-import { clientScoreSnapshots, contracts, plans, portfolioClients } from '../../db/schema/index.js';
+import {
+  clientScoreSnapshots,
+  contracts,
+  metricDefinitions,
+  metricScoreSnapshots,
+  plans,
+  portfolioClients,
+} from '../../db/schema/index.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- o tipo do Drizzle varia com o schema
 type Database = any;
@@ -36,10 +43,20 @@ export interface ClientRow {
   planName: string | null;
 }
 
+/** Saúde de uma métrica de um cliente num período, com a categoria para agrupar por dimensão. */
+export interface MetricHealthRow {
+  portfolioClientId: string;
+  periodEnd: string;
+  category: string | null;
+  metricHealth: number | null;
+}
+
 export interface DashboardRepository {
   listClients(organizationId: string): Promise<ClientRow[]>;
   /** Todos os snapshots da organização, do mais antigo ao mais recente. */
   listSnapshots(organizationId: string, clientIds: string[]): Promise<SnapshotRow[]>;
+  /** Saúde por métrica, com a categoria, para a visão por dimensão da aba Geral. */
+  listMetricHealth(organizationId: string): Promise<MetricHealthRow[]>;
 }
 
 export function createDashboardRepository(getDb: () => Database): DashboardRepository {
@@ -88,6 +105,41 @@ export function createDashboardRepository(getDb: () => Database): DashboardRepos
           ),
         )
         .orderBy(asc(clientScoreSnapshots.periodEnd), desc(clientScoreSnapshots.priorityScore));
+    },
+
+    async listMetricHealth(organizationId) {
+      // A visão por dimensão é a média dos clientes ATIVOS no período mais recente deles
+      // (§39). Filtrar no banco evita trazer o histórico inteiro só para descartar quase tudo.
+      const [ultimo] = await getDb()
+        .select({ periodEnd: max(metricScoreSnapshots.periodEnd) })
+        .from(metricScoreSnapshots)
+        .where(eq(metricScoreSnapshots.organizationId, organizationId));
+      const periodEnd = ultimo?.periodEnd;
+      if (!periodEnd) return [];
+
+      return getDb()
+        .select({
+          portfolioClientId: metricScoreSnapshots.portfolioClientId,
+          periodEnd: metricScoreSnapshots.periodEnd,
+          category: metricDefinitions.category,
+          metricHealth: metricScoreSnapshots.metricHealth,
+        })
+        .from(metricScoreSnapshots)
+        .innerJoin(
+          metricDefinitions,
+          eq(metricDefinitions.id, metricScoreSnapshots.metricDefinitionId),
+        )
+        .innerJoin(
+          portfolioClients,
+          eq(portfolioClients.id, metricScoreSnapshots.portfolioClientId),
+        )
+        .where(
+          and(
+            eq(metricScoreSnapshots.organizationId, organizationId),
+            eq(metricScoreSnapshots.periodEnd, periodEnd),
+            eq(portfolioClients.status, 'active'),
+          ),
+        );
     },
   };
 }

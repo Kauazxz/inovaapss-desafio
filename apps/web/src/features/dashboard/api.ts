@@ -49,7 +49,9 @@ export async function fetchRiskDashboard(query: RiskDashboardQuery): Promise<Ris
 export async function fetchGeneralDashboard(
   query: GeneralDashboardQuery,
 ): Promise<GeneralDashboardData> {
-  // API real: return apiFetch<GeneralDashboardData>(`/api/v1/dashboard/general?${generalParams(query)}`);
+  if (DASHBOARD_DATA_SOURCE === 'api') {
+    return apiFetch<GeneralDashboardData>('/api/v1/dashboard/general');
+  }
   await Promise.resolve();
   return buildMockGeneralDashboard({
     filters: query.filters,

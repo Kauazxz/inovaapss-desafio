@@ -116,6 +116,11 @@ export const ROUTES: readonly RouteDescriptor[] = [
   },
   {
     method: 'GET',
+    path: `${API_V1_PREFIX}/dashboard/general`,
+    description: 'Aba Geral: distribuição por classe, MRR, saúde por dimensão e evolução',
+  },
+  {
+    method: 'GET',
     path: `${API_V1_PREFIX}/metrics`,
     description: 'Lista as definições de métrica',
   },

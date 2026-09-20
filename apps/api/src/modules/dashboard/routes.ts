@@ -1,6 +1,7 @@
 /**
  * Rotas do dashboard (§37 Dashboard):
- *   GET /dashboard/risk   aba "Em risco": KPIs, gráfico de forecast e ranking com evidências
+ *   GET /dashboard/risk      aba "Em risco": KPIs, gráfico de forecast e ranking com evidências
+ *   GET /dashboard/general   aba "Geral": distribuição, MRR, saúde por dimensão e evolução
  *
  * Leitura pura de snapshots: qualquer membro da organização pode ver.
  */
@@ -28,6 +29,13 @@ export function createDashboardRouter({
   router.get('/risk', (req, res, next) => {
     service
       .risk(req.tenant!.organizationId)
+      .then((data) => res.json(data))
+      .catch(next);
+  });
+
+  router.get('/general', (req, res, next) => {
+    service
+      .general(req.tenant!.organizationId)
       .then((data) => res.json(data))
       .catch(next);
   });
