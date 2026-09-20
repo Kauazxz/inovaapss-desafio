@@ -49,7 +49,7 @@ export function AppRoutes() {
             <Route path="/onboarding" element={<OnboardingPage />} />
           </Route>
 
-          {/* Privadas: precisam de sessão e organização; layout com sidebar */}
+          {/* Privadas: precisam de sessão e organização; layout com navegação superior */}
           <Route element={<RequireOrganization />}>
             <Route element={<PrivateLayout />}>
               <Route path="/dashboard" element={<DashboardPage />} />

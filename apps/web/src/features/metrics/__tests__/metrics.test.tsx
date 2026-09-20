@@ -10,6 +10,7 @@ import { jsonResponse } from '@/features/auth/__tests__/fake-supabase';
 
 import { MetricDetailPage } from '../MetricDetailPage';
 import { MetricsPage } from '../MetricsPage';
+import { orderMetricItems } from '../order';
 import { parseSeriesText } from '../parse-series';
 
 import type { MetricPrefill } from '@/features/documents/api';
@@ -215,6 +216,33 @@ function mockApi(
 }
 
 describe('MetricsPage (/metrics)', () => {
+  it('ordena primeiro pelo modelo ativo e depois alfabeticamente', () => {
+    const unordered = [
+      definition({ id: 'metric-z', name: 'Zeta', slug: 'zeta' }),
+      definition({
+        id: 'metric-active-3',
+        name: 'Terceira no modelo',
+        slug: 'terceira',
+        activePlacement: { ...ROWS[0]!.activePlacement!, sortOrder: 3 },
+      }),
+      definition({ id: 'metric-a', name: 'Alfa', slug: 'alfa' }),
+      definition({
+        id: 'metric-active-1',
+        name: 'Primeira no modelo',
+        slug: 'primeira',
+        activePlacement: { ...ROWS[0]!.activePlacement!, sortOrder: 1 },
+      }),
+    ];
+
+    expect(orderMetricItems(unordered).map((item) => item.id)).toEqual([
+      'metric-active-1',
+      'metric-active-3',
+      'metric-a',
+      'metric-z',
+    ]);
+    expect(unordered[0]?.id).toBe('metric-z');
+  });
+
   it('mostra a tabela §41 com peso, ordem e normalização da versão ativa', async () => {
     mockApi();
     renderAt('/metrics');

@@ -1,5 +1,5 @@
 import { Search, X } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 
 import {
@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils';
 import { DEFAULT_METRICS_QUERY, type MetricsListQuery, useMetrics } from './api';
 import { pct } from './explain';
 import { MetricsEmpty, MetricsError, MetricsLoading } from './MetricsStates';
+import { orderMetricItems } from './order';
 import { PrefillBanner } from './PrefillBanner';
 
 const selectClassName =
@@ -121,6 +122,7 @@ export function MetricsPage() {
   const clear = () => setQuery(DEFAULT_METRICS_QUERY);
 
   const data = result.data;
+  const orderedItems = useMemo(() => orderMetricItems(data?.items ?? []), [data?.items]);
   const pageCount = data === undefined ? 0 : Math.max(1, Math.ceil(data.total / data.pageSize));
 
   return (
@@ -207,6 +209,10 @@ export function MetricsPage() {
         <MetricsEmpty filtered={isFiltered(query)} onClearFilters={clear} />
       ) : (
         <div className={cn(result.isFetching && 'opacity-60 transition-opacity')}>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Ordem fixa: métricas do modelo ativo aparecem primeiro, na ordem configurada; as demais
+            vêm em ordem alfabética.
+          </p>
           <Table aria-label="Métricas da organização">
             <TableHeader>
               <TableRow>
@@ -221,7 +227,7 @@ export function MetricsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.items.map((row) => (
+              {orderedItems.map((row) => (
                 <TableRow key={row.id} data-metric-id={row.id}>
                   <TableCell>
                     <ActivePill active={row.isActive} />

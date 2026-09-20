@@ -11,7 +11,7 @@ import {
   Users,
 } from 'lucide-react';
 
-/** Item da navegação lateral do layout privado (§38). */
+/** Item da navegação superior do layout privado (§38). */
 export interface NavItem {
   to: string;
   label: string;
@@ -30,8 +30,3 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { to: '/calibration', label: 'Calibração', icon: Target },
   { to: '/settings', label: 'Configurações', icon: Settings },
 ];
-
-/** Título da página a partir da rota atual (para o cabeçalho e o <title>). */
-export function findNavItem(pathname: string): NavItem | undefined {
-  return NAV_ITEMS.find((item) => pathname === item.to || pathname.startsWith(`${item.to}/`));
-}

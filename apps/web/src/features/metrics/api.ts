@@ -29,7 +29,9 @@ export interface MetricsListQuery {
 
 export const DEFAULT_METRICS_QUERY: MetricsListQuery = {
   page: 1,
-  pageSize: 20,
+  // Traz até o limite da API para a ordem do modelo ativo abranger a lista inteira na maioria
+  // das organizações.
+  pageSize: 100,
   search: '',
   type: '',
   direction: '',
