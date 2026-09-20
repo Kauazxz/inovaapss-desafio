@@ -20,8 +20,8 @@ import { HealthPill, PriorityPill } from './HealthPill';
 export interface RankingTableProps {
   /** Já ordenado por prioridade pela API; a tabela mostra a lista na ordem recebida. */
   rows: RankingRow[];
-  /** CTA "Analisar" → /clients/:id. */
-  onSelect: (clientId: string) => void;
+  /** CTA "Analisar": abre a prévia do caso, sem sair da fila. */
+  onSelect: (row: RankingRow) => void;
 }
 
 /**
@@ -176,7 +176,7 @@ export function RankingTable({ rows, onSelect }: RankingTableProps) {
                   variant="outline"
                   size="sm"
                   className="whitespace-nowrap"
-                  onClick={() => onSelect(row.clientId)}
+                  onClick={() => onSelect(row)}
                   aria-label={`Analisar ${row.clientName}`}
                 >
                   Analisar

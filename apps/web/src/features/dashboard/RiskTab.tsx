@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
+
+import type { RankingRow } from '@inovaapss/shared';
 
 import { ForecastDumbbellChart } from '@/components/charts/forecast-dumbbell-chart';
 import { formatCompactCurrency, formatInteger } from '@/lib/format';
 
 import { useRiskDashboard } from './api';
+import { ClientPreviewDialog } from './ClientPreviewDialog';
 import { DashboardEmpty, DashboardError, DashboardLoading } from './DashboardStates';
 import { criticalBandHint, formatCountDelta, formatCurrencyDelta, riskBandHint } from './format';
 import { KpiRow } from './KpiRow';
@@ -20,12 +24,22 @@ export function RiskTab() {
 
   const openClient = (clientId: string) => navigate(`/clients/${clientId}`);
 
+  // "Analisar" abre a prévia do caso aqui mesmo; a ida para a tela do cliente é uma escolha
+  // dentro dela, não um efeito colateral do clique na fila.
+  const [preview, setPreview] = useState<RankingRow | null>(null);
+
   if (query.isPending) return <DashboardLoading label="Carregando a aba Em risco" />;
   if (query.isError)
     return <DashboardError error={query.error} onRetry={() => void query.refetch()} />;
 
   const data = query.data;
   const { kpis } = data;
+  // O gráfico entrega só o id: a prévia precisa da linha inteira do ranking.
+  const previewByClientId = (clientId: string) => {
+    const row = data.ranking.find((item) => item.clientId === clientId);
+    if (row) setPreview(row);
+    else openClient(clientId);
+  };
   // Faixas e pesos vêm do payload (configuração da organização), nunca de números fixos (§65).
   const { thresholds } = data.forecast;
 
@@ -66,7 +80,7 @@ export function RiskTab() {
         <>
           {/* Gráfico não mora em card nem leva borda em volta (DATAVIZ.md §1.3): no celular
               cada pixel de largura é escala do dumbbell. */}
-          <ForecastDumbbellChart data={data.forecast} onSelect={openClient} />
+          <ForecastDumbbellChart data={data.forecast} onSelect={previewByClientId} />
 
           <section aria-labelledby="ranking-title" className="space-y-3">
             <div>
@@ -80,11 +94,19 @@ export function RiskTab() {
             </div>
             {/* A tabela mora numa superfície elevada, como as outras tabelas do sistema. */}
             <div className="overflow-hidden rounded-2xl bg-card shadow-soft ring-1 ring-foreground/5">
-              <RankingTable rows={data.ranking} onSelect={openClient} />
+              <RankingTable rows={data.ranking} onSelect={setPreview} />
             </div>
           </section>
         </>
       )}
+
+      <ClientPreviewDialog
+        row={preview}
+        onOpenChange={(open) => {
+          if (!open) setPreview(null);
+        }}
+        onOpenFullCase={openClient}
+      />
     </div>
   );
 }
