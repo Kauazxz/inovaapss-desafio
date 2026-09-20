@@ -175,9 +175,7 @@ describe('textos derivados da configuração (§7, §28, §65)', () => {
       'Prioridade = risco de cancelamento × 0,6 + impacto comercial × 0,4',
     );
     // Com os padrões (80/60/40 e 0,7/0,3) o texto continua o de sempre.
-    expect(criticalBandHint({ attention: 80, risk: 60, critical: 40 })).toBe(
-      'saúde abaixo de 40',
-    );
+    expect(criticalBandHint({ attention: 80, risk: 60, critical: 40 })).toBe('saúde abaixo de 40');
     expect(riskBandHint({ attention: 80, risk: 60, critical: 40 })).toBe('saúde de 40 a 59');
     expect(priorityFormulaText({ risk: 0.7, impact: 0.3 })).toBe(
       'Prioridade = risco de cancelamento × 0,7 + impacto comercial × 0,3',

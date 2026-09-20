@@ -5,9 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>INOVAAPPS — API</title>
     <style>
-      body { font-family: system-ui, sans-serif; max-width: 34rem; margin: 4rem auto; padding: 0 1rem; line-height: 1.6; color: #1c1b19; }
-      code { background: #f1f0ee; padding: .1rem .35rem; border-radius: .25rem; }
-      a { color: #1f6feb; }
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 34rem;
+        margin: 4rem auto;
+        padding: 0 1rem;
+        line-height: 1.6;
+        color: #1c1b19;
+      }
+      code {
+        background: #f1f0ee;
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+      }
+      a {
+        color: #1f6feb;
+      }
     </style>
   </head>
   <body>
@@ -19,6 +32,9 @@
       <li><a href="/api/v1">/api/v1</a> — rotas disponíveis</li>
       <li><a href="/api/docs.json">/api/docs.json</a> — especificação OpenAPI</li>
     </ul>
-    <p>As rotas de negócio exigem autenticação: envie <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+    <p>
+      As rotas de negócio exigem autenticação: envie
+      <code>Authorization: Bearer &lt;token&gt;</code>.
+    </p>
   </body>
 </html>
