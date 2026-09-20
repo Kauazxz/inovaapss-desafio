@@ -24,6 +24,12 @@ import { createAlertsService } from '../modules/alerts/service.js';
 import { createAuthController } from '../modules/auth/controller.js';
 import { createAuthRouter } from '../modules/auth/routes.js';
 import { createAuthService } from '../modules/auth/service.js';
+import {
+  type CalibrationRepository,
+  createCalibrationRepository,
+} from '../modules/calibration/repository.js';
+import { createCalibrationRouter } from '../modules/calibration/routes.js';
+import { createCalibrationService } from '../modules/calibration/service.js';
 import { createClientHealthRepository } from '../modules/client-health/repository.js';
 import { createClientHealthRouter } from '../modules/client-health/routes.js';
 import { createClientHealthService } from '../modules/client-health/service.js';
@@ -321,6 +327,31 @@ export const ROUTES: readonly RouteDescriptor[] = [
     path: `${API_V1_PREFIX}/metric-suggestions/{id}/reject`,
     description: 'Rejeita a sugestão',
   },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/calibration/versions`,
+    description: 'Versões do modelo com histórico gravado, disponíveis para calibrar',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/calibration/runs`,
+    description: 'Roda o backtest histórico na janela escolhida (owner ou admin)',
+  },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/calibration/runs`,
+    description: 'Execuções anteriores de calibração',
+  },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/calibration/runs/:id`,
+    description: 'Resultado completo de uma execução, com os pesos sugeridos',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/calibration/runs/:id/apply-suggestions`,
+    description: 'Cria um rascunho de versão com os pesos aceitos; a ativa não muda (owner/admin)',
+  },
 ];
 
 export interface ApiV1Dependencies {
@@ -344,6 +375,8 @@ export interface ApiV1Dependencies {
   contractsRepository?: ContractsRepository;
   /** Testes: substitui a persistência de métricas e modelos. */
   metricsRepository?: MetricsRepository;
+  /** Testes: substitui a leitura do histórico e das execuções de calibração. */
+  calibrationRepository?: CalibrationRepository;
   /** Variáveis para os serviços que dependem de configuração (e-mail, URL do painel). */
   env?: Pick<ApiEnv, 'RESEND_API_KEY' | 'EMAIL_FROM' | 'WEB_BASE_URL'>;
   /** Testes: substitui o envio de e-mail. */
@@ -467,6 +500,19 @@ export function createApiV1Router(deps: ApiV1Dependencies): Router {
         deps.mailer ??
         createMailer({ apiKey: deps.env?.RESEND_API_KEY, from: deps.env?.EMAIL_FROM }),
       webBaseUrl: deps.env?.WEB_BASE_URL ?? 'https://inovaapss-desafio.vercel.app',
+    }),
+  );
+
+  // Calibração — backtest histórico e sugestão assistida de pesos (Etapa 12).
+  router.use(
+    '/calibration',
+    createCalibrationRouter({
+      requireAuth,
+      resolveTenant,
+      service: createCalibrationService({
+        repository: deps.calibrationRepository ?? createCalibrationRepository(getDb),
+        metrics: metricsRepository,
+      }),
     }),
   );
 

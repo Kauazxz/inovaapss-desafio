@@ -507,6 +507,10 @@ export const openapiDocument: OpenAPIV3_1.Document = {
       name: 'documents',
       description: 'Documentos enviados e descoberta de métricas — fluxo manual (§35, §37, A5)',
     },
+    {
+      name: 'calibration',
+      description: 'Backtest com os cancelamentos reais e sugestão assistida de pesos (§26, §33)',
+    },
   ],
   security: [{ bearerAuth: [] }],
   paths: {
@@ -1281,9 +1285,91 @@ export const openapiDocument: OpenAPIV3_1.Document = {
         },
       },
     },
+    '/api/v1/calibration/versions': {
+      get: {
+        tags: ['calibration'],
+        summary: 'Versões do modelo com histórico gravado',
+        description:
+          'Só aparecem versões que já geraram fotos de cliente — sem histórico não há o que calibrar.',
+        operationId: 'listCalibrationVersions',
+        responses: {
+          '200': jsonResponse('Versões calibráveis', 'CalibrationVersionList'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+        },
+      },
+    },
+    '/api/v1/calibration/runs': {
+      get: {
+        tags: ['calibration'],
+        summary: 'Execuções anteriores',
+        operationId: 'listCalibrationRuns',
+        responses: {
+          '200': jsonResponse('Histórico de execuções', 'CalibrationRunList'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+        },
+      },
+      post: {
+        tags: ['calibration'],
+        summary: 'Roda o backtest histórico',
+        description:
+          'Compara o modelo com os cancelamentos reais na janela escolhida (30, 60 ou 90 dias) e ' +
+          'devolve precision, recall, taxa de falso positivo, lead time, precision@5/@10 e pesos sugeridos. ' +
+          'Não altera modelo algum.',
+        operationId: 'createCalibrationRun',
+        requestBody: jsonBody('CreateCalibrationRun'),
+        responses: {
+          '201': jsonResponse('Execução concluída', 'CalibrationRun'),
+          '400': { $ref: '#/components/responses/ValidationError' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+        },
+      },
+    },
+    '/api/v1/calibration/runs/{id}': {
+      get: {
+        tags: ['calibration'],
+        summary: 'Resultado completo de uma execução',
+        operationId: 'getCalibrationRun',
+        parameters: [{ $ref: '#/components/parameters/CalibrationRunId' }],
+        responses: {
+          '200': jsonResponse('Execução', 'CalibrationRun'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+        },
+      },
+    },
+    '/api/v1/calibration/runs/{id}/apply-suggestions': {
+      post: {
+        tags: ['calibration'],
+        summary: 'Cria um rascunho com os pesos aceitos',
+        description:
+          'A versão ativa nunca é alterada (§32): nasce um RASCUNHO, que só passa a valer quando ' +
+          'alguém o ativar em /metric-models.',
+        operationId: 'applyCalibrationSuggestions',
+        parameters: [{ $ref: '#/components/parameters/CalibrationRunId' }],
+        requestBody: jsonBody('ApplyCalibrationSuggestions'),
+        responses: {
+          '201': jsonResponse('Rascunho criado', 'ApplyCalibrationSuggestionsResult'),
+          '400': { $ref: '#/components/responses/ValidationError' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+        },
+      },
+    },
   },
   components: {
     parameters: {
+      CalibrationRunId: {
+        name: 'id',
+        in: 'path',
+        required: true,
+        schema: { type: 'string', format: 'uuid' },
+      },
       DocumentId: {
         name: 'id',
         in: 'path',
@@ -1991,6 +2077,116 @@ export const openapiDocument: OpenAPIV3_1.Document = {
         properties: {
           suggestion: { $ref: '#/components/schemas/MetricSuggestion' },
           metricPayload: { $ref: '#/components/schemas/MetricPrefill' },
+        },
+      },
+      CalibrationVersionList: {
+        type: 'object',
+        required: ['items'],
+        properties: {
+          items: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['metricModelVersionId', 'metricModelName', 'version', 'status'],
+              properties: {
+                metricModelVersionId: { type: 'string', format: 'uuid' },
+                metricModelName: { type: 'string' },
+                version: { type: 'integer' },
+                status: { type: 'string' },
+                snapshotCount: { type: 'integer' },
+              },
+            },
+          },
+        },
+      },
+      CreateCalibrationRun: {
+        type: 'object',
+        properties: {
+          windowDays: {
+            type: 'integer',
+            enum: [30, 60, 90],
+            description: 'Antecedência avaliada. Padrão 90.',
+          },
+          metricModelVersionId: {
+            type: 'string',
+            format: 'uuid',
+            description: 'Versão a avaliar. Sem ela, a ativa.',
+          },
+          alertRiskThreshold: {
+            type: 'number',
+            description: 'Risco a partir do qual conta como alerta. Padrão 41 (saúde ≤ 59).',
+          },
+          suggestionStrength: {
+            type: 'number',
+            description: 'Quanto a proposta anda em direção ao histórico, de 0 a 1. Padrão 0,5.',
+          },
+        },
+      },
+      CalibrationBacktest: {
+        type: 'object',
+        description: 'Desempenho de um conjunto de pesos sobre o histórico (§26).',
+        additionalProperties: true,
+      },
+      CalibrationRun: {
+        type: 'object',
+        required: ['id', 'metricModelVersionId', 'windowDays', 'status', 'createdAt'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          metricModelVersionId: { type: 'string', format: 'uuid' },
+          metricModelName: { type: ['string', 'null'] },
+          version: { type: ['integer', 'null'] },
+          windowDays: { type: 'integer' },
+          status: { type: 'string', enum: ['queued', 'running', 'done', 'failed'] },
+          churnsAnalyzed: { type: ['integer', 'null'] },
+          churnsCaught: { type: ['integer', 'null'] },
+          precision: { type: ['number', 'null'] },
+          churnDetectionRate: { type: ['number', 'null'] },
+          errorMessage: { type: ['string', 'null'] },
+          createdAt: { type: 'string', format: 'date-time' },
+          finishedAt: { type: ['string', 'null'], format: 'date-time' },
+          parameters: { type: ['object', 'null'], additionalProperties: true },
+          results: { type: ['object', 'null'], additionalProperties: true },
+        },
+      },
+      CalibrationRunList: {
+        type: 'object',
+        required: ['items'],
+        properties: {
+          items: { type: 'array', items: { $ref: '#/components/schemas/CalibrationRun' } },
+        },
+      },
+      ApplyCalibrationSuggestions: {
+        type: 'object',
+        required: ['acceptedMetricIds'],
+        properties: {
+          acceptedMetricIds: {
+            type: 'array',
+            items: { type: 'string', format: 'uuid' },
+            description: 'Métricas cujo peso sugerido foi aceito; as demais mantêm o peso atual.',
+          },
+        },
+      },
+      ApplyCalibrationSuggestionsResult: {
+        type: 'object',
+        required: ['metricModelVersionId', 'version', 'status', 'weights', 'message'],
+        properties: {
+          metricModelId: { type: 'string', format: 'uuid' },
+          metricModelVersionId: { type: 'string', format: 'uuid' },
+          version: { type: 'integer' },
+          status: { type: 'string', enum: ['draft'] },
+          weights: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['metricId', 'weight'],
+              properties: {
+                metricId: { type: 'string', format: 'uuid' },
+                metricName: { type: 'string' },
+                weight: { type: 'number' },
+              },
+            },
+          },
+          message: { type: 'string' },
         },
       },
       ApiIndex: {
