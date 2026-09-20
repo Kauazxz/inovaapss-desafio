@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDocuments } from '@/features/documents/api';
+import { MetricsError } from '@/features/metrics/MetricsStates';
 import { cn } from '@/lib/utils';
 
 import { type AssistantMessage, useAskAssistant, useAssistantStatus } from './api';
@@ -165,6 +166,21 @@ export function AssistantPage() {
         <div aria-busy="true" aria-label="Carregando o Agente">
           <Skeleton className="h-40 w-full" />
         </div>
+      </>
+    );
+  }
+
+  // Falhar em PERGUNTAR se o Agente está ligado não é o mesmo que ele estar desligado: sem esta
+  // separação, uma API fora do ar ou uma sessão vencida mandavam a pessoa procurar a chave.
+  if (status.isError) {
+    return (
+      <>
+        <PageHeader title="Agente IA" description="Pergunte qualquer coisa sobre o relatório." />
+        <MetricsError
+          title="Não foi possível falar com a API"
+          error={status.error}
+          onRetry={() => void status.refetch()}
+        />
       </>
     );
   }

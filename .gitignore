@@ -71,3 +71,6 @@ apps/web/.vite
 
 # Vinculo local com a Vercel
 .vercel/
+
+# Documento da entrega: tem credenciais, vai no pacote e nunca no repositorio.
+ENTREGA-LOCAL.md
