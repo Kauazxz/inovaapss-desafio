@@ -43,6 +43,7 @@ import {
   useRebalanceMetricModel,
   useUpdateMetricModelVersion,
 } from './api';
+import { type CalibrationSuggestions, suggestedWeightNote } from './calibration-suggestions';
 import {
   applyRebalance,
   compareDraftWithVersion,
@@ -88,6 +89,8 @@ export interface VersionEditorProps {
   definitions: MetricDefinitionDto[];
   /** Quantos clientes passam a ser pontuados pela versão ativada, quando a tela souber. */
   clientCount?: number | null;
+  /** Pesos da última calibração deste modelo (§26), quando já houve alguma. */
+  calibration?: CalibrationSuggestions | null;
   onActivated: (version: number) => void;
 }
 
@@ -97,6 +100,7 @@ export function VersionEditor({
   activeVersion,
   definitions,
   clientCount = null,
+  calibration = null,
   onActivated,
 }: VersionEditorProps) {
   const updateVersion = useUpdateMetricModelVersion();
@@ -286,7 +290,11 @@ export function VersionEditor({
               const definition = definitionsById.get(item.metricDefinitionId);
               const name = definition?.name ?? 'Métrica removida';
               const counts = item.included && (definition?.isActive ?? false);
-              const suggested = proposedById.get(item.metricDefinitionId);
+              // A proposta de redistribuição está na tela agora e ganha da calibração, que é
+              // a leitura de fundo do histórico.
+              const suggested =
+                proposedById.get(item.metricDefinitionId) ??
+                calibration?.weightByMetricId.get(item.metricDefinitionId);
               return (
                 <TableRow key={item.metricDefinitionId} data-metric-id={item.metricDefinitionId}>
                   <TableCell>
@@ -414,9 +422,8 @@ export function VersionEditor({
       )}
 
       <p className="mt-2 text-xs text-muted-foreground">
-        Peso sugerido vem da calibração com o histórico de cancelamentos ou de uma proposta de
-        redistribuição; enquanto não houver nenhuma, a coluna fica em “—”. Peso final é o que
-        realmente entra na conta: uma métrica desativada não soma.
+        {suggestedWeightNote(calibration, proposal !== null)} Peso final é o que realmente entra na
+        conta: uma métrica desativada não soma.
       </p>
 
       {openItem !== null && openDefinition !== undefined ? (

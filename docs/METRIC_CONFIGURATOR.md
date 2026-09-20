@@ -50,18 +50,18 @@ sendo responsabilidade de quem ativa**: nenhuma versão entra em vigor sem 100 %
 
 ## 4. A tabela do configurador (§41)
 
-| Coluna            | O que mostra                                                                        |
-| ----------------- | ----------------------------------------------------------------------------------- |
-| **Ativa**         | Se a métrica faz parte desta versão. Desmarcar a tira da versão e da soma.          |
-| **Ordem**         | Ordem de exibição. Muda pelos botões ↑ e ↓ — acessíveis pelo teclado, sem arrastar. |
-| **Métrica**       | Nome e chave, com link para o cadastro.                                             |
-| **Tipo**          | Tempo, Percentual, Quantidade, Financeiro, Nota…                                    |
-| **Peso empresa**  | O peso digitado, em porcentagem. Editável direto na linha.                          |
-| **Peso sugerido** | O peso vindo da calibração ou de uma proposta de redistribuição. Sem nenhum, "—".   |
-| **Peso final**    | O que realmente entra na conta. Métrica desativada não soma e aparece como "—".     |
-| **Direção**       | Maior é melhor, maior é pior ou faixa-alvo.                                         |
-| **Normalização**  | A estratégia do §9 usada para virar health 0–100.                                   |
-| **Status**        | Entra nesta versão, Peso alterado, Sem mudança, Fora desta versão, Desativada.      |
+| Coluna            | O que mostra                                                                                                                                                                                                                                                                                                         |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Ativa**         | Se a métrica faz parte desta versão. Desmarcar a tira da versão e da soma.                                                                                                                                                                                                                                           |
+| **Ordem**         | Ordem de exibição. Muda pelos botões ↑ e ↓ — acessíveis pelo teclado, sem arrastar.                                                                                                                                                                                                                                  |
+| **Métrica**       | Nome e chave, com link para o cadastro.                                                                                                                                                                                                                                                                              |
+| **Tipo**          | Tempo, Percentual, Quantidade, Financeiro, Nota…                                                                                                                                                                                                                                                                     |
+| **Peso empresa**  | O peso digitado, em porcentagem. Editável direto na linha.                                                                                                                                                                                                                                                           |
+| **Peso sugerido** | O peso que a **última calibração** (§26) deste modelo propôs para a métrica. Quando há uma proposta de redistribuição na tela, ela tem precedência, porque é a ação em curso. Sem nenhuma das duas, "—". O rodapé da tabela diz de qual das duas veio o número, a data e a janela. Ver `calibration-suggestions.ts`. |
+| **Peso final**    | O que realmente entra na conta. Métrica desativada não soma e aparece como "—".                                                                                                                                                                                                                                      |
+| **Direção**       | Maior é melhor, maior é pior ou faixa-alvo.                                                                                                                                                                                                                                                                          |
+| **Normalização**  | A estratégia do §9 usada para virar health 0–100.                                                                                                                                                                                                                                                                    |
+| **Status**        | Entra nesta versão, Peso alterado, Sem mudança, Fora desta versão, Desativada.                                                                                                                                                                                                                                       |
 
 A **soma dos pesos fica visível o tempo todo**, acima da tabela, e é destacada enquanto for
 diferente de 100 %. É a mesma conta que a API faz ao ativar (`validateVersionWeights`): entram só

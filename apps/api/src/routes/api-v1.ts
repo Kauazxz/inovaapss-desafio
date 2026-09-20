@@ -6,6 +6,8 @@
  * Os middlewares de auth/tenant nascem aqui uma vez e são passados aos módulos, para todos
  * compartilharem o mesmo cache de tokens e a mesma resolução de organização.
  */
+import { randomUUID } from 'node:crypto';
+
 import { Router } from 'express';
 
 import type { ImportRecalculationDto } from '@inovaapss/shared';
@@ -592,8 +594,11 @@ export function createApiV1Router(deps: ApiV1Dependencies): Router {
     }),
   );
 
+  const documentsRepository =
+    deps.documentsRepository ?? createDocumentsRepository(() => deps.db.getDb());
+
   const documentsService = createDocumentsService({
-    repository: deps.documentsRepository ?? createDocumentsRepository(() => deps.db.getDb()),
+    repository: documentsRepository,
     storage:
       deps.documentStorage ??
       createSupabaseDocumentStorage({ getClient: () => deps.supabase.getAdmin() }),
@@ -634,6 +639,23 @@ export function createApiV1Router(deps: ApiV1Dependencies): Router {
               bucket: IMPORTS_BUCKET,
             }),
           recalculate: deps.importRecalculate ?? createRecalculateAfterImport(getDb),
+          // Costura com o arquivo da organização (§35): a planilha entra em uploaded_documents
+          // já com o job que a trouxe, em vez de depender da varredura do bucket.
+          archive: async (file) => {
+            await documentsRepository.registerImportedDocuments([
+              {
+                id: randomUUID(),
+                organizationId: file.organizationId,
+                storagePath: file.storagePath,
+                fileName: file.fileName,
+                mimeType: file.mimeType,
+                sizeBytes: file.sizeBytes,
+                uploadedBy: file.uploadedBy,
+                origin: 'import',
+                importJobId: file.importJobId,
+              },
+            ]);
+          },
         }),
       ),
     }),

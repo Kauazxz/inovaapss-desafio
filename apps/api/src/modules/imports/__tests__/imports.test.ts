@@ -24,6 +24,10 @@ import {
   createInMemoryDocumentStorage,
   type InMemoryDocumentStorage,
 } from '../../../infrastructure/storage/memory-storage.js';
+import {
+  createFakeDocumentsRepository,
+  type FakeDocumentsRepository,
+} from '../../documents/__tests__/fake-repository.js';
 import { createFakeOrganizationsRepository } from '../../organizations/__tests__/fake-repository.js';
 
 import type { DbClient } from '../../../infrastructure/db/index.js';
@@ -111,6 +115,7 @@ let repository: FakeImportsRepository;
 let ingest: FakeIngestRepository;
 let storage: InMemoryDocumentStorage;
 let recalculate: ReturnType<typeof vi.fn>;
+let documents: FakeDocumentsRepository;
 
 function app() {
   return createApp(env, {
@@ -119,6 +124,7 @@ function app() {
     apiV1: {
       getUser,
       organizationsRepository: organizationsRepository(),
+      documentsRepository: documents,
       importsRepository: repository,
       importIngestRepository: ingest,
       importStorage: storage,
@@ -224,6 +230,7 @@ beforeEach(() => {
   repository = createFakeImportsRepository();
   ingest = createFakeIngestRepository(METRIC_SLUGS);
   storage = createInMemoryDocumentStorage();
+  documents = createFakeDocumentsRepository();
   recalculate = vi.fn(async () => ({
     clients: 2,
     clientSnapshots: 2,
@@ -249,6 +256,39 @@ describe('POST /api/v1/imports', () => {
     const res = await uploadWorkbook('dani');
     expect(res.status).toBe(201);
     expect(res.body.job.createdBy).toBe(DANI.userId);
+  });
+
+  // Costura com o arquivo da organização (§35): quem importa também cataloga, para o vínculo
+  // com o job ser exato em vez de deduzido do caminho do objeto pela varredura do bucket.
+  it('registra a planilha no arquivo da organização com origem e job', async () => {
+    const res = await uploadWorkbook();
+    expect(res.status).toBe(201);
+
+    expect(documents.documents).toHaveLength(1);
+    expect(documents.documents[0]).toMatchObject({
+      organizationId: ORG_A,
+      fileName: 'base.xlsx',
+      origin: 'import',
+      importJobId: res.body.job.id,
+      uploadedBy: ANA.userId,
+      storagePath: `${ORG_A}/${res.body.job.id}/base.xlsx`,
+    });
+  });
+
+  it('arquivo recusado não vira job nem entra no arquivo da organização', async () => {
+    const res = await upload(Buffer.from('isto nao e uma planilha'), 'ruim.xlsx', XLSX_MIME);
+    expect(res.status).toBe(415);
+    expect(documents.documents).toHaveLength(0);
+  });
+
+  // Catalogar é desejável, não essencial: o essencial é a planilha estar guardada.
+  it('falha ao catalogar não derruba a importação', async () => {
+    documents.registerImportedDocuments = async () => {
+      throw new Error('banco fora do ar');
+    };
+    const res = await uploadWorkbook();
+    expect(res.status).toBe(201);
+    expect([...storage.objects.keys()]).toHaveLength(1);
   });
 
   it('guarda a planilha no bucket privado e já devolve as abas reconhecidas', async () => {

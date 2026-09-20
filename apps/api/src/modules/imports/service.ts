@@ -150,7 +150,27 @@ export interface ImportsServiceDependencies {
    * que virar fila: devolve `null` quando não havia o que recalcular.
    */
   recalculate?: (organizationId: string) => Promise<ImportRecalculationDto | null>;
+  /**
+   * Costura com o arquivo da organização (§35): registra a planilha em `uploaded_documents` com
+   * `origin = 'import'` e o job que a trouxe. É aqui que o vínculo fica exato — a varredura do
+   * bucket feita pela tela de documentos é só a rede de segurança para o que veio antes disto.
+   *
+   * Falha nunca derruba a importação: guardar o arquivo é o essencial, catalogá-lo é o desejável.
+   */
+  archive?: (input: ArchivedImportFile) => Promise<void>;
   now?: () => Date;
+}
+
+/** O que o arquivo da organização precisa saber sobre a planilha recém-enviada. */
+export interface ArchivedImportFile {
+  organizationId: string;
+  importJobId: string;
+  storagePath: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  /** Quem enviou a planilha; nulo só se a importação não tiver vindo de uma pessoa. */
+  uploadedBy: string | null;
 }
 
 export interface ConfirmImportOptions {
@@ -469,6 +489,22 @@ export function createImportsService(deps: ImportsServiceDependencies): ImportsS
         // Sem linha no banco o objeto ficaria órfão: remove e propaga.
         await storage.remove([filePath]).catch(() => undefined);
         throw err;
+      }
+
+      // Catalogar no arquivo da organização é desejável, não essencial: se falhar, a importação
+      // segue e a varredura do bucket (§35) registra a planilha na próxima listagem.
+      if (deps.archive) {
+        await deps
+          .archive({
+            organizationId: tenant.organizationId,
+            importJobId: job.id,
+            storagePath: filePath,
+            fileName: input.fileName,
+            mimeType: resolved.mimeType,
+            sizeBytes: input.buffer.length,
+            uploadedBy: tenant.userId,
+          })
+          .catch(() => undefined);
       }
 
       return { job: toPublicImportJob(job), sheets: toSheetDtos(sheets) };

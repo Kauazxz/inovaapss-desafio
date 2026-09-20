@@ -231,6 +231,17 @@ Tudo abaixo de `/api/v1/imports`. Ler é para qualquer membro; enviar, conferir 
 | Preview        | `POST /imports/:id/preview` | Escolhe o mapeamento de cada tabela, roda `importDataset` e responde válidas, inválidas, duplicadas, campos ausentes e os erros por linha. Grava só `mapping_json` e `summary_json` (`status = previewed`).                                                                                                                  |
 | Confirmação    | `POST /imports/:id/confirm` | **Relê o arquivo do storage e revalida**: o preview é informação, não autorização. Grava os dados, registra os erros recusados e dispara o recálculo (`status = confirmed`).                                                                                                                                                 |
 
+### A planilha também entra no arquivo da organização (§35)
+
+No mesmo `POST /imports`, logo depois de criar o job, o service chama a dependência `archive` e a
+planilha é registrada em `uploaded_documents` com `origin = 'import'`, o `import_job_id` do job e
+o `uploaded_by` de quem enviou. É assim que a tela `/documents` mostra as planilhas importadas
+junto com os documentos enviados por lá, com o vínculo exato em vez de deduzido do caminho.
+
+A chamada é isolada por `catch`: **catalogar nunca derruba importar**. Se ela falhar, a planilha
+continua guardada e o job continua válido — a varredura do bucket feita por `/documents` registra
+o arquivo na listagem seguinte. Detalhes em [DOCUMENTS.md](DOCUMENTS.md) §8.
+
 O corpo de `preview` e de `confirm` é o mesmo:
 
 ```jsonc

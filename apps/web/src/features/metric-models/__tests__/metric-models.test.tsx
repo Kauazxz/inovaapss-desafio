@@ -116,6 +116,8 @@ function versions(): MetricModelVersionDto[] {
 
 interface ServerState {
   versions: MetricModelVersionDto[];
+  /** Execuções de calibração visíveis no histórico; vazio = ninguém calibrou ainda. */
+  calibrationRuns: { id: string; metricModelVersionId: string; status: string }[];
   patched: { items: unknown[] } | null;
   activated: number | null;
   rebalanceBody: unknown;
@@ -152,6 +154,52 @@ const SCORE = {
   triggers: { hits: [] },
   explanation: { summary: 'Uso caiu 10 pontos em 3 meses.', components: [], notes: [] },
 };
+
+const RUN_ID = '55555555-5555-4555-8555-555555555555';
+
+/** O que a calibração (§26) devolve: peso sugerido por métrica, na escala 0–1 do configurador. */
+const RUN_RESULTS = {
+  parameters: { windowDays: 60, riskThreshold: 41, suggestionStrength: 0.5 },
+  baseline: null,
+  proposed: null,
+  suggestions: [
+    {
+      metricId: SLA_ID,
+      metricName: 'Cumprimento de SLA',
+      currentWeight: 0.5,
+      suggestedWeight: 0.62,
+    },
+    {
+      metricId: USO_ID,
+      metricName: 'Uso da plataforma',
+      currentWeight: 0.4,
+      suggestedWeight: 0.38,
+    },
+  ],
+  model: {
+    metricModelId: MODEL_ID,
+    metricModelName: 'GlobalSys v1',
+    metricModelVersionId: 'ver-1',
+    version: 1,
+    status: 'active',
+  },
+};
+
+function runSummary(run: { id: string; metricModelVersionId: string; status: string }) {
+  return {
+    ...run,
+    metricModelName: 'GlobalSys v1',
+    version: 1,
+    windowDays: 60,
+    churnsAnalyzed: 22,
+    churnsCaught: 14,
+    precision: 0.61,
+    churnDetectionRate: 0.64,
+    errorMessage: null,
+    createdAt: '2026-09-19T12:00:00.000Z',
+    finishedAt: '2026-09-19T12:03:00.000Z',
+  };
+}
 
 function mockApi() {
   fetchMock.mockImplementation(async (input, init) => {
@@ -207,6 +255,15 @@ function mockApi() {
       }));
       return jsonResponse(200, { version: server.versions[1] });
     }
+    if (path === '/api/v1/calibration/runs' && method === 'GET') {
+      return jsonResponse(200, { items: server.calibrationRuns.map(runSummary) });
+    }
+    if (path === `/api/v1/calibration/runs/${RUN_ID}` && method === 'GET') {
+      const found = server.calibrationRuns.find((run) => run.id === RUN_ID);
+      if (found === undefined)
+        return jsonResponse(404, { error: { code: 'NOT_FOUND', message: path } });
+      return jsonResponse(200, { ...runSummary(found), parameters: null, results: RUN_RESULTS });
+    }
     return jsonResponse(404, { error: { code: 'NOT_FOUND', message: path } });
   });
 }
@@ -228,6 +285,7 @@ function renderAt(path: string) {
 beforeEach(() => {
   server = {
     versions: versions(),
+    calibrationRuns: [{ id: RUN_ID, metricModelVersionId: 'ver-1', status: 'done' }],
     patched: null,
     activated: null,
     rebalanceBody: null,
@@ -324,6 +382,43 @@ describe('MetricModelDetailPage (/metric-models/:id) — pesos', () => {
     expect(within(total).getByText('Soma dos pesos: 100 %')).toBeInTheDocument();
     // Aplicar mexe no rascunho local, nunca no servidor.
     expect(server.patched).toBeNull();
+  });
+
+  // Costura com a calibração (§26): a coluna "Peso sugerido" existe para confrontar o peso
+  // escolhido pela empresa com o que o histórico de cancelamentos mostrou.
+  it('a coluna Peso sugerido mostra o peso da última calibração', async () => {
+    renderAt(`/metric-models/${MODEL_ID}`);
+    const table = await screen.findByRole('table', { name: 'Métricas do modelo' });
+
+    const linha = await within(table).findByText('Cumprimento de SLA');
+    const celulas = within(linha.closest('tr') as HTMLElement);
+    // Peso da empresa é 50 %; a calibração sugere 62 %.
+    expect(await celulas.findByText('62 %')).toBeInTheDocument();
+    expect(await screen.findByText(/vem da calibração/)).toHaveTextContent('janela de 60 dias');
+  });
+
+  it('sem calibração nenhuma, a coluna fica em “—” e diz por quê', async () => {
+    server.calibrationRuns = [];
+    renderAt(`/metric-models/${MODEL_ID}`);
+    await screen.findByRole('table', { name: 'Métricas do modelo' });
+
+    expect(await screen.findByText(/enquanto ninguém rodar uma/)).toBeInTheDocument();
+  });
+
+  it('a proposta na tela tem precedência sobre a calibração', async () => {
+    const user = userEvent.setup();
+    renderAt(`/metric-models/${MODEL_ID}`);
+    const table = await screen.findByRole('table', { name: 'Métricas do modelo' });
+    const linha = within(table).getByText('Cumprimento de SLA').closest('tr') as HTMLElement;
+    expect(await within(linha).findByText('62 %')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Redistribuir pesos' }));
+    await screen.findByRole('table', { name: 'Proposta de redistribuição de pesos' });
+
+    await waitFor(() => {
+      expect(within(linha).getByText('55,56 %')).toBeInTheDocument();
+    });
+    expect(within(linha).queryByText('62 %')).not.toBeInTheDocument();
   });
 
   it('descartar a proposta não muda peso nenhum', async () => {

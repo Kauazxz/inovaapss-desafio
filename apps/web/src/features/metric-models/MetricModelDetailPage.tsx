@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { MetricsError, MetricsLoading } from '@/features/metrics/MetricsStates';
 
 import { useAllMetricDefinitions, useCreateMetricModelVersion, useMetricModel } from './api';
+import { useCalibrationSuggestions } from './calibration-suggestions';
 import { draftToItems, versionToDraft } from './draft';
 import { VersionEditor } from './VersionEditor';
 import { VersionsPanel } from './VersionsPanel';
@@ -54,6 +55,11 @@ export function MetricModelDetailPage() {
   const definitions = useAllMetricDefinitions();
   const createVersion = useCreateMetricModelVersion();
   const [selected, setSelected] = useState<number | null>(null);
+  // Hooks vêm antes de qualquer return: a lista de versões só existe depois da carga, então
+  // passamos os ids que já temos (vazio enquanto carrega) e a busca se habilita sozinha.
+  const calibration = useCalibrationSuggestions(
+    (model.data?.versions ?? []).map((version) => version.id),
+  );
 
   if (model.isPending) return <MetricsLoading label="Carregando o modelo" />;
   if (model.isError) {
@@ -142,6 +148,7 @@ export function MetricModelDetailPage() {
             version={shown}
             activeVersion={activeVersion}
             definitions={definitions.data?.items ?? []}
+            calibration={calibration}
             onActivated={setSelected}
           />
 

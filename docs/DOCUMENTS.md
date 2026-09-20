@@ -242,14 +242,29 @@ Na resposta, cada item traz `origin` (`upload | import`) e `importJobId`, que é
 para agrupar e filtrar. O download de um arquivo `import` é assinado no bucket `imports`; o texto
 extraído é sempre gravado no bucket `documents`, para não escrever no bucket do outro módulo.
 
-### Pendência para o integrador
+### O vínculo na origem (ligado na integração)
 
-> **Ligar o `import_job_id` na origem.** Se o módulo de importação gravar ele mesmo a linha em
-> `uploaded_documents` (com `origin = 'import'`, `import_job_id` do job e `uploaded_by` de quem
-> subiu a planilha), a varredura deixa de encontrar novidade e o vínculo fica exato, sem depender
-> da convenção de caminho. Basta inserir a linha com o `storage_path` do objeto no bucket — a
-> chave (`organization_id`, `storage_path`) evita duplicidade nos dois sentidos. Nada mais muda na
-> tela: ela já lê `origin` e `importJobId` da API.
+Quem cataloga é a própria importação. Em `POST /imports`, assim que o job é criado, o service
+chama a dependência `archive` e a linha entra em `uploaded_documents` já com `origin = 'import'`,
+o `import_job_id` do job e o `uploaded_by` de quem enviou a planilha:
+
+```text
+apps/api/src/modules/imports/service.ts    dependência archive(ArchivedImportFile)
+apps/api/src/routes/api-v1.ts              archive → documentsRepository.registerImportedDocuments
+```
+
+Assim o vínculo é **exato**, e não deduzido do caminho do objeto. Duas consequências de projeto:
+
+- **Catalogar nunca derruba importar.** A chamada é `catch`-ada: se o banco falhar, a planilha
+  continua guardada e o job continua válido. O que se perde é a linha do arquivo — que a varredura
+  do bucket recupera na listagem seguinte.
+- **A varredura continua existindo, como rede de segurança.** Ela cobre o que foi importado antes
+  desta integração e qualquer objeto que tenha entrado no bucket por fora. Como a chave
+  (`organization_id`, `storage_path`) é única e a gravação é `onConflictDoNothing`, as duas vias
+  convivem sem duplicar nada.
+
+`import_job_id` continua sem chave estrangeira, de propósito: a varredura deduz o job do caminho e
+um id que não exista mais no `import_jobs` faria a listagem falhar em vez de mostrar o arquivo.
 
 ## 9. Segurança (§45)
 
