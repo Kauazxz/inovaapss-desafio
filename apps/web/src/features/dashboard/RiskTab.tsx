@@ -9,7 +9,6 @@ import {
   criticalBandHint,
   formatCountDelta,
   formatCurrencyDelta,
-  priorityFormulaText,
   riskBandHint,
 } from './format';
 import { KpiRow } from './KpiRow';
@@ -71,7 +70,7 @@ export function RiskTab() {
         <DashboardEmpty filtered={false} />
       ) : (
         <>
-          <ScoreGuide example={data.ranking[0]!} />
+          <ScoreGuide example={data.ranking[0]!} priorityWeights={data.priorityWeights} />
 
           <ForecastDumbbellChart data={data.forecast} onSelect={openClient} />
 
@@ -81,8 +80,8 @@ export function RiskTab() {
                 Ranking por prioridade
               </h3>
               <p className="text-[13px] text-muted-foreground">
-                {priorityFormulaText(data.priorityWeights)} (§28). A lista é fixa: o primeiro da
-                fila é quem tem a maior prioridade; "Analisar" abre o cliente.
+                O primeiro cliente é a ação mais urgente. A ordem considera o sinal de risco atual
+                e o impacto comercial do contrato; "Analisar" abre os detalhes.
               </p>
             </div>
             <RankingTable rows={data.ranking} onSelect={openClient} />

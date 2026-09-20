@@ -1,91 +1,145 @@
-import type { RankingRow } from '@inovaapss/shared';
+import type { ReactNode } from 'react';
+
+import {
+  PRIORITY_CLASS_LABELS,
+  type PriorityWeights,
+  type RankingRow,
+} from '@inovaapss/shared';
 
 import { formatInteger } from '@/lib/format';
 
-import type { ReactNode } from 'react';
-
 function GuideItem({
   number,
+  question,
   title,
+  value,
   scale,
   children,
 }: {
   number: number;
+  question: string;
   title: string;
+  value: string;
   scale: string;
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <article className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-start gap-3">
         <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
           {number}
         </span>
         <div className="min-w-0">
-          <h4 className="font-semibold">{title}</h4>
-          <p className="mt-0.5 text-xs font-medium text-muted-foreground">{scale}</p>
+          <p className="text-xs font-medium text-muted-foreground">{question}</p>
+          <h4 className="mt-0.5 font-semibold">{title}</h4>
         </div>
       </div>
+
+      <p className="mt-4 text-2xl font-semibold tracking-tight">{value}</p>
+      <p className="text-xs font-medium text-muted-foreground">{scale}</p>
       <div className="mt-3 text-sm leading-relaxed text-muted-foreground">{children}</div>
-    </div>
+    </article>
   );
 }
 
-/** Explica os scores que aparecem juntos no ranking e evita tratá-los como probabilidades. */
-export function ScoreGuide({ example }: { example: RankingRow }) {
+/** Traduz os scores do ranking em quatro perguntas práticas, usando o primeiro cliente. */
+export function ScoreGuide({
+  example,
+  priorityWeights,
+}: {
+  example: RankingRow;
+  priorityWeights: PriorityWeights;
+}) {
+  const projected =
+    example.healthProjected === null
+      ? 'Sem projeção'
+      : `${formatInteger(example.healthProjected)}/100`;
+
   return (
-    <section aria-labelledby="score-guide-title" className="space-y-3">
+    <section aria-labelledby="score-guide-title" className="space-y-4">
       <div>
         <h3 id="score-guide-title" className="text-base font-semibold">
-          O que significa cada número
+          Como ler esta tela
         </h3>
         <p className="text-[13px] text-muted-foreground">
-          Saúde, projeção e risco estão relacionados. Eles não são três avaliações concorrentes.
+          Leia da esquerda para a direita: situação de hoje, tendência, alerta e ordem de ação.
         </p>
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-3">
-        <GuideItem number={1} title="Saúde atual" scale="0 = pior · 100 = melhor">
-          Resume como o cliente está agora a partir de uso, atendimento, SLA, financeiro e demais
-          métricas disponíveis.
-          <strong className="mt-2 block text-foreground">
-            Exemplo: {example.clientName} está com {formatInteger(example.healthCurrent)}/100.
-          </strong>
+      <p className="rounded-lg border-l-4 border-l-primary bg-muted/50 px-4 py-3 text-sm">
+        <strong>Regra principal:</strong> saúde atual e risco atual são a mesma situação vista em
+        sentidos opostos. Eles sempre somam 100. Para {example.clientName},{' '}
+        <strong>
+          saúde {formatInteger(example.healthCurrent)} + risco {formatInteger(example.riskScore)} =
+          100
+        </strong>
+        .
+      </p>
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <GuideItem
+          number={1}
+          question="Como o cliente está hoje?"
+          title="Saúde atual"
+          value={`${formatInteger(example.healthCurrent)}/100`}
+          scale="Quanto maior, melhor"
+        >
+          É a nota de hoje. Cada indicador, como uso, atendimento, SLA e financeiro, vira uma nota
+          de 0 a 100. Os indicadores mais importantes pesam mais. Quando falta informação, a
+          confiança diminui; a informação ausente não vira nota zero.
         </GuideItem>
 
-        <GuideItem number={2} title="Saúde projetada" scale="Estimativa para o próximo período">
-          Prolonga a tendência recente da saúde. Indica para onde o cliente está caminhando e não
-          representa uma probabilidade de cancelamento.
-          <strong className="mt-2 block text-foreground">
-            {example.healthProjected === null
-              ? 'Exemplo: ainda não há histórico suficiente para projetar.'
-              : `Exemplo: a saúde pode ir para ${formatInteger(example.healthProjected)}/100.`}
-          </strong>
+        <GuideItem
+          number={2}
+          question="Para onde ele está indo?"
+          title="Saúde projetada"
+          value={projected}
+          scale="Estimativa do próximo período"
+        >
+          Compara as últimas {example.trendWindow} notas de saúde e prolonga esse movimento por mais
+          um período. Mostra onde a saúde pode chegar se o comportamento continuar. É uma tendência,
+          não uma certeza nem uma chance de cancelamento.
         </GuideItem>
 
         <GuideItem
           number={3}
-          title="Risco de cancelamento"
-          scale="0 = menor risco · 100 = maior risco"
+          question="Qual é o alerta de hoje?"
+          title="Sinal de risco de cancelamento"
+          value={`${formatInteger(example.riskScore)}/100`}
+          scale="Quanto maior, maior a atenção necessária"
         >
-          É um sinal calculado como <strong className="text-foreground">100 − saúde atual</strong>.{' '}
-          É um score de atenção, não a porcentagem de chance de o cliente cancelar. A coluna mostra
-          o risco de agora; a projeção não altera esse número antecipadamente.
-          <strong className="mt-2 block text-foreground">
-            Exemplo: 100 − {formatInteger(example.healthCurrent)} ={' '}
-            {formatInteger(example.riskScore)}/100 de risco.
+          É a saúde atual invertida: 100 − {formatInteger(example.healthCurrent)} ={' '}
+          {formatInteger(example.riskScore)}. O número mostra a intensidade do alerta.{' '}
+          <strong className="text-foreground">
+            {formatInteger(example.riskScore)} não significa {formatInteger(example.riskScore)}% de
+            chance de cancelar.
           </strong>
+          {' '}A coluna mostra o risco de agora; a projeção não altera esse número antecipadamente.
+        </GuideItem>
+
+        <GuideItem
+          number={4}
+          question="Com quem falar primeiro?"
+          title="Prioridade de atendimento"
+          value={`${formatInteger(example.priorityScore)}/100`}
+          scale={PRIORITY_CLASS_LABELS[example.priorityClass]}
+        >
+          Define a posição na fila. Combina {formatInteger(priorityWeights.risk * 100)}% do sinal de
+          risco com {formatInteger(priorityWeights.impact * 100)}% do impacto comercial, como valor
+          do contrato e importância estratégica.
         </GuideItem>
       </div>
 
-      <p className="rounded-lg bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
-        <strong className="text-foreground">Confiança dos dados</strong> indica quanto a análise é
-        sustentada por métricas disponíveis e recentes.{' '}
-        <strong className="text-foreground">Confiança da projeção</strong> indica se há histórico
-        suficiente para estimar o próximo período.{' '}
-        <strong className="text-foreground">Prioridade de atendimento</strong> combina o risco de
-        cancelamento com o impacto comercial e define a ordem do ranking.
-      </p>
+      <div className="grid gap-2 rounded-lg bg-muted/50 px-4 py-3 text-sm text-muted-foreground md:grid-cols-2">
+        <p>
+          <strong className="text-foreground">Confiança dos dados:</strong> mostra se há informações
+          suficientes e recentes para calcular a saúde atual.
+        </p>
+        <p>
+          <strong className="text-foreground">Confiança da projeção:</strong> mostra se existe
+          histórico suficiente para estimar o próximo período.
+        </p>
+      </div>
     </section>
   );
 }

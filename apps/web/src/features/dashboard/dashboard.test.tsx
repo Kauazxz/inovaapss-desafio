@@ -57,12 +57,10 @@ describe('aba Em risco', () => {
       expect(within(kpis).getByText('Saúde crítica')).toBeInTheDocument();
       expect(within(kpis).getByText('Saúde em risco')).toBeInTheDocument();
       expect(within(kpis).getByText('Receita em risco')).toBeInTheDocument();
-      // As faixas dos KPIs e a fórmula do ranking vêm do payload, não de números fixos (§65).
+      // As faixas dos KPIs vêm do payload, não de números fixos (§65).
       const { thresholds } = mock.forecast;
       expect(within(kpis).getByText(criticalBandHint(thresholds))).toBeInTheDocument();
       expect(within(kpis).getByText(riskBandHint(thresholds))).toBeInTheDocument();
-      const formula = priorityFormulaText(mock.priorityWeights);
-      expect(screen.getByText((text) => text.startsWith(formula))).toBeInTheDocument();
     },
     TEST_TIMEOUT,
   );
@@ -74,21 +72,24 @@ describe('aba Em risco', () => {
 
       const guideTitle = await screen.findByRole(
         'heading',
-        { name: 'O que significa cada número' },
+        { name: 'Como ler esta tela' },
         LAZY_TIMEOUT,
       );
       const guide = guideTitle.closest('section')!;
       expect(within(guide).getByRole('heading', { name: 'Saúde atual' })).toBeInTheDocument();
       expect(within(guide).getByRole('heading', { name: 'Saúde projetada' })).toBeInTheDocument();
       expect(
-        within(guide).getByRole('heading', { name: 'Risco de cancelamento' }),
+        within(guide).getByRole('heading', { name: 'Sinal de risco de cancelamento' }),
       ).toBeInTheDocument();
       expect(
-        within(guide).getByText(/É um score de atenção, não a porcentagem/),
+        within(guide).getByText(/não significa .*% de chance de cancelar/),
       ).toBeInTheDocument();
-      expect(within(guide).getByText(/100 − saúde atual/)).toBeInTheDocument();
-      expect(within(guide).getByText('Confiança dos dados')).toBeInTheDocument();
-      expect(within(guide).getByText('Confiança da projeção')).toBeInTheDocument();
+      expect(within(guide).getByText(/saúde .* \+ risco .* = 100/)).toBeInTheDocument();
+      expect(
+        within(guide).getByRole('heading', { name: 'Prioridade de atendimento' }),
+      ).toBeInTheDocument();
+      expect(within(guide).getByText(/Confiança dos dados:/)).toBeInTheDocument();
+      expect(within(guide).getByText(/Confiança da projeção:/)).toBeInTheDocument();
     },
     TEST_TIMEOUT,
   );
