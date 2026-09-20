@@ -8,6 +8,7 @@ import { distributionTitle, forecastTitle } from '@/components/charts/titles';
 import { buildMockGeneralDashboard, buildMockRiskDashboard } from '@/lib/mock/dashboard';
 
 import { DashboardPage } from './DashboardPage';
+import { criticalBandHint, priorityFormulaText, riskBandHint } from './format';
 import { GeneralTab } from './GeneralTab';
 import { RankingTable } from './RankingTable';
 import { RiskTab } from './RiskTab';
@@ -56,6 +57,12 @@ describe('aba Em risco', () => {
       expect(within(kpis).getByText('Em Crítico')).toBeInTheDocument();
       expect(within(kpis).getByText('Em Risco')).toBeInTheDocument();
       expect(within(kpis).getByText('MRR em risco')).toBeInTheDocument();
+      // As faixas dos KPIs e a fórmula do ranking vêm do payload, não de números fixos (§65).
+      const { thresholds } = mock.forecast;
+      expect(within(kpis).getByText(criticalBandHint(thresholds))).toBeInTheDocument();
+      expect(within(kpis).getByText(riskBandHint(thresholds))).toBeInTheDocument();
+      const formula = priorityFormulaText(mock.priorityWeights);
+      expect(screen.getByText((text) => text.startsWith(formula))).toBeInTheDocument();
     },
     TEST_TIMEOUT,
   );
@@ -141,6 +148,23 @@ describe('aba Em risco', () => {
     },
     TEST_TIMEOUT,
   );
+});
+
+describe('textos derivados da configuração (§7, §28, §65)', () => {
+  it('faixas de health e pesos da prioridade seguem a organização, não os padrões', () => {
+    const custom = { attention: 85, risk: 65, critical: 45 };
+    expect(criticalBandHint(custom)).toBe('health abaixo de 45');
+    expect(riskBandHint(custom)).toBe('health de 45 a 64');
+    expect(priorityFormulaText({ risk: 0.6, impact: 0.4 })).toBe(
+      'Prioridade = risco × 0,6 + impacto comercial × 0,4',
+    );
+    // Com os padrões (80/60/40 e 0,7/0,3) o texto continua o de sempre.
+    expect(criticalBandHint({ attention: 80, risk: 60, critical: 40 })).toBe('health abaixo de 40');
+    expect(riskBandHint({ attention: 80, risk: 60, critical: 40 })).toBe('health de 40 a 59');
+    expect(priorityFormulaText({ risk: 0.7, impact: 0.3 })).toBe(
+      'Prioridade = risco × 0,7 + impacto comercial × 0,3',
+    );
+  });
 });
 
 describe('tabela de ranking', () => {

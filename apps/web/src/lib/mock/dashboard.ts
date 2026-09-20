@@ -676,6 +676,7 @@ export function buildMockRiskDashboard(query: MockQuery = {}): RiskDashboardData
       periodLabel: MOCK_PERIOD_LABEL,
       crossingCount: forecastRows.filter((row) => row.crossesDown).length,
     },
+    priorityWeights: DEFAULT_PRIORITY_WEIGHTS,
     ranking,
     classCounts: {
       NORMAL: countNow('NORMAL'),

@@ -2,7 +2,7 @@
  * Aba "Em risco" do dashboard (§39) — resposta de `GET /dashboard/risk`.
  * Responde: com quem falar, por quê, em que ordem e o que fazer.
  */
-import type { HealthClass } from '../scoring.js';
+import type { HealthClass, PriorityWeights } from '../scoring.js';
 import type { ForecastChartData, ForecastRow } from './forecast.js';
 
 /** Um número em texto simples com a variação vs. período anterior (DATAVIZ.md §4.1). */
@@ -49,7 +49,10 @@ export interface RankingRow extends ForecastRow {
 
 export interface RiskDashboardData {
   kpis: RiskKpis;
+  /** Inclui `thresholds` (faixas vigentes, §7): a UI deriva daí todo texto de faixa. */
   forecast: ForecastChartData;
+  /** Pesos vigentes da prioridade (§28, configuráveis por organização — §65). */
+  priorityWeights: PriorityWeights;
   /** Ordenado por `priorityScore` decrescente. */
   ranking: RankingRow[];
   /** Classe de saúde de cada cliente do ranking, para quem só precisa contar. */

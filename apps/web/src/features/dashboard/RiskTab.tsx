@@ -9,7 +9,13 @@ import { formatCompactCurrency, formatInteger } from '@/lib/format';
 import { useDashboardFilterOptions, useRiskDashboard } from './api';
 import { DashboardFilterBar } from './DashboardFilterBar';
 import { DashboardEmpty, DashboardError, DashboardLoading } from './DashboardStates';
-import { formatCountDelta, formatCurrencyDelta } from './format';
+import {
+  criticalBandHint,
+  formatCountDelta,
+  formatCurrencyDelta,
+  priorityFormulaText,
+  riskBandHint,
+} from './format';
 import { KpiRow } from './KpiRow';
 import { RankingTable } from './RankingTable';
 
@@ -38,6 +44,8 @@ export function RiskTab() {
   const data = query.data;
   const reloading = query.isFetching && query.isPlaceholderData;
   const { kpis } = data;
+  // Faixas e pesos vêm do payload (configuração da organização), nunca de números fixos (§65).
+  const { thresholds } = data.forecast;
 
   return (
     <div className="space-y-8">
@@ -53,13 +61,13 @@ export function RiskTab() {
             label: 'Em Crítico',
             value: formatInteger(kpis.criticalClients.value),
             delta: formatCountDelta(kpis.criticalClients.delta),
-            hint: 'health abaixo de 40',
+            hint: criticalBandHint(thresholds),
           },
           {
             label: 'Em Risco',
             value: formatInteger(kpis.riskClients.value),
             delta: formatCountDelta(kpis.riskClients.delta),
-            hint: 'health de 40 a 59',
+            hint: riskBandHint(thresholds),
           },
           {
             label: 'MRR em risco',
@@ -90,7 +98,7 @@ export function RiskTab() {
                 Ranking por prioridade
               </h3>
               <p className="text-[13px] text-muted-foreground">
-                Prioridade = risco × 0,7 + impacto comercial × 0,3 (§28). Clique num cabeçalho para
+                {priorityFormulaText(data.priorityWeights)} (§28). Clique num cabeçalho para
                 reordenar; "Analisar" abre o cliente.
               </p>
             </div>
