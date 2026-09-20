@@ -57,9 +57,12 @@ function Score({ label, value }: { label: string; value: number | null }) {
 export function SimulatePanel({
   definition,
   item,
+  caption,
 }: {
   definition: MetricDefinitionDto;
   item: MetricModelItemDto | null;
+  /** Texto sob o título. O configurador simula um rascunho, não a versão ativa. */
+  caption?: string;
 }) {
   const valuesId = useId();
   const [text, setText] = useState('90, 85, 80');
@@ -89,9 +92,10 @@ export function SimulatePanel({
           Simular
         </h3>
         <p className="text-sm text-muted-foreground">
-          {item === null
-            ? 'Esta métrica ainda não está em nenhuma versão ativa: a simulação usa uma escala linear de 0 a 100 como exemplo.'
-            : 'Usa a configuração da versão ativa. Nada é salvo.'}
+          {caption ??
+            (item === null
+              ? 'Esta métrica ainda não está em nenhuma versão ativa: a simulação usa uma escala linear de 0 a 100 como exemplo.'
+              : 'Usa a configuração da versão ativa. Nada é salvo.')}
         </p>
       </div>
 

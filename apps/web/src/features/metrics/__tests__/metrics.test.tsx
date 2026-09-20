@@ -12,6 +12,7 @@ import { MetricDetailPage } from '../MetricDetailPage';
 import { MetricsPage } from '../MetricsPage';
 import { orderMetricItems } from '../order';
 import { parseSeriesText } from '../parse-series';
+import { suggestSlug } from '../slug';
 
 import type { MetricPrefill } from '@/features/documents/api';
 
@@ -164,11 +165,19 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** Corpo do último PATCH /metrics/:id, para o teste do formulário de edição. */
+let patchedMetric: Record<string, unknown> | null = null;
+
 function mockApi(
   options: { listStatus?: number; previewStatus?: number; createStatus?: number } = {},
 ) {
+  patchedMetric = null;
   fetchMock.mockImplementation(async (input, init) => {
     const url = new URL(String(input));
+    if (url.pathname === `/api/v1/metrics/${SLA_ID}` && init?.method === 'PATCH') {
+      patchedMetric = JSON.parse(String(init.body)) as Record<string, unknown>;
+      return jsonResponse(200, { definition: { ...DETAIL.definition, ...patchedMetric } });
+    }
     if (url.pathname === '/api/v1/metrics' && init?.method === 'POST') {
       if (options.createStatus !== undefined && options.createStatus >= 400) {
         return jsonResponse(options.createStatus, {
@@ -262,7 +271,7 @@ describe('MetricsPage (/metrics)', () => {
     expect(sla.getByText('Percentual')).toBeInTheDocument();
     expect(sla.getByText('Maior é melhor')).toBeInTheDocument();
     expect(sla.getByText('Escala linear')).toBeInTheDocument();
-    expect(sla.getByText('No modelo ativo (GlobalSys v2)')).toBeInTheDocument();
+    expect(sla.getByText('No modelo ativo (GlobalSys · versão 2)')).toBeInTheDocument();
 
     const uso = within(rows[1]!);
     expect(uso.getByText('Não')).toBeInTheDocument();
@@ -319,7 +328,7 @@ describe('MetricDetailPage (/metrics/:id)', () => {
     renderAt(`/metrics/${SLA_ID}`);
 
     expect(await screen.findByRole('heading', { name: 'Cumprimento de SLA' })).toBeInTheDocument();
-    expect(screen.getByText('GlobalSys v2 · peso 12 % · ordem 4')).toBeInTheDocument();
+    expect(screen.getByText('GlobalSys · versão 2 · peso 12 % · ordem 4')).toBeInTheDocument();
     expect(screen.getByText('Estratégia: Escala linear.')).toBeInTheDocument();
     expect(screen.getByText('Escala de 0 a 100: 0 vale 0 e 100 vale 100.')).toBeInTheDocument();
     expect(
@@ -372,6 +381,81 @@ describe('MetricDetailPage (/metrics/:id)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Tendência: a janela precisa ser ≥ 2.',
     );
+  });
+});
+
+describe('MetricFormDialog (cadastro da métrica, §31)', () => {
+  it('sugere a chave a partir do nome e cria a métrica em POST /metrics', async () => {
+    mockApi();
+    const user = userEvent.setup();
+    renderAt('/metrics');
+    await screen.findByRole('table', { name: 'Métricas da organização' });
+
+    await user.click(screen.getByRole('button', { name: 'Nova métrica' }));
+    const form = await screen.findByRole('form', { name: 'Nova métrica' });
+
+    await user.type(within(form).getByLabelText('Nome'), 'Reuniões não realizadas');
+    expect(within(form).getByLabelText('Chave')).toHaveValue('reunioes_nao_realizadas');
+    await user.selectOptions(within(form).getByLabelText('Tipo'), 'PERCENTAGE');
+    await user.selectOptions(within(form).getByLabelText('Direção'), 'HIGHER_IS_WORSE');
+    await user.click(within(form).getByRole('button', { name: 'Criar métrica' }));
+
+    await waitFor(() => {
+      expect(requestedUrls().some((url) => url.endsWith(`/api/v1/metrics/${NEW_ID}`))).toBe(true);
+    });
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+    expect(JSON.parse(String(post![1]!.body))).toMatchObject({
+      name: 'Reuniões não realizadas',
+      slug: 'reunioes_nao_realizadas',
+      direction: 'HIGHER_IS_WORSE',
+      periodicity: 'MONTHLY',
+      isActive: true,
+    });
+  });
+
+  it('não deixa passar nome curto demais', async () => {
+    mockApi();
+    const user = userEvent.setup();
+    renderAt('/metrics');
+    await screen.findByRole('table', { name: 'Métricas da organização' });
+
+    await user.click(screen.getByRole('button', { name: 'Nova métrica' }));
+    const form = await screen.findByRole('form', { name: 'Nova métrica' });
+    await user.type(within(form).getByLabelText('Nome'), 'a');
+    await user.click(within(form).getByRole('button', { name: 'Criar métrica' }));
+
+    expect(
+      await within(form).findByText('O nome precisa ter pelo menos 2 caracteres.'),
+    ).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
+  });
+
+  it('o botão Editar abre o formulário preenchido e salva com PATCH', async () => {
+    mockApi();
+    const user = userEvent.setup();
+    renderAt(`/metrics/${SLA_ID}`);
+    await screen.findByRole('heading', { name: 'Cumprimento de SLA' });
+
+    await user.click(screen.getByRole('button', { name: 'Editar' }));
+    const form = await screen.findByRole('form', { name: 'Editar métrica' });
+    expect(within(form).getByLabelText('Chave')).toHaveValue('sla_compliance');
+
+    await user.clear(within(form).getByLabelText('Unidade'));
+    await user.type(within(form).getByLabelText('Unidade'), 'p.p.');
+    await user.click(within(form).getByRole('button', { name: 'Salvar alterações' }));
+
+    await waitFor(() => {
+      expect(patchedMetric).not.toBeNull();
+    });
+    expect(patchedMetric).toMatchObject({ slug: 'sla_compliance', unit: 'p.p.' });
+  });
+});
+
+describe('suggestSlug', () => {
+  it('tira acento, minúsculo e junta com sublinhado', () => {
+    expect(suggestSlug('Cumprimento de SLA')).toBe('cumprimento_de_sla');
+    expect(suggestSlug('Insatisfação / NPS')).toBe('insatisfacao_nps');
+    expect(suggestSlug('  Uso da plataforma  ')).toBe('uso_da_plataforma');
   });
 });
 

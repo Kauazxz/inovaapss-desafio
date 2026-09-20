@@ -1,6 +1,6 @@
-import { Search, X } from 'lucide-react';
+import { Plus, Search, X } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import {
   METRIC_DIRECTION_LABELS,
@@ -28,9 +28,12 @@ import { cn } from '@/lib/utils';
 
 import { DEFAULT_METRICS_QUERY, type MetricsListQuery, useMetrics } from './api';
 import { pct } from './explain';
+import { MetricFormDialog } from './MetricFormDialog';
 import { MetricsEmpty, MetricsError, MetricsLoading } from './MetricsStates';
 import { orderMetricItems } from './order';
 import { PrefillBanner } from './PrefillBanner';
+
+import type { MetricPrefill } from '@/features/documents/api';
 
 const selectClassName =
   'h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
@@ -97,9 +100,14 @@ function ActivePill({ active }: { active: boolean }) {
   );
 }
 
+/**
+ * O nome do modelo já costuma trazer a versão do preset ("GlobalSys v1"), então concatenar
+ * `v${version}` produzia "GlobalSys v1 v1". A versão do MODELO é dita por extenso.
+ */
 function statusOf(row: MetricDefinitionListItemDto): string {
   if (row.activePlacement !== null) {
-    return `No modelo ativo (${row.activePlacement.modelName} v${row.activePlacement.version})`;
+    const { modelName, version } = row.activePlacement;
+    return `No modelo ativo (${modelName} · versão ${version})`;
   }
   return row.isActive ? 'Fora do modelo ativo' : 'Desativada';
 }
@@ -112,6 +120,9 @@ export function MetricsPage() {
   const [query, setQuery] = useState<MetricsListQuery>(DEFAULT_METRICS_QUERY);
   const searchId = useId();
   const result = useMetrics(query);
+  const navigate = useNavigate();
+  const [formOpen, setFormOpen] = useState(false);
+  const [formPrefill, setFormPrefill] = useState<MetricPrefill | null>(null);
 
   // Qualquer mudança de filtro volta para a página 1.
   const set = <K extends Exclude<keyof MetricsListQuery, 'page'>>(
@@ -130,9 +141,25 @@ export function MetricsPage() {
       <PageHeader
         title="Métricas"
         description="Tudo é métrica: tipo, direção, fonte, normalização e peso de cada indicador da organização."
-      />
+      >
+        <Button
+          type="button"
+          onClick={() => {
+            setFormPrefill(null);
+            setFormOpen(true);
+          }}
+        >
+          <Plus aria-hidden="true" />
+          Nova métrica
+        </Button>
+      </PageHeader>
 
-      <PrefillBanner />
+      <PrefillBanner
+        onReview={(prefill) => {
+          setFormPrefill(prefill);
+          setFormOpen(true);
+        }}
+      />
 
       <form
         role="search"
@@ -290,6 +317,16 @@ export function MetricsPage() {
           </div>
         </div>
       )}
+
+      <MetricFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        prefill={formPrefill}
+        onSaved={(definition) => {
+          setFormPrefill(null);
+          void navigate(`/metrics/${definition.id}`, { state: null });
+        }}
+      />
     </>
   );
 }

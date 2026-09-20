@@ -1,4 +1,5 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pencil } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 
 import {
@@ -19,6 +20,7 @@ import {
   describeTriggers,
   pct,
 } from './explain';
+import { MetricFormDialog } from './MetricFormDialog';
 import { MetricsError, MetricsLoading } from './MetricsStates';
 import { SimulatePanel } from './SimulatePanel';
 
@@ -59,12 +61,14 @@ function Detail({ data }: { data: MetricDefinitionDetailDto }) {
         <Field label="Fonte" value={METRIC_SOURCE_LABELS[definition.sourceType]} />
         <Field label="Categoria" value={definition.category ?? '—'} />
         <Field label="Ativa" value={definition.isActive ? 'Sim' : 'Não'} />
+        {/* O nome do modelo já traz a versão do preset ("GlobalSys v1"); dizer a versão do
+            MODELO por extenso evita o "GlobalSys v1 v1" que aparecia aqui. */}
         <Field
           label="No modelo ativo"
           value={
             activeModel === null || activeItem === null
               ? 'Não'
-              : `${activeModel.name} v${activeModel.version} · peso ${pct(activeItem.weight)} · ordem ${activeItem.sortOrder}`
+              : `${activeModel.name} · versão ${activeModel.version} · peso ${pct(activeItem.weight)} · ordem ${activeItem.sortOrder}`
           }
         />
       </dl>
@@ -99,16 +103,27 @@ function Detail({ data }: { data: MetricDefinitionDetailDto }) {
 export function MetricDetailPage() {
   const { id } = useParams();
   const result = useMetric(id);
+  const [editOpen, setEditOpen] = useState(false);
+  const definition = result.data?.definition ?? null;
 
   return (
     <>
       <PageHeader
-        title={result.data?.definition.name ?? 'Métrica'}
+        title={definition?.name ?? 'Métrica'}
         description={
-          result.data?.definition.description ??
-          'Como esta métrica é medida, normalizada e pesada no modelo.'
+          definition?.description ?? 'Como esta métrica é medida, normalizada e pesada no modelo.'
         }
       >
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={definition === null}
+          onClick={() => setEditOpen(true)}
+        >
+          <Pencil aria-hidden="true" />
+          Editar
+        </Button>
         <Button asChild variant="ghost" size="sm">
           <Link to="/metrics">
             <ArrowLeft aria-hidden="true" />
@@ -128,6 +143,8 @@ export function MetricDetailPage() {
       ) : (
         <Detail data={result.data} />
       )}
+
+      <MetricFormDialog open={editOpen} onOpenChange={setEditOpen} definition={definition} />
     </>
   );
 }

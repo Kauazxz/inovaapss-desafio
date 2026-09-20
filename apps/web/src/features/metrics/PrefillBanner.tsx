@@ -16,7 +16,7 @@ import type { MetricPrefill } from '@/features/documents/api';
  * métrica nasce em POST /metrics, inativa e sem peso — peso e normalização entram no modelo pelo
  * configurador (Etapa 10). Sem `state.prefill`, o componente não aparece.
  */
-export function PrefillBanner() {
+export function PrefillBanner({ onReview }: { onReview?: (prefill: MetricPrefill) => void }) {
   const location = useLocation();
   const navigate = useNavigate();
   const create = useCreateMetric();
@@ -90,6 +90,17 @@ export function PrefillBanner() {
         <Button type="button" size="sm" onClick={confirm} disabled={create.isPending}>
           {create.isPending ? 'Criando…' : 'Criar métrica'}
         </Button>
+        {onReview === undefined ? null : (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => onReview(prefill)}
+            disabled={create.isPending}
+          >
+            Revisar no formulário
+          </Button>
+        )}
         <Button
           type="button"
           size="sm"

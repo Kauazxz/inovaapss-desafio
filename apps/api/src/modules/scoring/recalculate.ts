@@ -10,7 +10,8 @@
  *         não um número global; por isso o alvo é substituído por contrato.
  *   §19 — a confiança é calculada e guardada separada da saúde.
  *   §20 — o impacto comercial usa o valor mensal do contrato, comparado ao maior da carteira.
- *   §32 — todo snapshot guarda a versão do modelo que o gerou.
+ *   §32 — todo snapshot guarda a versão do modelo que o gerou, e recalcular só reescreve as
+ *         fotos DAQUELA versão: ativar um modelo novo não apaga o histórico do anterior.
  */
 import { and, asc, eq, sql } from 'drizzle-orm';
 
@@ -338,12 +339,26 @@ export async function recalculateOrganization(
   }
 
   // ------------------------------------------------------------ persistência
+  // §32 — o recálculo reescreve SÓ as fotos da versão que acabou de ser calculada. Apagar tudo
+  // da organização faria uma troca de peso reescrever o histórico inteiro como se o modelo novo
+  // sempre tivesse existido; com o filtro por versão, v1 e v2 convivem (a chave única já é por
+  // cliente + versão + período) e cada score continua sabendo qual versão o gerou.
   await db
     .delete(clientScoreSnapshots)
-    .where(eq(clientScoreSnapshots.organizationId, organizationId));
+    .where(
+      and(
+        eq(clientScoreSnapshots.organizationId, organizationId),
+        eq(clientScoreSnapshots.metricModelVersionId, version.id),
+      ),
+    );
   await db
     .delete(metricScoreSnapshots)
-    .where(eq(metricScoreSnapshots.organizationId, organizationId));
+    .where(
+      and(
+        eq(metricScoreSnapshots.organizationId, organizationId),
+        eq(metricScoreSnapshots.metricModelVersionId, version.id),
+      ),
+    );
 
   for (let i = 0; i < clientSnapshots.length; i += CHUNK) {
     await db.insert(clientScoreSnapshots).values(clientSnapshots.slice(i, i + CHUNK));

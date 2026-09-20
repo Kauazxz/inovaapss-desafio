@@ -66,7 +66,7 @@ export function MetricsEmpty({
     <EmptyState
       icon={Gauge}
       title="Nenhuma métrica definida"
-      description="Cadastre as métricas pela API (POST /api/v1/metrics) ou aguarde o preset GlobalSys v1; o editor visual chega na Etapa 10."
+      description="Use “Nova métrica” para cadastrar a primeira, ou carregue o preset GlobalSys v1. Peso e normalização entram depois, no modelo de métricas."
     />
   );
 }

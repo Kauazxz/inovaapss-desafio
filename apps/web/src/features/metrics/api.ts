@@ -12,7 +12,11 @@ import type {
   MetricSource,
   MetricType,
 } from '@inovaapss/shared';
-import type { CreateMetricDefinitionInput, PreviewScoreInput } from '@inovaapss/validation';
+import type {
+  CreateMetricDefinitionInput,
+  PreviewScoreInput,
+  UpdateMetricDefinitionBody,
+} from '@inovaapss/validation';
 
 import { apiFetch } from '@/lib/api';
 
@@ -92,6 +96,16 @@ export function createMetricDefinition(
   });
 }
 
+export function updateMetricDefinition(vars: {
+  id: string;
+  body: UpdateMetricDefinitionBody;
+}): Promise<{ definition: MetricDefinitionDto }> {
+  return apiFetch<{ definition: MetricDefinitionDto }>(`/api/v1/metrics/${vars.id}`, {
+    method: 'PATCH',
+    json: vars.body,
+  });
+}
+
 export function fetchMetric(id: string): Promise<MetricDefinitionDetailDto> {
   return apiFetch<MetricDefinitionDetailDto>(`/api/v1/metrics/${id}`);
 }
@@ -140,6 +154,15 @@ export function useCreateMetric() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: createMetricDefinition,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: metricsKeys.all }),
+  });
+}
+
+/** PATCH /metrics/:id (owner/admin). Cadastro da métrica; peso e normalização são do modelo. */
+export function useUpdateMetric() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateMetricDefinition,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: metricsKeys.all }),
   });
 }
