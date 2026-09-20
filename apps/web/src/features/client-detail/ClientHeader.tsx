@@ -39,10 +39,10 @@ function HeaderItem({
 }) {
   return (
     <div className="min-w-0">
-      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="mt-1">
         <span className="flex flex-wrap items-center gap-2">
-          <span className="text-2xl font-semibold tracking-tight">{value}</span>
+          <span className="text-lg font-semibold tracking-tight tabular-nums">{value}</span>
           {children}
         </span>
         {context ? (
@@ -76,7 +76,7 @@ export function ClientHeader({ overview }: ClientHeaderProps) {
     : 'nenhum contrato cadastrado';
 
   return (
-    <header className="mb-6 space-y-4">
+    <header className="mb-6 space-y-5">
       <nav
         aria-label="Você está em"
         className="flex items-center gap-1 text-sm text-muted-foreground"

@@ -18,8 +18,9 @@ export interface ClientsFilterBarProps {
   options?: ClientFilterOptions | undefined;
 }
 
+// Largura total no celular; a partir de sm volta a caber pelo conteúdo, lado a lado.
 const selectClassName =
-  'h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
+  'h-9 w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:w-auto dark:bg-input/30';
 
 function FilterSelect({
   label,
@@ -36,7 +37,7 @@ function FilterSelect({
 }) {
   const id = useId();
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
       <label htmlFor={id} className="sr-only">
         {label}
       </label>
@@ -67,8 +68,12 @@ export function ClientsFilterBar({
   const hasFilters = !isEmptyClientFilters(filters) || search !== '';
 
   return (
-    <div role="group" aria-label="Filtros" className="flex flex-wrap items-end gap-2">
-      <div className="relative min-w-52 flex-1 sm:flex-none">
+    <div
+      role="group"
+      aria-label="Filtros"
+      className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end"
+    >
+      <div className="relative w-full min-w-0 sm:min-w-56 sm:flex-1 lg:max-w-sm">
         <label htmlFor={searchId} className="sr-only">
           Buscar por nome ou código
         </label>
@@ -158,6 +163,7 @@ export function ClientsFilterBar({
           type="button"
           variant="ghost"
           size="sm"
+          className="h-9 w-full sm:w-auto"
           onClick={() => {
             onFiltersChange({});
             onSearchChange('');

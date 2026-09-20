@@ -131,7 +131,44 @@ Toda tela que carrega dados tem os três:
 
 Nunca deixe a tela em branco enquanto espera.
 
-## 8. Acessibilidade
+## 8. Responsividade: a tela é do tamanho que for
+
+Não existe "tela de desenvolvedor". A mesma página tem de ficar boa no celular de 360 px, no tablet,
+no notebook de 1366 px e no monitor grande — e em nenhum desses tamanhos ela pode ficar confusa.
+
+**Escreva o celular primeiro.** A classe sem prefixo é o layout do celular; os prefixos vão soltando
+espaço conforme sobra: `sm:` 640 px · `md:` 768 px · `lg:` 1024 px · `xl:` 1280 px.
+
+```tsx
+// Certo — uma coluna no celular, duas no tablet, quatro no monitor:
+<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+// Errado — três colunas espremidas num celular de 360 px:
+<div className="grid grid-cols-3 gap-3">
+```
+
+Regras que valem em toda tela:
+
+- **Nenhum grid de duas ou mais colunas sem prefixo.** Comece em uma coluna.
+- **Largura fixa só em coisa pequena** (ícone, selo, avatar). Conteúdo usa `w-full` com `max-w-*`.
+  Dentro de um `flex`, quem pode encolher leva `min-w-0` — sem isso o texto estoura a tela.
+- **A página nunca rola para o lado.** Rolagem horizontal é permitida só dentro de uma tabela
+  (o `<Table>` já embrulha numa área rolável) ou de uma faixa de abas.
+- **Tabela larga no celular:** esconda as colunas menos importantes com `hidden md:table-cell`
+  (no `<TableHead>` e no `<TableCell>` da mesma coluna) em vez de deixar dez colunas espremidas. O
+  que sobra tem de contar a história: quem é o cliente, como ele está, o que fazer.
+- **Filtros e barras de ação** viram uma coluna no celular (`flex flex-col gap-2 sm:flex-row`), com
+  os campos em largura total; nada de filtro cortado pela metade.
+- **Diálogo** no celular ocupa quase tudo, sem colar na borda: `w-[calc(100%-2rem)] max-w-lg`.
+- **Ação nunca aparece só no `hover`** — no celular não existe hover. Se um botão só aparece ao
+  passar o mouse, ele também fica visível a partir de `md:` para baixo.
+- **Alvo de toque** de 36 px para cima (mais um motivo para o `h-9`), com espaço entre um e outro.
+- **Número e data** não quebram linha no meio (`whitespace-nowrap`), mas texto longo quebra.
+
+Antes de dizer que uma tela está pronta, olhe ela em **360 px, 768 px e 1440 px**. No navegador:
+F12 e o botão de celular/tablet (Ctrl+Shift+M no Chrome e no Edge).
+
+## 9. Acessibilidade
 
 - Todo ícone sozinho precisa de `aria-label` no botão e `aria-hidden="true"` no ícone.
 - Cor nunca é a única informação: risco vem com o nome escrito, erro vem com texto.

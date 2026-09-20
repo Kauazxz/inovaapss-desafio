@@ -83,11 +83,16 @@ export function UploadDropzone({ onAccepted, onRejected, disabled = false }: Upl
       onDrop={onDrop}
       className={cn(
         'flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-6 py-10 text-center transition-colors',
-        dragging ? 'border-primary bg-primary/5' : 'border-border',
+        dragging ? 'border-primary bg-primary/5' : 'border-border bg-card/40',
         disabled && 'opacity-60',
       )}
     >
-      <span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+      <span
+        className={cn(
+          'flex size-11 items-center justify-center rounded-full transition-colors',
+          dragging ? 'bg-primary/10 text-primary' : 'bg-accent text-accent-foreground',
+        )}
+      >
         <Upload className="size-5" aria-hidden="true" />
       </span>
       <div>

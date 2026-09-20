@@ -39,9 +39,9 @@ export function PlansManager() {
 
   return (
     <section aria-labelledby="planos-titulo" className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 id="planos-titulo" className="text-base font-semibold">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h3 id="planos-titulo" className="text-base font-medium">
             Planos
           </h3>
           <p className="text-sm text-muted-foreground">
@@ -49,7 +49,7 @@ export function PlansManager() {
           </p>
         </div>
         {canWrite ? (
-          <Button type="button" onClick={openCreate}>
+          <Button type="button" className="w-full sm:w-auto" onClick={openCreate}>
             <Plus aria-hidden="true" />
             Novo plano
           </Button>
@@ -57,7 +57,11 @@ export function PlansManager() {
       </div>
 
       {plans.isPending ? (
-        <div role="status" aria-label="Carregando planos" className="space-y-2">
+        <div
+          role="status"
+          aria-label="Carregando planos"
+          className="space-y-2 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5"
+        >
           <Skeleton className="h-9 w-full" />
           <Skeleton className="h-9 w-full" />
         </div>
@@ -88,42 +92,45 @@ export function PlansManager() {
           }
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead scope="col">Nome</TableHead>
-              <TableHead scope="col">Descrição</TableHead>
-              {canWrite ? (
-                <TableHead scope="col" className="text-right">
-                  Ações
-                </TableHead>
-              ) : null}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {plans.data.map((plan) => (
-              <TableRow key={plan.id} data-plan-id={plan.id}>
-                <TableCell className="font-medium">{plan.name}</TableCell>
-                <TableCell className="max-w-md whitespace-normal text-muted-foreground">
-                  {plan.description ?? '—'}
-                </TableCell>
+        <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead scope="col">Nome</TableHead>
+                <TableHead scope="col">Descrição</TableHead>
                 {canWrite ? (
-                  <TableCell className="text-right">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => openEdit(plan)}
-                      aria-label={`Editar ${plan.name}`}
-                    >
-                      <Pencil aria-hidden="true" />
-                    </Button>
-                  </TableCell>
+                  <TableHead scope="col" className="text-right">
+                    Ações
+                  </TableHead>
                 ) : null}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {plans.data.map((plan) => (
+                <TableRow key={plan.id} data-plan-id={plan.id}>
+                  <TableCell className="font-medium whitespace-normal">{plan.name}</TableCell>
+                  <TableCell className="max-w-md whitespace-normal text-muted-foreground">
+                    {plan.description ?? '—'}
+                  </TableCell>
+                  {canWrite ? (
+                    <TableCell className="text-right">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="size-9 sm:size-7"
+                        onClick={() => openEdit(plan)}
+                        aria-label={`Editar ${plan.name}`}
+                      >
+                        <Pencil aria-hidden="true" />
+                      </Button>
+                    </TableCell>
+                  ) : null}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       <PlanFormDialog open={formOpen} onOpenChange={setFormOpen} plan={editing} />

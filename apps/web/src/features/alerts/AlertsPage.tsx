@@ -4,7 +4,7 @@
  * Peso e gatilho são coisas diferentes: o peso entra no cálculo da saúde, o gatilho pede ação
  * imediata. Por isso esta tela é uma fila de trabalho, não um painel.
  */
-import { AlertTriangle, Check, Info, Mail, TriangleAlert } from 'lucide-react';
+import { AlertTriangle, BellOff, Check, Info, Mail, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 
@@ -15,7 +15,10 @@ import {
   type AlertSeverity,
 } from '@inovaapss/shared';
 
+import { EmptyState } from '@/components/empty-state';
+import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency, formatInteger } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -29,10 +32,13 @@ const SEVERITY_STYLE: Readonly<Record<AlertSeverity, { dot: string; icon: typeof
 
 function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <div className="text-sm text-muted-foreground">{label}</div>
-      <div className="text-3xl font-semibold tabular-nums">{value}</div>
-      {hint ? <div className="text-xs text-muted-foreground">{hint}</div> : null}
+      {/* Igual ao KpiRow: figuras proporcionais (DATAVIZ.md §2.2) e sem quebra no meio. */}
+      <div className="mt-1 text-xl font-semibold tracking-tight whitespace-nowrap sm:text-3xl">
+        {value}
+      </div>
+      {hint ? <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div> : null}
     </div>
   );
 }
@@ -55,7 +61,7 @@ function AlertCard({
   return (
     <li
       className={cn(
-        'rounded-lg border border-border p-4',
+        'rounded-xl bg-card p-4 shadow-soft ring-1 ring-foreground/5 sm:p-5',
         tratado && 'opacity-60',
         alert.severity === 'CRITICAL' && !tratado && 'border-l-4 border-l-class-critical',
       )}
@@ -98,7 +104,8 @@ function AlertCard({
           </p>
         </div>
 
-        <div className="flex shrink-0 flex-wrap gap-2">
+        {/* No celular as ações ganham a linha inteira; a partir de sm voltam para o canto. */}
+        <div className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto">
           <Button
             type="button"
             variant="outline"
@@ -145,22 +152,46 @@ export function AlertsPage() {
 
   if (isPending) {
     return (
-      <section className="space-y-4">
-        <h1 className="text-2xl font-semibold">Alertas</h1>
-        <div className="h-40 animate-pulse rounded-lg bg-muted" />
-      </section>
+      <>
+        <PageHeader title="Alertas" />
+        {/* Esqueleto no formato do que vem: a linha de números e a fila de alertas. */}
+        <div className="space-y-6" role="status" aria-label="Carregando os alertas">
+          <div className="grid grid-cols-2 gap-x-5 gap-y-5 border-b border-border pb-6 sm:gap-x-8 lg:grid-cols-4">
+            {['abertos', 'críticos', 'atenção', 'valor'].map((bloco) => (
+              <div key={bloco} className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-7 w-16" />
+              </div>
+            ))}
+          </div>
+          <div className="space-y-3">
+            <Skeleton className="h-28 rounded-xl" />
+            <Skeleton className="h-28 rounded-xl" />
+            <Skeleton className="h-28 rounded-xl" />
+          </div>
+        </div>
+      </>
     );
   }
 
   if (isError || !data) {
     return (
-      <section className="space-y-3">
-        <h1 className="text-2xl font-semibold">Alertas</h1>
-        <p className="text-muted-foreground">Não foi possível carregar os alertas.</p>
-        <Button type="button" variant="outline" onClick={() => void refetch()}>
-          Tentar de novo
-        </Button>
-      </section>
+      <>
+        <PageHeader title="Alertas" />
+        <div className="rounded-xl bg-destructive/10 p-5 ring-1 ring-destructive/20">
+          <p className="text-sm font-medium text-destructive">
+            Não foi possível carregar os alertas.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4 w-full sm:w-auto"
+            onClick={() => void refetch()}
+          >
+            Tentar de novo
+          </Button>
+        </div>
+      </>
     );
   }
 
@@ -168,17 +199,15 @@ export function AlertsPage() {
   const tratados = data.items.filter((a) => a.status !== 'open');
 
   return (
-    <section className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Alertas</h1>
-          <p className="text-muted-foreground">
-            Gatilhos críticos disparados e o que fazer com cada um.
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-1">
+    <>
+      <PageHeader
+        title="Alertas"
+        description="Gatilhos críticos disparados e o que fazer com cada um."
+      >
+        <div className="flex flex-col gap-1 sm:items-end">
           <Button
             type="button"
+            className="w-full sm:w-auto"
             disabled={enviar.isPending || abertos.length === 0}
             onClick={() => {
               enviar.mutate(undefined, {
@@ -196,89 +225,76 @@ export function AlertsPage() {
             vai para o e-mail da conta que está logada
           </span>
         </div>
-      </header>
+      </PageHeader>
 
-      {envio ? (
-        <div
-          className={cn(
-            'rounded-lg border p-4 text-sm',
-            envio.sent ? 'border-class-normal/40 bg-class-normal/5' : 'border-border bg-muted/40',
-          )}
-          role="status"
-        >
-          {envio.sent ? (
-            <p>
-              Resumo enviado para <strong>{envio.to}</strong>. Confira a caixa de entrada.
-            </p>
-          ) : (
-            <>
-              <p className="font-medium">Não enviei o e-mail — e não vou dizer que enviei.</p>
-              <p className="mt-1 text-muted-foreground">{envio.reason}</p>
-              {envio.html ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-3"
-                    onClick={() => setMostrarPrevia((v) => !v)}
-                  >
-                    {mostrarPrevia ? 'Esconder a prévia' : 'Ver a prévia do e-mail'}
-                  </Button>
-                  {mostrarPrevia ? (
-                    <iframe
-                      title="Prévia do resumo de alertas"
-                      srcDoc={envio.html}
-                      className="mt-3 h-96 w-full rounded-md border border-border bg-white"
-                    />
-                  ) : null}
-                </>
-              ) : null}
-            </>
-          )}
+      {/* O PageHeader já traz a margem de baixo; o resto da tela é que respira em space-y-6. */}
+      <section className="space-y-6">
+        {envio ? (
+          <div
+            className={cn(
+              'rounded-xl p-4 text-sm shadow-soft ring-1 sm:p-5',
+              envio.sent ? 'bg-primary/5 ring-primary/20' : 'bg-card ring-foreground/5',
+            )}
+            role="status"
+          >
+            {envio.sent ? (
+              <p>
+                Resumo enviado para <strong>{envio.to}</strong>. Confira a caixa de entrada.
+              </p>
+            ) : (
+              <>
+                <p className="font-medium">Não enviei o e-mail — e não vou dizer que enviei.</p>
+                <p className="mt-1 text-muted-foreground">{envio.reason}</p>
+                {envio.html ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => setMostrarPrevia((v) => !v)}
+                    >
+                      {mostrarPrevia ? 'Esconder a prévia' : 'Ver a prévia do e-mail'}
+                    </Button>
+                    {mostrarPrevia ? (
+                      <iframe
+                        title="Prévia do resumo de alertas"
+                        srcDoc={envio.html}
+                        className="mt-3 h-64 w-full rounded-lg border border-border bg-card sm:h-96"
+                      />
+                    ) : null}
+                  </>
+                ) : null}
+              </>
+            )}
+          </div>
+        ) : null}
+
+        {/* Duas colunas no celular (quatro ficariam ilegíveis), quatro a partir de lg. */}
+        <div className="grid grid-cols-2 gap-x-5 gap-y-5 border-b border-border pb-6 sm:gap-x-8 lg:grid-cols-4">
+          <Kpi label="Alertas abertos" value={formatInteger(abertos.length)} />
+          <Kpi
+            label="Críticos"
+            value={formatInteger(data.openBySeverity.CRITICAL)}
+            hint="exigem contato agora"
+          />
+          <Kpi label="Atenção" value={formatInteger(data.openBySeverity.WARNING)} />
+          <Kpi
+            label="Valor mensal envolvido"
+            value={formatCurrency(data.mrrAtRisk)}
+            hint="soma dos clientes com alerta aberto"
+          />
         </div>
-      ) : null}
 
-      <div className="grid grid-cols-2 gap-6 border-b border-border pb-6 sm:grid-cols-4">
-        <Kpi label="Alertas abertos" value={formatInteger(abertos.length)} />
-        <Kpi
-          label="Críticos"
-          value={formatInteger(data.openBySeverity.CRITICAL)}
-          hint="exigem contato agora"
-        />
-        <Kpi label="Atenção" value={formatInteger(data.openBySeverity.WARNING)} />
-        <Kpi
-          label="Valor mensal envolvido"
-          value={formatCurrency(data.mrrAtRisk)}
-          hint="soma dos clientes com alerta aberto"
-        />
-      </div>
-
-      {abertos.length === 0 ? (
-        <p className="rounded-lg border border-border p-8 text-center text-muted-foreground">
-          Nenhum alerta aberto. Nenhum gatilho crítico disparou no último período.
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {abertos.map((alerta) => (
-            <AlertCard
-              key={alerta.id}
-              alert={alerta}
-              saving={atualizar.isPending}
-              onOpenClient={(clientId) => void navigate(`/clients/${clientId}`)}
-              onStatus={(id, status) => atualizar.mutate({ id, status })}
-            />
-          ))}
-        </ul>
-      )}
-
-      {tratados.length > 0 ? (
-        <details className="rounded-lg border border-border p-4">
-          <summary className="cursor-pointer text-sm font-medium">
-            {tratados.length} já tratado{tratados.length === 1 ? '' : 's'}
-          </summary>
-          <ul className="mt-3 space-y-3">
-            {tratados.map((alerta) => (
+        {abertos.length === 0 ? (
+          <EmptyState
+            icon={BellOff}
+            title="Nenhum alerta aberto"
+            description="Nenhum gatilho crítico disparou no último período."
+          />
+        ) : (
+          <ul className="space-y-3">
+            {abertos.map((alerta) => (
               <AlertCard
                 key={alerta.id}
                 alert={alerta}
@@ -288,8 +304,28 @@ export function AlertsPage() {
               />
             ))}
           </ul>
-        </details>
-      ) : null}
-    </section>
+        )}
+
+        {/* Agrupamento semântico: sem caixa em volta, senão ficaria card dentro de card. */}
+        {tratados.length > 0 ? (
+          <details>
+            <summary className="cursor-pointer rounded-lg py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
+              {tratados.length} já tratado{tratados.length === 1 ? '' : 's'}
+            </summary>
+            <ul className="mt-3 space-y-3">
+              {tratados.map((alerta) => (
+                <AlertCard
+                  key={alerta.id}
+                  alert={alerta}
+                  saving={atualizar.isPending}
+                  onOpenClient={(clientId) => void navigate(`/clients/${clientId}`)}
+                  onStatus={(id, status) => atualizar.mutate({ id, status })}
+                />
+              ))}
+            </ul>
+          </details>
+        ) : null}
+      </section>
+    </>
   );
 }

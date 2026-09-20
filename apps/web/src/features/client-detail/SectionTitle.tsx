@@ -12,10 +12,10 @@ export function SectionTitle({
 }) {
   return (
     <div>
-      <h3 id={id} className="text-base font-semibold">
+      <h3 id={id} className="cn-font-heading text-base leading-snug font-medium">
         {children}
       </h3>
-      {hint ? <p className="text-[13px] text-muted-foreground">{hint}</p> : null}
+      {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }

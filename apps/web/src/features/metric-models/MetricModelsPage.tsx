@@ -123,63 +123,65 @@ export function MetricModelsPage() {
         </Button>
       </PageHeader>
 
-      <p className="mb-4 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-        O modelo pertence à organização: mudar um peso muda o score de todos os clientes a partir da
-        ativação. As versões anteriores e os scores que elas geraram continuam guardados.
-      </p>
-
-      {createVersion.isError ? (
-        <p role="alert" className="mb-4 text-sm text-destructive">
-          {createVersion.error.message}
+      <div className="space-y-6">
+        <p className="rounded-xl bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+          O modelo pertence à organização: mudar um peso muda o score de todos os clientes a partir
+          da ativação. As versões anteriores e os scores que elas geraram continuam guardados.
         </p>
-      ) : null}
 
-      {list.isPending ? (
-        <MetricsLoading label="Carregando modelos" />
-      ) : list.isError ? (
-        <MetricsError
-          title="Não foi possível carregar os modelos"
-          error={list.error}
-          onRetry={() => void list.refetch()}
-        />
-      ) : summaries.length === 0 ? (
-        <EmptyState
-          icon={Layers}
-          title="Nenhum modelo de métricas"
-          description="Um modelo agrupa as métricas, os pesos e os gatilhos que calculam a saúde da carteira. Crie o primeiro e monte a versão 1."
-          action={
-            <Button type="button" onClick={() => setFormOpen(true)}>
-              <Plus aria-hidden="true" />
-              Novo modelo
-            </Button>
-          }
-        />
-      ) : (
-        <Table aria-label="Modelos de métricas">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Modelo</TableHead>
-              <TableHead>Modo de peso</TableHead>
-              <TableHead>Versão ativa</TableHead>
-              <TableHead className="text-right">Métricas</TableHead>
-              <TableHead className="text-right">Soma dos pesos</TableHead>
-              <TableHead>Rascunho</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {summaries.map((summary) => (
-              <ModelRow
-                key={summary.model.id}
-                summary={summary}
-                definitionsById={definitionsById}
-                creating={createVersion.isPending}
-                onNewVersion={(modelId) => createVersion.mutate({ modelId })}
-              />
-            ))}
-          </TableBody>
-        </Table>
-      )}
+        {createVersion.isError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {createVersion.error.message}
+          </p>
+        ) : null}
+
+        {list.isPending ? (
+          <MetricsLoading label="Carregando modelos" />
+        ) : list.isError ? (
+          <MetricsError
+            title="Não foi possível carregar os modelos"
+            error={list.error}
+            onRetry={() => void list.refetch()}
+          />
+        ) : summaries.length === 0 ? (
+          <EmptyState
+            icon={Layers}
+            title="Nenhum modelo de métricas"
+            description="Um modelo agrupa as métricas, os pesos e os gatilhos que calculam a saúde da carteira. Crie o primeiro e monte a versão 1."
+            action={
+              <Button type="button" onClick={() => setFormOpen(true)}>
+                <Plus aria-hidden="true" />
+                Novo modelo
+              </Button>
+            }
+          />
+        ) : (
+          <Table aria-label="Modelos de métricas">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Modelo</TableHead>
+                <TableHead>Modo de peso</TableHead>
+                <TableHead>Versão ativa</TableHead>
+                <TableHead className="text-right">Métricas</TableHead>
+                <TableHead className="text-right">Soma dos pesos</TableHead>
+                <TableHead>Rascunho</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {summaries.map((summary) => (
+                <ModelRow
+                  key={summary.model.id}
+                  summary={summary}
+                  definitionsById={definitionsById}
+                  creating={createVersion.isPending}
+                  onNewVersion={(modelId) => createVersion.mutate({ modelId })}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
 
       <ModelFormDialog open={formOpen} onOpenChange={setFormOpen} />
     </>

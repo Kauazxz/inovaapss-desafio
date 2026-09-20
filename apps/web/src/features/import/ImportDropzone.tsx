@@ -67,16 +67,20 @@ export function ImportDropzone({ onAccepted, onRejected, disabled = false }: Imp
       onDragLeave={() => setDragging(false)}
       onDrop={onDrop}
       className={cn(
-        'flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-6 py-10 text-center transition-colors',
+        // No celular a área de arrastar não serve para nada: o que vale é o botão, então ele
+        // ganha largura total e a moldura encolhe o respiro.
+        'flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed bg-card/40 px-4 py-8 text-center transition-colors sm:px-6 sm:py-10',
         dragging ? 'border-primary bg-primary/5' : 'border-border',
         disabled && 'opacity-60',
       )}
     >
-      <span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+      <span className="flex size-11 items-center justify-center rounded-full bg-accent text-accent-foreground">
         <Upload className="size-5" aria-hidden="true" />
       </span>
-      <div>
-        <p className="text-sm font-medium">Arraste a planilha para cá ou escolha no computador</p>
+      <div className="max-w-md">
+        <p className="text-sm font-medium text-balance">
+          Arraste a planilha para cá ou escolha no computador
+        </p>
         <p className="mt-1 text-xs text-muted-foreground">
           Aceitos: XLSX, CSV e JSON · até {formatFileSize(IMPORT_MAX_UPLOAD_BYTES)}
         </p>
@@ -96,7 +100,7 @@ export function ImportDropzone({ onAccepted, onRejected, disabled = false }: Imp
       />
       <Button
         type="button"
-        variant="outline"
+        className="w-full max-w-xs sm:w-auto"
         disabled={disabled}
         onClick={() => inputRef.current?.click()}
       >

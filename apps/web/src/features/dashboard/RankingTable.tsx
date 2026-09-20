@@ -24,14 +24,26 @@ export interface RankingTableProps {
   onSelect: (clientId: string) => void;
 }
 
-const COLUMNS: { label: string; hint?: string; numeric?: boolean }[] = [
+/**
+ * Colunas secundárias só entram quando a tela dá espaço: no celular ficam de fora (o dado continua
+ * no DOM, apenas escondido) e o que sobra conta a história — quem é, como está, o que fazer.
+ * A mesma classe vai no cabeçalho e na célula, senão a tabela desalinha.
+ */
+type Breakpoint = 'md' | 'lg' | 'xl';
+const FROM: Readonly<Record<Breakpoint, string>> = {
+  md: 'hidden md:table-cell',
+  lg: 'hidden lg:table-cell',
+  xl: 'hidden xl:table-cell',
+};
+
+const COLUMNS: { label: string; hint?: string; numeric?: boolean; from?: Breakpoint }[] = [
   { label: 'Prioridade' },
   { label: 'Cliente' },
   { label: 'Saúde atual', hint: 'maior é melhor', numeric: true },
-  { label: 'Saúde projetada', hint: 'próximo período', numeric: true },
-  { label: 'Risco de cancelamento', hint: 'score, não %', numeric: true },
-  { label: 'Confiança dos dados', hint: 'cobertura e atualidade', numeric: true },
-  { label: 'Valor mensal', numeric: true },
+  { label: 'Saúde projetada', hint: 'próximo período', numeric: true, from: 'lg' },
+  { label: 'Risco de cancelamento', hint: 'score, não %', numeric: true, from: 'md' },
+  { label: 'Confiança dos dados', hint: 'cobertura e atualidade', numeric: true, from: 'xl' },
+  { label: 'Valor mensal', numeric: true, from: 'lg' },
 ];
 
 const TREND_TEXT: Readonly<Record<HealthTrend, string>> = {
@@ -71,7 +83,7 @@ export function RankingTable({ rows, onSelect }: RankingTableProps) {
             <TableHead
               key={column.label}
               scope="col"
-              className={cn(column.numeric && 'text-right')}
+              className={cn(column.numeric && 'text-right', column.from && FROM[column.from])}
             >
               <span className="block">{column.label}</span>
               {/* O espaço separa rótulo e dica no nome acessível: sem ele o leitor de tela
@@ -86,7 +98,9 @@ export function RankingTable({ rows, onSelect }: RankingTableProps) {
               ) : null}
             </TableHead>
           ))}
-          <TableHead scope="col">Principal evidência</TableHead>
+          <TableHead scope="col" className={FROM.xl}>
+            Principal evidência
+          </TableHead>
           <TableHead scope="col">Ação</TableHead>
         </TableRow>
       </TableHeader>
@@ -104,48 +118,55 @@ export function RankingTable({ rows, onSelect }: RankingTableProps) {
           rows.map((row) => (
             <TableRow key={row.clientId} data-client-id={row.clientId}>
               <TableCell>
-                <span className="inline-flex items-center gap-2">
-                  <span className="w-6 text-right tabular-nums text-muted-foreground">
+                <span className="inline-flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
+                  <span className="w-6 tabular-nums text-muted-foreground sm:text-right">
                     {row.position}
                   </span>
                   <PriorityPill priorityClass={row.priorityClass} />
                   <span className="sr-only">, prioridade {formatInteger(row.priorityScore)}</span>
                 </span>
               </TableCell>
-              <TableCell className="font-medium">{row.clientName}</TableCell>
+              <TableCell className="font-medium whitespace-normal md:whitespace-nowrap">
+                {row.clientName}
+              </TableCell>
               <TableCell className="text-right">
-                <span className="inline-flex items-center justify-end gap-2">
-                  <span className="tabular-nums">{formatInteger(row.healthCurrent)}/100</span>
-                  <HealthPill healthClass={row.currentClass} />
-                  <TrendIcon trend={row.trend} />
+                {/* Celular: número em cima, selo embaixo. De sm em diante, tudo na mesma linha. */}
+                <span className="inline-flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
+                  <span className="tabular-nums whitespace-nowrap">
+                    {formatInteger(row.healthCurrent)}/100
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <HealthPill healthClass={row.currentClass} />
+                    <TrendIcon trend={row.trend} />
+                  </span>
                 </span>
               </TableCell>
-              <TableCell className="text-right tabular-nums">
+              <TableCell className={cn('text-right tabular-nums', FROM.lg)}>
                 {row.healthProjected === null ? (
                   <span className="text-muted-foreground">sem projeção</span>
                 ) : (
-                  <span className={cn(row.crossesDown && 'font-semibold')}>
+                  <span className={cn('block', row.crossesDown && 'font-semibold')}>
                     {formatInteger(row.healthProjected)}/100
-                    <span className="ml-1 text-muted-foreground">
+                    <span className="mt-0.5 block text-xs font-normal whitespace-normal text-muted-foreground">
                       {HEALTH_STATUS_LABELS[row.projectedClass ?? row.currentClass]} · confiança da
                       projeção: {PROJECTION_CONFIDENCE_LABELS[row.projectionConfidence]}
                     </span>
                   </span>
                 )}
               </TableCell>
-              <TableCell className="text-right tabular-nums">
+              <TableCell className={cn('text-right tabular-nums', FROM.md)}>
                 <span className="font-medium">{formatInteger(row.riskScore)}/100</span>
               </TableCell>
-              <TableCell className="text-right tabular-nums">
+              <TableCell className={cn('text-right tabular-nums', FROM.xl)}>
                 {formatPercent(row.confidence)}
               </TableCell>
-              <TableCell className="text-right tabular-nums">
+              <TableCell className={cn('text-right tabular-nums', FROM.lg)}>
                 <span className="block">{formatCurrency(row.mrr)}</span>
-                <span className="block text-xs text-muted-foreground">
+                <span className="mt-0.5 block text-xs whitespace-normal text-muted-foreground">
                   {formatCurrency(revenueAtRisk(row))} ponderados pelo score
                 </span>
               </TableCell>
-              <TableCell className="max-w-72 whitespace-normal">
+              <TableCell className={cn('max-w-72 whitespace-normal', FROM.xl)}>
                 <span className="block">{row.topEvidence}</span>
                 <span className="block text-xs text-muted-foreground">→ {row.suggestedAction}</span>
               </TableCell>

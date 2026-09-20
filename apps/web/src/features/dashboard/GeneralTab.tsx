@@ -25,7 +25,7 @@ export function GeneralTab() {
   const totalClients = kpis.activeClients.value + kpis.cancelledClients.value;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <KpiRow
         label="Resumo da carteira"
         items={[
@@ -51,6 +51,8 @@ export function GeneralTab() {
         <DashboardEmpty filtered={false} />
       ) : (
         <>
+          {/* Gráfico não mora em card nem leva borda em volta (DATAVIZ.md §1.3): ele ocupa a
+              largura inteira, que no celular é o que falta. */}
           <ClassDistributionChart distribution={data.distribution} reloading={reloading} />
           <DimensionHealthChart
             dimensions={data.dimensions}

@@ -39,19 +39,23 @@ export function UsersTab() {
   const [removing, setRemoving] = useState<OrganizationMember | null>(null);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <section aria-labelledby="usuarios-titulo" className="space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h3 id="usuarios-titulo" className="text-base font-semibold">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h3 id="usuarios-titulo" className="text-base font-medium">
               Usuários
             </h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="mt-1 text-sm text-muted-foreground">
               Quem entra na plataforma pela sua organização e o que cada um pode fazer.
             </p>
           </div>
           {canManage ? (
-            <Button type="button" onClick={() => setInviting(true)}>
+            <Button
+              type="button"
+              onClick={() => setInviting(true)}
+              className="w-full sm:w-auto sm:shrink-0"
+            >
               <UserPlus aria-hidden="true" />
               Convidar usuários
             </Button>
@@ -59,7 +63,11 @@ export function UsersTab() {
         </div>
 
         {members.isPending ? (
-          <div role="status" aria-label="Carregando usuários" className="space-y-2">
+          <div
+            role="status"
+            aria-label="Carregando usuários"
+            className="space-y-2 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5"
+          >
             <Skeleton className="h-9 w-full" />
             <Skeleton className="h-9 w-full" />
           </div>
@@ -90,79 +98,87 @@ export function UsersTab() {
             }
           />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead scope="col">Pessoa</TableHead>
-                <TableHead scope="col">Papel</TableHead>
-                <TableHead scope="col">Entrou em</TableHead>
-                {canManage ? (
-                  <TableHead scope="col" className="text-right">
-                    Ações
+          <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead scope="col">Pessoa</TableHead>
+                  <TableHead scope="col">Papel</TableHead>
+                  {/* A data é o que menos importa para decidir algo: sai no celular. */}
+                  <TableHead scope="col" className="hidden md:table-cell">
+                    Entrou em
                   </TableHead>
-                ) : null}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {members.data.map((member) => {
-                const isMe = member.authUserId === myUserId;
-                // Só o owner mexe em outro owner (a API recusa; a tela nem oferece).
-                const canActOn = currentRole === 'owner' || member.role !== 'owner';
-                return (
-                  <TableRow key={member.id} data-member-id={member.authUserId}>
-                    <TableCell className="font-medium">
-                      {memberLabel(member)}
-                      {isMe ? (
-                        <span className="ml-2 text-xs font-normal text-muted-foreground">
-                          (você)
-                        </span>
-                      ) : null}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{member.role}</Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(member.createdAt)}
-                    </TableCell>
-                    {canManage ? (
-                      <TableCell className="text-right">
-                        {canActOn ? (
-                          <>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => setChangingRole(member)}
-                              aria-label={`Mudar o papel de ${memberLabel(member)}`}
-                            >
-                              <UserPen aria-hidden="true" />
-                            </Button>
-                            {/* Ninguém remove o próprio acesso: quem sai é removido por outra
-                                pessoa. A API recusa de todo jeito; a tela nem oferece o botão. */}
-                            {isMe ? null : (
+                  {canManage ? (
+                    <TableHead scope="col" className="text-right">
+                      Ações
+                    </TableHead>
+                  ) : null}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {members.data.map((member) => {
+                  const isMe = member.authUserId === myUserId;
+                  // Só o owner mexe em outro owner (a API recusa; a tela nem oferece).
+                  const canActOn = currentRole === 'owner' || member.role !== 'owner';
+                  return (
+                    <TableRow key={member.id} data-member-id={member.authUserId}>
+                      <TableCell className="font-medium">
+                        {memberLabel(member)}
+                        {isMe ? (
+                          <span className="ml-2 text-xs font-normal text-muted-foreground">
+                            (você)
+                          </span>
+                        ) : null}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{member.role}</Badge>
+                      </TableCell>
+                      <TableCell className="hidden whitespace-nowrap text-muted-foreground md:table-cell">
+                        {formatDate(member.createdAt)}
+                      </TableCell>
+                      {canManage ? (
+                        <TableCell className="text-right">
+                          {canActOn ? (
+                            // No celular os dois alvos de toque têm 36 px (size-9 no botão).
+                            <div className="flex items-center justify-end gap-1">
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon-sm"
-                                onClick={() => setRemoving(member)}
-                                aria-label={`Remover o acesso de ${memberLabel(member)}`}
+                                onClick={() => setChangingRole(member)}
+                                aria-label={`Mudar o papel de ${memberLabel(member)}`}
+                                className="size-9 md:size-7"
                               >
-                                <Trash2 aria-hidden="true" />
+                                <UserPen aria-hidden="true" />
                               </Button>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            Só o owner mexe em outro owner
-                          </span>
-                        )}
-                      </TableCell>
-                    ) : null}
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                              {/* Ninguém remove o próprio acesso: quem sai é removido por outra
+                                  pessoa. A API recusa de todo jeito; a tela nem oferece o botão. */}
+                              {isMe ? null : (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => setRemoving(member)}
+                                  aria-label={`Remover o acesso de ${memberLabel(member)}`}
+                                  className="size-9 md:size-7"
+                                >
+                                  <Trash2 aria-hidden="true" />
+                                </Button>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="block whitespace-normal text-xs text-muted-foreground">
+                              Só o owner mexe em outro owner
+                            </span>
+                          )}
+                        </TableCell>
+                      ) : null}
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </section>
 

@@ -20,18 +20,18 @@ function GuideItem({
   children: ReactNode;
 }) {
   return (
-    <article className="rounded-lg border border-border bg-card p-4">
+    <article className="rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5">
       <div className="flex items-start gap-3">
-        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">
           {number}
         </span>
         <div className="min-w-0">
           <p className="text-xs font-medium text-muted-foreground">{question}</p>
-          <h4 className="mt-0.5 font-semibold">{title}</h4>
+          <h4 className="mt-0.5 text-sm font-medium">{title}</h4>
         </div>
       </div>
 
-      <p className="mt-4 text-2xl font-semibold tracking-tight">{value}</p>
+      <p className="mt-4 text-xl font-semibold tracking-tight tabular-nums">{value}</p>
       <p className="text-xs font-medium text-muted-foreground">{scale}</p>
       <div className="mt-3 text-sm leading-relaxed text-muted-foreground">{children}</div>
     </article>
@@ -57,12 +57,13 @@ export function ScoreGuide({
         <h3 id="score-guide-title" className="text-base font-semibold">
           Como ler esta tela
         </h3>
-        <p className="text-[13px] text-muted-foreground">
-          Leia da esquerda para a direita: situação de hoje, tendência, alerta e ordem de ação.
+        {/* Sem "da esquerda para a direita": no celular os quatro cartões ficam em coluna. */}
+        <p className="mt-1 text-sm text-muted-foreground">
+          Leia na ordem dos números: situação de hoje, tendência, alerta e ordem de ação.
         </p>
       </div>
 
-      <p className="rounded-lg border-l-4 border-l-primary bg-muted/50 px-4 py-3 text-sm">
+      <p className="rounded-xl border-l-4 border-l-primary bg-muted/50 px-4 py-3 text-sm sm:px-5">
         <strong>Regra principal:</strong> saúde atual e risco atual são a mesma situação vista em
         sentidos opostos. Eles sempre somam 100. Para {example.clientName},{' '}
         <strong>
@@ -72,7 +73,8 @@ export function ScoreGuide({
         .
       </p>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {/* Uma coluna no celular, duas no tablet, as quatro perguntas em linha só no monitor. */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <GuideItem
           number={1}
           question="Como o cliente está hoje?"
@@ -126,7 +128,7 @@ export function ScoreGuide({
         </GuideItem>
       </div>
 
-      <div className="grid gap-2 rounded-lg bg-muted/50 px-4 py-3 text-sm text-muted-foreground md:grid-cols-2">
+      <div className="grid gap-2 rounded-xl bg-muted/50 px-4 py-3 text-sm text-muted-foreground sm:grid-cols-2 sm:gap-x-5 sm:px-5">
         <p>
           <strong className="text-foreground">Confiança dos dados:</strong> mostra se há informações
           suficientes e recentes para calcular a saúde atual.

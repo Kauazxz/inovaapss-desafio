@@ -7,7 +7,7 @@
  * normal, e corrigir precisa custar um clique, não uma reimportação. Nada é gravado até a
  * confirmação — a prévia existe justamente para a pessoa ver o que vai acontecer antes.
  */
-import { ArrowLeft, CircleAlert, CircleCheck, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, CircleAlert, CircleCheck, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 
@@ -22,7 +22,7 @@ import type {
 
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 import { type SheetSelection, useConfirmImport, usePreviewImport, useUploadImport } from './api';
@@ -41,18 +41,30 @@ const STEPS: { key: Step; label: string }[] = [
   { key: 'done', label: '4. Resultado' },
 ];
 
+/**
+ * Onde a pessoa está no fluxo. Pílulas em vez de texto solto: o passo atual usa a pílula de
+ * realce da barra de navegação (§1 do guia), os já vencidos levam o sinal de feito, e no
+ * celular a fila quebra em duas linhas em vez de cortar o último passo.
+ */
 function StepBar({ current }: { current: Step }) {
   const index = STEPS.findIndex((step) => step.key === current);
   return (
-    <ol className="mb-6 flex flex-wrap gap-4 text-sm" aria-label="Passos da importação">
+    <ol
+      className="mb-6 flex flex-wrap items-center gap-1.5 text-xs sm:gap-2 sm:text-sm"
+      aria-label="Passos da importação"
+    >
       {STEPS.map((step, position) => (
         <li
           key={step.key}
           aria-current={step.key === current ? 'step' : undefined}
           className={cn(
-            position <= index ? 'font-medium text-foreground' : 'text-muted-foreground',
+            'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 whitespace-nowrap transition-colors',
+            position < index && 'bg-muted text-muted-foreground',
+            position === index && 'bg-accent font-medium text-accent-foreground',
+            position > index && 'text-muted-foreground',
           )}
         >
+          {position < index ? <Check className="size-3.5 shrink-0" aria-hidden="true" /> : null}
           {step.label}
         </li>
       ))}
@@ -203,66 +215,76 @@ export function ImportPage() {
       {/* ---------------------------------------------------------- 2. colunas */}
       {step === 'mapping' && upload !== null ? (
         <section className="space-y-6" aria-labelledby="colunas-titulo">
-          <div>
-            <h3 id="colunas-titulo" className="text-base font-semibold">
-              O que há no arquivo
-            </h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {upload.job.fileName} · {formatFileSize(upload.job.sizeBytes)} ·{' '}
-              {upload.sheets.length === 1
-                ? '1 tabela'
-                : `${formatCount(upload.sheets.length)} tabelas`}
-            </p>
-          </div>
-
-          <ul className="space-y-3">
-            {upload.sheets.map((sheet) => {
-              const selection = selections.find((item) => item.sheet === sheet.name);
-              return (
-                <li
-                  key={sheet.name}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3"
-                >
-                  <div className="min-w-0">
-                    <div className="font-medium">{sheet.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatCount(sheet.rowCount)} linhas · {sheet.headers.slice(0, 4).join(', ')}
-                      {sheet.headers.length > 4 ? '…' : ''}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="sr-only" htmlFor={`dataset-${sheet.name}`}>
-                      Conjunto de dados da tabela {sheet.name}
-                    </label>
-                    <select
-                      id={`dataset-${sheet.name}`}
-                      className="h-8 rounded-lg border border-border bg-background px-2 text-sm"
-                      value={selection?.dataset ?? ''}
-                      onChange={(event) =>
-                        changeDataset(
-                          sheet.name,
-                          event.target.value === ''
-                            ? null
-                            : (event.target.value as ImportDatasetKey),
-                        )
-                      }
+          <Card>
+            <CardHeader>
+              <h3
+                id="colunas-titulo"
+                className="cn-font-heading text-base leading-snug font-medium"
+              >
+                O que há no arquivo
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {upload.job.fileName} · {formatFileSize(upload.job.sizeBytes)} ·{' '}
+                {upload.sheets.length === 1
+                  ? '1 tabela'
+                  : `${formatCount(upload.sheets.length)} tabelas`}
+              </p>
+            </CardHeader>
+            <CardContent>
+              {/* Uma tabela por linha: nome e prévia dos cabeçalhos à esquerda, o que fazer com
+                  ela à direita — no celular um em cima do outro, com o campo em largura total. */}
+              <ul className="divide-y divide-border">
+                {upload.sheets.map((sheet) => {
+                  const selection = selections.find((item) => item.sheet === sheet.name);
+                  return (
+                    <li
+                      key={sheet.name}
+                      className="flex flex-col gap-2 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                     >
-                      <option value="">— não importar —</option>
-                      {IMPORT_DATASET_KEYS.map((key) => (
-                        <option key={key} value={key}>
-                          {IMPORT_DATASET_LABELS[key]}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{sheet.name}</div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {formatCount(sheet.rowCount)} linhas ·{' '}
+                          {sheet.headers.slice(0, 4).join(', ')}
+                          {sheet.headers.length > 4 ? '…' : ''}
+                        </div>
+                      </div>
+                      <div className="w-full sm:w-auto sm:shrink-0">
+                        <label className="sr-only" htmlFor={`dataset-${sheet.name}`}>
+                          Conjunto de dados da tabela {sheet.name}
+                        </label>
+                        <select
+                          id={`dataset-${sheet.name}`}
+                          className="h-9 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:w-auto"
+                          value={selection?.dataset ?? ''}
+                          onChange={(event) =>
+                            changeDataset(
+                              sheet.name,
+                              event.target.value === ''
+                                ? null
+                                : (event.target.value as ImportDatasetKey),
+                            )
+                          }
+                        >
+                          <option value="">— não importar —</option>
+                          {IMPORT_DATASET_KEYS.map((key) => (
+                            <option key={key} value={key}>
+                              {IMPORT_DATASET_LABELS[key]}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </CardContent>
+          </Card>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             <Button
               type="button"
+              className="w-full sm:w-auto"
               disabled={!podeConferir || previewMutation.isPending}
               onClick={() => void runPreview()}
             >
@@ -288,17 +310,15 @@ export function ImportPage() {
 
       {/* ---------------------------------------------------------- 3. conferência */}
       {step === 'preview' && preview !== null && upload !== null ? (
-        <section className="space-y-8" aria-labelledby="conferencia-titulo">
+        <section className="space-y-6" aria-labelledby="conferencia-titulo">
           <h3 id="conferencia-titulo" className="sr-only">
             Conferência antes de importar
           </h3>
 
           <PreviewSummary preview={preview} />
 
-          <Separator />
-
-          <div className="space-y-8">
-            <h4 className="text-base font-semibold">Colunas por tabela</h4>
+          <div className="space-y-4">
+            <h4 className="cn-font-heading text-base font-medium">Colunas por tabela</h4>
             {preview.sheets.map((sheet) => {
               const headers =
                 upload.sheets.find((item) => item.name === sheet.sheet)?.headers ?? [];
@@ -315,6 +335,7 @@ export function ImportPage() {
             <Button
               type="button"
               variant="outline"
+              className="w-full sm:w-auto"
               disabled={previewMutation.isPending}
               onClick={() => void runPreview()}
             >
@@ -322,15 +343,20 @@ export function ImportPage() {
             </Button>
           </div>
 
-          <Separator />
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" variant="outline" onClick={() => setStep('mapping')}>
+          {/* A decisão mora numa faixa só, para não se perder no fim de uma página longa. */}
+          <div className="flex flex-col gap-3 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 sm:flex-row sm:flex-wrap sm:items-center">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => setStep('mapping')}
+            >
               <ArrowLeft aria-hidden="true" />
               Voltar
             </Button>
             <Button
               type="button"
+              className="w-full sm:w-auto"
               disabled={bloqueado || preview.counts.valid === 0 || confirmMutation.isPending}
               onClick={() => void onConfirm()}
             >
@@ -357,10 +383,12 @@ export function ImportPage() {
       {/* ---------------------------------------------------------- 4. resultado */}
       {step === 'done' && result !== null ? (
         <section className="space-y-6" aria-labelledby="resultado-titulo">
-          <div className="flex items-start gap-3 rounded-xl border border-border p-4">
-            <CircleCheck className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
-            <div>
-              <h3 id="resultado-titulo" className="text-base font-semibold">
+          <div className="flex items-start gap-3 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 sm:gap-4">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+              <CircleCheck className="size-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <h3 id="resultado-titulo" className="cn-font-heading text-base font-medium">
                 Importação concluída
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -392,14 +420,14 @@ export function ImportPage() {
             </p>
           ) : null}
 
-          <div className="flex flex-wrap gap-3">
-            <Button asChild>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
+            <Button asChild className="w-full sm:w-auto">
               <Link to="/dashboard">Ver o dashboard</Link>
             </Button>
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="w-full sm:w-auto">
               <Link to="/clients">Ver os clientes</Link>
             </Button>
-            <Button type="button" variant="outline" onClick={reset}>
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={reset}>
               Importar outro arquivo
             </Button>
           </div>
@@ -407,8 +435,8 @@ export function ImportPage() {
       ) : null}
 
       {/* ---------------------------------------------------------- histórico */}
-      <section className="mt-10 space-y-3" aria-labelledby="historico-titulo">
-        <h3 id="historico-titulo" className="text-base font-semibold">
+      <section className="mt-10 space-y-4" aria-labelledby="historico-titulo">
+        <h3 id="historico-titulo" className="cn-font-heading text-base font-medium">
           Importações anteriores
         </h3>
         <ImportHistory />

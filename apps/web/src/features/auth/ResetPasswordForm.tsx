@@ -79,11 +79,14 @@ export function ResetPasswordForm() {
               <p className="text-sm text-destructive">{errors.confirm.message}</p>
             ) : null}
           </div>
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
+          <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? 'Salvando…' : 'Salvar nova senha'}
           </Button>
           {submitError ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p
+              role="alert"
+              className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
               {submitError}
             </p>
           ) : null}

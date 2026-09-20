@@ -8,36 +8,49 @@ import { ImportDataButton } from '@/features/import/ImportDataButton';
 /** Estado de carregamento inicial de uma aba (§57): só na primeira carga; recargas mantêm o anterior. */
 export function DashboardLoading({ label }: { label: string }) {
   return (
-    <div role="status" aria-label={label} className="space-y-8">
-      <div className="grid grid-cols-2 gap-8 border-b border-border pb-6 md:grid-cols-4">
+    <div role="status" aria-label={label} className="space-y-6">
+      {/* O esqueleto copia o desenho da tela: a linha de números e, abaixo, os dois blocos. */}
+      <div className="grid grid-cols-2 gap-x-5 gap-y-5 border-b border-border pb-6 sm:gap-x-8 lg:grid-cols-4">
         {[0, 1, 2, 3].map((index) => (
-          <div key={index} className="space-y-2">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-9 w-16" />
+          <div key={index} className="min-w-0 space-y-2">
+            <Skeleton className="h-4 w-full max-w-24" />
+            <Skeleton className="h-8 w-16" />
           </div>
         ))}
       </div>
-      <Skeleton className="h-72 w-full" />
-      <Skeleton className="h-48 w-full" />
+      <Skeleton className="h-56 w-full rounded-xl sm:h-72" />
+      <Skeleton className="h-40 w-full rounded-xl sm:h-48" />
     </div>
   );
 }
 
-/** Estado de erro com o motivo e um botão para tentar de novo. */
+/**
+ * Estado de erro com o motivo e um botão para tentar de novo (§57). Painel elevado, não caixa
+ * tracejada: a borda tracejada é do estado vazio. O motivo vem em `text-destructive`, nunca só cor.
+ */
 export function DashboardError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
   const message = error instanceof Error ? error.message : 'Não foi possível carregar o dashboard.';
   return (
-    <EmptyState
-      icon={CircleAlert}
-      title="Não foi possível carregar o dashboard"
-      description={message}
-      action={
-        <Button type="button" variant="outline" onClick={onRetry}>
-          <RefreshCw aria-hidden="true" />
-          Tentar de novo
-        </Button>
-      }
-    />
+    <section
+      aria-live="polite"
+      className="flex flex-col items-start gap-4 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="flex min-w-0 items-start gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+          <CircleAlert className="size-5" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <h3 className="text-base font-medium text-destructive">
+            Não foi possível carregar o dashboard
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">{message}</p>
+        </div>
+      </div>
+      <Button type="button" variant="outline" onClick={onRetry} className="w-full sm:w-auto">
+        <RefreshCw aria-hidden="true" />
+        Tentar de novo
+      </Button>
+    </section>
   );
 }
 

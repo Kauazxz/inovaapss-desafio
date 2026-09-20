@@ -22,7 +22,7 @@ import { usePlanUsage } from './api';
  */
 export function PlansTab() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PlanUsageTable />
       <PlansManager />
     </div>
@@ -43,16 +43,20 @@ function PlanUsageTable() {
   return (
     <section aria-labelledby="uso-planos-titulo" className="space-y-4">
       <div>
-        <h3 id="uso-planos-titulo" className="text-base font-semibold">
+        <h3 id="uso-planos-titulo" className="text-base font-medium">
           Uso dos planos na carteira
         </h3>
-        <p className="text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground">
           Clientes com contrato em cada plano, o valor mensal médio e o SLA mais contratado.
         </p>
       </div>
 
       {loading ? (
-        <div role="status" aria-label="Carregando o uso dos planos" className="space-y-2">
+        <div
+          role="status"
+          aria-label="Carregando o uso dos planos"
+          className="space-y-2 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5"
+        >
           <Skeleton className="h-9 w-full" />
           <Skeleton className="h-9 w-full" />
         </div>
@@ -75,47 +79,52 @@ function PlanUsageTable() {
           description="Crie os planos abaixo; os números aparecem assim que houver contratos neles."
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead scope="col">Plano</TableHead>
-              <TableHead scope="col">Descrição</TableHead>
-              <TableHead scope="col" className="text-right">
-                Clientes
-              </TableHead>
-              <TableHead scope="col" className="text-right">
-                Valor mensal médio
-              </TableHead>
-              <TableHead scope="col" className="text-right">
-                SLA contratado
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(plans.data ?? []).map((plan) => {
-              const numbers = usage.data?.[plan.id];
-              return (
-                <TableRow key={plan.id} data-plan-usage-id={plan.id}>
-                  <TableCell className="font-medium">{plan.name}</TableCell>
-                  <TableCell className="max-w-md whitespace-normal text-muted-foreground">
-                    {plan.description ?? '—'}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatInteger(numbers?.clients ?? 0)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {numbers === undefined ? '—' : formatCurrency(numbers.averageMonthlyValue)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {numbers === undefined || numbers.slaHours === null
-                      ? '—'
-                      : `${formatInteger(numbers.slaHours)} h`}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead scope="col">Plano</TableHead>
+                {/* A descrição é a coluna mais larga e a menos comparável: só do lg. */}
+                <TableHead scope="col" className="hidden lg:table-cell">
+                  Descrição
+                </TableHead>
+                <TableHead scope="col" className="text-right">
+                  Clientes
+                </TableHead>
+                <TableHead scope="col" className="text-right">
+                  Valor mensal médio
+                </TableHead>
+                <TableHead scope="col" className="hidden text-right md:table-cell">
+                  SLA contratado
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(plans.data ?? []).map((plan) => {
+                const numbers = usage.data?.[plan.id];
+                return (
+                  <TableRow key={plan.id} data-plan-usage-id={plan.id}>
+                    <TableCell className="font-medium">{plan.name}</TableCell>
+                    <TableCell className="hidden max-w-md whitespace-normal text-muted-foreground lg:table-cell">
+                      {plan.description ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatInteger(numbers?.clients ?? 0)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {numbers === undefined ? '—' : formatCurrency(numbers.averageMonthlyValue)}
+                    </TableCell>
+                    <TableCell className="hidden text-right tabular-nums md:table-cell">
+                      {numbers === undefined || numbers.slaHours === null
+                        ? '—'
+                        : `${formatInteger(numbers.slaHours)} h`}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </section>
   );

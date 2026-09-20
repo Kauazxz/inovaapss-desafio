@@ -17,11 +17,15 @@ export function SettingsPage() {
         description="Dados da organização, quem tem acesso e com qual papel, e os planos da carteira."
       />
       <Tabs defaultValue="usuarios">
-        <TabsList variant="line" aria-label="Seções das configurações">
-          <TabsTrigger value="usuarios">Usuários</TabsTrigger>
-          <TabsTrigger value="planos">Planos</TabsTrigger>
-          <TabsTrigger value="organizacao">Organização</TabsTrigger>
-        </TabsList>
+        {/* No celular a faixa de abas rola sozinha em vez de estourar a página; o padding em
+            volta deixa passar o sublinhado da aba ativa e o anel de foco. */}
+        <div className="-mx-1 overflow-x-auto px-1 pb-1.5">
+          <TabsList variant="line" aria-label="Seções das configurações">
+            <TabsTrigger value="usuarios">Usuários</TabsTrigger>
+            <TabsTrigger value="planos">Planos</TabsTrigger>
+            <TabsTrigger value="organizacao">Organização</TabsTrigger>
+          </TabsList>
+        </div>
         <TabsContent value="usuarios" className="pt-4">
           <UsersTab />
         </TabsContent>

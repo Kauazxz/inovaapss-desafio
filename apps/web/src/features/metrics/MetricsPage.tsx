@@ -36,7 +36,7 @@ import { PrefillBanner } from './PrefillBanner';
 import type { MetricPrefill } from '@/features/documents/api';
 
 const selectClassName =
-  'h-8 rounded-lg border border-input bg-transparent px-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
+  'h-9 rounded-lg border border-input bg-card px-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
 
 function FilterSelect<T extends string>({
   label,
@@ -91,7 +91,7 @@ function ActivePill({ active }: { active: boolean }) {
   return (
     <span
       className={cn(
-        'inline-flex h-5 items-center rounded-4xl border border-border px-2 text-xs font-medium whitespace-nowrap',
+        'inline-flex h-5 items-center rounded-full border border-border px-2 text-xs font-medium whitespace-nowrap',
         active ? 'text-foreground' : 'text-muted-foreground',
       )}
     >
@@ -154,169 +154,171 @@ export function MetricsPage() {
         </Button>
       </PageHeader>
 
-      <PrefillBanner
-        onReview={(prefill) => {
-          setFormPrefill(prefill);
-          setFormOpen(true);
-        }}
-      />
+      <div className="space-y-6">
+        <PrefillBanner
+          onReview={(prefill) => {
+            setFormPrefill(prefill);
+            setFormOpen(true);
+          }}
+        />
 
-      <form
-        role="search"
-        aria-label="Buscar e filtrar métricas"
-        className="mb-4 flex flex-wrap items-end gap-2"
-        onSubmit={(event) => event.preventDefault()}
-      >
-        <div className="relative">
-          <label htmlFor={searchId} className="sr-only">
-            Buscar por nome ou chave
-          </label>
-          <Search
-            aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            id={searchId}
-            type="search"
-            placeholder="Buscar por nome ou chave"
-            className="w-64 pl-8"
-            value={query.search}
-            onChange={(event) => set('search', event.target.value)}
-          />
-        </div>
-        <FilterSelect
-          label="Tipo"
-          value={query.type}
-          onChange={(value) => set('type', value)}
-          allLabel="Todos os tipos"
-          options={METRIC_TYPES}
-          labels={METRIC_TYPE_LABELS}
-        />
-        <FilterSelect
-          label="Direção"
-          value={query.direction}
-          onChange={(value) => set('direction', value)}
-          allLabel="Todas as direções"
-          options={METRIC_DIRECTIONS}
-          labels={METRIC_DIRECTION_LABELS}
-        />
-        <FilterSelect
-          label="Fonte"
-          value={query.source}
-          onChange={(value) => set('source', value)}
-          allLabel="Todas as fontes"
-          options={METRIC_SOURCES}
-          labels={METRIC_SOURCE_LABELS}
-        />
-        <FilterSelect
-          label="Situação"
-          value={query.isActive}
-          onChange={(value) => set('isActive', value)}
-          allLabel="Ativas e inativas"
-          options={['true', 'false'] as const}
-          labels={{ true: 'Só ativas', false: 'Só inativas' }}
-        />
-        {isFiltered(query) ? (
-          <Button type="button" variant="ghost" size="sm" onClick={clear}>
-            <X aria-hidden="true" />
-            Limpar
-          </Button>
-        ) : null}
-      </form>
-
-      {result.isPending ? (
-        <MetricsLoading label="Carregando métricas" />
-      ) : result.isError ? (
-        <MetricsError
-          title="Não foi possível carregar as métricas"
-          error={result.error}
-          onRetry={() => void result.refetch()}
-        />
-      ) : data === undefined || data.total === 0 ? (
-        <MetricsEmpty filtered={isFiltered(query)} onClearFilters={clear} />
-      ) : (
-        <div className={cn(result.isFetching && 'opacity-60 transition-opacity')}>
-          <p className="mb-3 text-sm text-muted-foreground">
-            Ordem fixa: métricas do modelo ativo aparecem primeiro, na ordem configurada; as demais
-            vêm em ordem alfabética.
-          </p>
-          <Table aria-label="Métricas da organização">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ativa</TableHead>
-                <TableHead className="text-right">Ordem</TableHead>
-                <TableHead>Métrica</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead className="text-right">Peso final</TableHead>
-                <TableHead>Direção</TableHead>
-                <TableHead>Normalização</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {orderedItems.map((row) => (
-                <TableRow key={row.id} data-metric-id={row.id}>
-                  <TableCell>
-                    <ActivePill active={row.isActive} />
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {row.activePlacement?.sortOrder ?? '—'}
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      to={`/metrics/${row.id}`}
-                      className="font-medium underline-offset-4 hover:underline"
-                    >
-                      {row.name}
-                    </Link>
-                    <span className="block text-xs text-muted-foreground">{row.slug}</span>
-                  </TableCell>
-                  <TableCell>{METRIC_TYPE_LABELS[row.metricType]}</TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {row.activePlacement === null ? '—' : pct(row.activePlacement.weight)}
-                  </TableCell>
-                  <TableCell>{METRIC_DIRECTION_LABELS[row.direction]}</TableCell>
-                  <TableCell>
-                    {row.activePlacement === null
-                      ? '—'
-                      : NORMALIZATION_STRATEGY_LABELS[row.activePlacement.normalizationStrategy]}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{statusOf(row)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-
-          <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
-            <span>
-              {data.total} {data.total === 1 ? 'métrica' : 'métricas'}
-              {pageCount > 1 ? ` · página ${data.page} de ${pageCount}` : ''}
-            </span>
-            {pageCount > 1 ? (
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={data.page <= 1}
-                  onClick={() => goToPage(data.page - 1)}
-                >
-                  Anterior
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={data.page >= pageCount}
-                  onClick={() => goToPage(data.page + 1)}
-                >
-                  Próxima
-                </Button>
-              </div>
-            ) : null}
+        <form
+          role="search"
+          aria-label="Buscar e filtrar métricas"
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={(event) => event.preventDefault()}
+        >
+          <div className="relative">
+            <label htmlFor={searchId} className="sr-only">
+              Buscar por nome ou chave
+            </label>
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              id={searchId}
+              type="search"
+              placeholder="Buscar por nome ou chave"
+              className="w-64 pl-8"
+              value={query.search}
+              onChange={(event) => set('search', event.target.value)}
+            />
           </div>
-        </div>
-      )}
+          <FilterSelect
+            label="Tipo"
+            value={query.type}
+            onChange={(value) => set('type', value)}
+            allLabel="Todos os tipos"
+            options={METRIC_TYPES}
+            labels={METRIC_TYPE_LABELS}
+          />
+          <FilterSelect
+            label="Direção"
+            value={query.direction}
+            onChange={(value) => set('direction', value)}
+            allLabel="Todas as direções"
+            options={METRIC_DIRECTIONS}
+            labels={METRIC_DIRECTION_LABELS}
+          />
+          <FilterSelect
+            label="Fonte"
+            value={query.source}
+            onChange={(value) => set('source', value)}
+            allLabel="Todas as fontes"
+            options={METRIC_SOURCES}
+            labels={METRIC_SOURCE_LABELS}
+          />
+          <FilterSelect
+            label="Situação"
+            value={query.isActive}
+            onChange={(value) => set('isActive', value)}
+            allLabel="Ativas e inativas"
+            options={['true', 'false'] as const}
+            labels={{ true: 'Só ativas', false: 'Só inativas' }}
+          />
+          {isFiltered(query) ? (
+            <Button type="button" variant="ghost" size="sm" onClick={clear}>
+              <X aria-hidden="true" />
+              Limpar
+            </Button>
+          ) : null}
+        </form>
+
+        {result.isPending ? (
+          <MetricsLoading label="Carregando métricas" />
+        ) : result.isError ? (
+          <MetricsError
+            title="Não foi possível carregar as métricas"
+            error={result.error}
+            onRetry={() => void result.refetch()}
+          />
+        ) : data === undefined || data.total === 0 ? (
+          <MetricsEmpty filtered={isFiltered(query)} onClearFilters={clear} />
+        ) : (
+          <div className={cn(result.isFetching && 'opacity-60 transition-opacity')}>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Ordem fixa: métricas do modelo ativo aparecem primeiro, na ordem configurada; as
+              demais vêm em ordem alfabética.
+            </p>
+            <Table aria-label="Métricas da organização">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ativa</TableHead>
+                  <TableHead className="text-right">Ordem</TableHead>
+                  <TableHead>Métrica</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead className="text-right">Peso final</TableHead>
+                  <TableHead>Direção</TableHead>
+                  <TableHead>Normalização</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orderedItems.map((row) => (
+                  <TableRow key={row.id} data-metric-id={row.id}>
+                    <TableCell>
+                      <ActivePill active={row.isActive} />
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {row.activePlacement?.sortOrder ?? '—'}
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        to={`/metrics/${row.id}`}
+                        className="font-medium underline-offset-4 hover:underline"
+                      >
+                        {row.name}
+                      </Link>
+                      <span className="block text-xs text-muted-foreground">{row.slug}</span>
+                    </TableCell>
+                    <TableCell>{METRIC_TYPE_LABELS[row.metricType]}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {row.activePlacement === null ? '—' : pct(row.activePlacement.weight)}
+                    </TableCell>
+                    <TableCell>{METRIC_DIRECTION_LABELS[row.direction]}</TableCell>
+                    <TableCell>
+                      {row.activePlacement === null
+                        ? '—'
+                        : NORMALIZATION_STRATEGY_LABELS[row.activePlacement.normalizationStrategy]}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{statusOf(row)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
+              <span>
+                {data.total} {data.total === 1 ? 'métrica' : 'métricas'}
+                {pageCount > 1 ? ` · página ${data.page} de ${pageCount}` : ''}
+              </span>
+              {pageCount > 1 ? (
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={data.page <= 1}
+                    onClick={() => goToPage(data.page - 1)}
+                  >
+                    Anterior
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={data.page >= pageCount}
+                    onClick={() => goToPage(data.page + 1)}
+                  >
+                    Próxima
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
+      </div>
 
       <MetricFormDialog
         open={formOpen}

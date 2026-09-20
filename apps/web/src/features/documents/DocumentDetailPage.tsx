@@ -162,7 +162,7 @@ export function DocumentDetailPage() {
         <h3 id="metadados" className="sr-only">
           Dados do arquivo
         </h3>
-        <dl className="grid grid-cols-2 gap-4 rounded-xl border border-border p-4 sm:grid-cols-3 lg:grid-cols-6">
+        <dl className="grid grid-cols-2 gap-4 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 sm:grid-cols-3 lg:grid-cols-6">
           <MetadataItem label="Arquivo">{doc.fileName}</MetadataItem>
           <MetadataItem label="Tipo">
             {DOCUMENT_KIND_LABELS[doc.kind]}{' '}

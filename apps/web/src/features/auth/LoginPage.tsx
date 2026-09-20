@@ -116,11 +116,11 @@ export function LoginPage() {
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
               <Label htmlFor={passwordId}>Senha</Label>
               <Link
                 to="/forgot-password"
-                className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                className="rounded-sm text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
               >
                 Esqueci a senha
               </Link>
@@ -142,6 +142,7 @@ export function LoginPage() {
 
           <Button
             type="submit"
+            size="lg"
             className="w-full"
             disabled={isSubmitting || status === 'unconfigured'}
           >
@@ -149,7 +150,10 @@ export function LoginPage() {
           </Button>
 
           {(submitError ?? configError) ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p
+              role="alert"
+              className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
               {submitError ?? configError}
             </p>
           ) : null}

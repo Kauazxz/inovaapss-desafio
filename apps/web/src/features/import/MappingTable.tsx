@@ -37,10 +37,12 @@ interface MappingTableProps {
 export function MappingTable({ sheet, headers, onChange, disabled = false }: MappingTableProps) {
   const label = IMPORT_DATASET_LABELS[sheet.dataset];
 
+  // A tabela vai de ponta a ponta do painel: assim a área que rola no celular é a largura
+  // inteira do card, e não uma faixa com sobra dos dois lados.
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h4 className="text-sm font-medium">
+    <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+      <div className="flex flex-col gap-1 px-4 pt-4 pb-3 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between sm:gap-2 sm:px-5 sm:pt-5">
+        <h4 className="min-w-0 text-sm font-medium">
           {sheet.sheet} <span className="text-muted-foreground">→ {label}</span>
         </h4>
         <span className="text-xs text-muted-foreground">
@@ -62,7 +64,7 @@ export function MappingTable({ sheet, headers, onChange, disabled = false }: Map
             const conferir = field.header !== null && field.confidence < HIGH_CONFIDENCE;
             return (
               <TableRow key={field.field} className={cn(faltando && 'bg-destructive/5')}>
-                <TableCell>
+                <TableCell className="whitespace-normal">
                   <div className="font-medium">
                     {field.label}
                     {field.required ? (
@@ -81,7 +83,7 @@ export function MappingTable({ sheet, headers, onChange, disabled = false }: Map
                   </label>
                   <select
                     id={`${sheet.sheet}-${field.field}`}
-                    className="h-8 w-full max-w-64 rounded-lg border border-border bg-background px-2 text-sm"
+                    className="h-9 w-full max-w-40 rounded-lg border border-input bg-card px-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:max-w-64"
                     value={field.header ?? ''}
                     disabled={disabled}
                     onChange={(event) =>
@@ -96,10 +98,10 @@ export function MappingTable({ sheet, headers, onChange, disabled = false }: Map
                     ))}
                   </select>
                 </TableCell>
-                <TableCell>
+                <TableCell className="whitespace-normal">
                   {faltando ? (
-                    <span className="inline-flex items-center gap-1.5 text-sm text-destructive">
-                      <TriangleAlert className="size-3.5" aria-hidden="true" />
+                    <span className="inline-flex items-start gap-1.5 text-sm text-destructive">
+                      <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
                       obrigatório sem coluna
                     </span>
                   ) : field.header === null ? (
@@ -107,14 +109,14 @@ export function MappingTable({ sheet, headers, onChange, disabled = false }: Map
                   ) : (
                     <span
                       className={cn(
-                        'inline-flex items-center gap-1.5 text-sm',
+                        'inline-flex items-start gap-1.5 text-sm tabular-nums',
                         conferir ? 'text-muted-foreground' : 'text-foreground',
                       )}
                     >
                       {conferir ? (
-                        <TriangleAlert className="size-3.5" aria-hidden="true" />
+                        <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
                       ) : (
-                        <CircleCheck className="size-3.5" aria-hidden="true" />
+                        <CircleCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
                       )}
                       {formatConfidence(field.confidence)} · {MAPPING_REASON_LABELS[field.reason]}
                     </span>
@@ -127,7 +129,7 @@ export function MappingTable({ sheet, headers, onChange, disabled = false }: Map
       </Table>
 
       {sheet.unmappedHeaders.length > 0 ? (
-        <p className="text-xs text-muted-foreground">
+        <p className="border-t border-border px-3 py-3 text-xs text-muted-foreground">
           Colunas do arquivo que ninguém usou: {sheet.unmappedHeaders.join(', ')}.
         </p>
       ) : null}

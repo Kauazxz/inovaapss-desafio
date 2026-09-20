@@ -39,9 +39,9 @@ export function ContractsPanel({ clientId }: ContractsPanelProps) {
 
   return (
     <section aria-labelledby="contratos-titulo" className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 id="contratos-titulo" className="text-base font-semibold">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h3 id="contratos-titulo" className="text-base font-medium">
             Contratos
           </h3>
           <p className="text-sm text-muted-foreground">
@@ -51,7 +51,7 @@ export function ContractsPanel({ clientId }: ContractsPanelProps) {
           </p>
         </div>
         {canWrite ? (
-          <Button type="button" onClick={() => setFormOpen(true)}>
+          <Button type="button" className="w-full sm:w-auto" onClick={() => setFormOpen(true)}>
             <Plus aria-hidden="true" />
             Novo contrato
           </Button>
@@ -59,7 +59,11 @@ export function ContractsPanel({ clientId }: ContractsPanelProps) {
       </div>
 
       {contracts.isPending ? (
-        <div role="status" aria-label="Carregando contratos" className="space-y-2">
+        <div
+          role="status"
+          aria-label="Carregando contratos"
+          className="space-y-2 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5"
+        >
           <Skeleton className="h-9 w-full" />
           <Skeleton className="h-9 w-full" />
         </div>
@@ -90,68 +94,79 @@ export function ContractsPanel({ clientId }: ContractsPanelProps) {
           }
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead scope="col">Plano</TableHead>
-              <TableHead scope="col" className="text-right">
-                Valor mensal
-              </TableHead>
-              <TableHead scope="col">Início</TableHead>
-              <TableHead scope="col">Término</TableHead>
-              <TableHead scope="col" className="text-right">
-                SLA (h)
-              </TableHead>
-              <TableHead scope="col">Status</TableHead>
-              {canWrite ? (
+        <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead scope="col">Plano</TableHead>
                 <TableHead scope="col" className="text-right">
-                  Ações
+                  Valor mensal
                 </TableHead>
-              ) : null}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {contracts.data.map((contract) => (
-              <TableRow
-                key={contract.id}
-                data-contract-id={contract.id}
-                className={cn(contract.status !== 'active' && 'text-muted-foreground')}
-              >
-                <TableCell className={cn(contract.status === 'active' && 'font-medium')}>
-                  {contract.planName ?? 'sem plano'}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatMoney(contract.monthlyValue, contract.currency)}
-                </TableCell>
-                <TableCell>{formatDate(contract.startDate)}</TableCell>
-                <TableCell>{contract.endDate ? formatDate(contract.endDate) : '—'}</TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {contract.contractedSlaHours ?? '—'}
-                </TableCell>
-                <TableCell>
-                  <span className="inline-flex h-5 items-center rounded-4xl border border-border px-2 text-xs font-medium whitespace-nowrap">
-                    {CONTRACT_STATUS_LABELS[contract.status]}
-                  </span>
-                </TableCell>
+                <TableHead scope="col" className="hidden md:table-cell">
+                  Início
+                </TableHead>
+                <TableHead scope="col" className="hidden lg:table-cell">
+                  Término
+                </TableHead>
+                <TableHead scope="col" className="hidden text-right lg:table-cell">
+                  SLA (h)
+                </TableHead>
+                <TableHead scope="col">Status</TableHead>
                 {canWrite ? (
-                  <TableCell className="text-right">
-                    {contract.status === 'active' ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEnding(contract)}
-                        aria-label={`Encerrar contrato ${contract.planName ?? 'sem plano'}`}
-                      >
-                        Encerrar
-                      </Button>
-                    ) : null}
-                  </TableCell>
+                  <TableHead scope="col" className="text-right">
+                    Ações
+                  </TableHead>
                 ) : null}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {contracts.data.map((contract) => (
+                <TableRow
+                  key={contract.id}
+                  data-contract-id={contract.id}
+                  className={cn(contract.status !== 'active' && 'text-muted-foreground')}
+                >
+                  <TableCell className={cn(contract.status === 'active' && 'font-medium')}>
+                    {contract.planName ?? 'sem plano'}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {formatMoney(contract.monthlyValue, contract.currency)}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {formatDate(contract.startDate)}
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    {contract.endDate ? formatDate(contract.endDate) : '—'}
+                  </TableCell>
+                  <TableCell className="hidden text-right tabular-nums lg:table-cell">
+                    {contract.contractedSlaHours ?? '—'}
+                  </TableCell>
+                  <TableCell>
+                    <span className="inline-flex h-5 items-center rounded-full border border-border px-2 text-xs font-medium whitespace-nowrap">
+                      {CONTRACT_STATUS_LABELS[contract.status]}
+                    </span>
+                  </TableCell>
+                  {canWrite ? (
+                    <TableCell className="text-right">
+                      {contract.status === 'active' ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-9 sm:h-7"
+                          onClick={() => setEnding(contract)}
+                          aria-label={`Encerrar contrato ${contract.planName ?? 'sem plano'}`}
+                        >
+                          Encerrar
+                        </Button>
+                      ) : null}
+                    </TableCell>
+                  ) : null}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       <ContractFormDialog

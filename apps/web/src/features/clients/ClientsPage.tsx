@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/features/auth/use-auth';
+import { cn } from '@/lib/utils';
 
 import {
   type ClientFilters,
@@ -87,7 +88,7 @@ export function ClientsPage() {
         ) : null}
       </PageHeader>
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         <ClientsFilterBar
           search={search}
           onSearchChange={(value) => {
@@ -109,7 +110,11 @@ export function ClientsPage() {
         ) : null}
 
         {clients.isPending ? (
-          <div role="status" aria-label="Carregando clientes" className="space-y-2">
+          <div
+            role="status"
+            aria-label="Carregando clientes"
+            className="space-y-3 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5"
+          >
             <Skeleton className="h-9 w-full" />
             <Skeleton className="h-9 w-full" />
             <Skeleton className="h-9 w-full" />
@@ -167,7 +172,12 @@ export function ClientsPage() {
             />
           )
         ) : data !== undefined ? (
-          <div className={clients.isFetching ? 'opacity-60 transition-opacity' : undefined}>
+          <div
+            className={cn(
+              'overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5',
+              clients.isFetching && 'opacity-60 transition-opacity',
+            )}
+          >
             <ClientsTable
               items={data.items}
               sort={sort}
@@ -181,7 +191,8 @@ export function ClientsPage() {
               onEdit={openEdit}
               onArchive={setArchiving}
             />
-            <div className="mt-4">
+            {/* A paginação fecha a mesma superfície da tabela, separada por uma linha fina. */}
+            <div className="border-t border-border px-3 py-3">
               <Pagination
                 page={data.page}
                 pageSize={pageSize}

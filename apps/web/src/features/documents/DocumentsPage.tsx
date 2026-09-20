@@ -36,7 +36,7 @@ import { type RejectedFile, UploadDropzone } from './UploadDropzone';
 const PAGE_SIZE = 20;
 
 const SELECT_CLASS =
-  'h-9 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
+  'h-9 rounded-lg border border-input bg-card px-3 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
 
 interface UploadNotice {
   fileName: string;
@@ -114,7 +114,7 @@ export function DocumentsPage() {
         description="Tudo o que a empresa guarda: contratos, manuais de KPI, políticas de SLA, relatórios e as planilhas enviadas na importação de dados. Do arquivo saem as sugestões de métrica."
       />
 
-      <section className="mb-8 space-y-3" aria-labelledby="upload-titulo">
+      <section className="mb-6 space-y-3" aria-labelledby="upload-titulo">
         <h3 id="upload-titulo" className="sr-only">
           Enviar documentos
         </h3>
@@ -154,7 +154,7 @@ export function DocumentsPage() {
 
       <section aria-labelledby="lista-titulo" className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h3 id="lista-titulo" className="text-base font-semibold">
+          <h3 id="lista-titulo" className="text-base font-medium">
             Documentos guardados{data ? ` (${data.total})` : ''}
           </h3>
           <div className="flex flex-wrap items-center gap-3">
@@ -270,7 +270,7 @@ export function DocumentsPage() {
                   <TableHead>Origem</TableHead>
                   <TableHead className="text-right">Tamanho</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Guardado em</TableHead>
+                  <TableHead className="text-right">Guardado em</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -294,7 +294,7 @@ export function DocumentsPage() {
                     <TableCell>
                       <DocumentStatusBadge status={doc.status} />
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-right tabular-nums text-muted-foreground">
                       {formatDateTime(doc.createdAt)}
                     </TableCell>
                   </TableRow>

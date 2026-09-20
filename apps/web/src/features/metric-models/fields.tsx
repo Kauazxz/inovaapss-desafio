@@ -10,10 +10,10 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 export const selectClassName =
-  'h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive dark:bg-input/30';
+  'h-9 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive dark:bg-input/30';
 
 export const textareaClassName =
-  'min-h-28 w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 font-mono text-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive dark:bg-input/30';
+  'min-h-28 w-full rounded-lg border border-input bg-card px-3 py-2 font-mono text-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive dark:bg-input/30';
 
 export function TextField({
   label,
@@ -141,9 +141,9 @@ export function PanelSection({
   children: ReactNode;
 }) {
   return (
-    <section className="space-y-3 border-t border-border pt-4 first:border-t-0 first:pt-0">
+    <section className="space-y-3 border-t border-border pt-5 first:border-t-0 first:pt-0">
       <div>
-        <h4 className="text-sm font-semibold">{title}</h4>
+        <h4 className="text-sm font-medium">{title}</h4>
         {description === undefined ? null : (
           <p className="text-xs text-muted-foreground">{description}</p>
         )}

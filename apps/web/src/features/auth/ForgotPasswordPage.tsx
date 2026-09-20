@@ -75,23 +75,32 @@ export function ForgotPasswordPage() {
             ) : null}
           </div>
 
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
+          <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? 'Enviando…' : 'Enviar link'}
           </Button>
 
           {status ? (
-            <p role="status" className="text-sm text-muted-foreground">
+            <p
+              role="status"
+              className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground"
+            >
               {status}
             </p>
           ) : null}
           {submitError ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p
+              role="alert"
+              className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
               {submitError}
             </p>
           ) : null}
 
           <p className="text-center text-sm text-muted-foreground">
-            <Link to="/login" className="underline-offset-4 hover:underline">
+            <Link
+              to="/login"
+              className="rounded-sm underline-offset-4 hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            >
               Voltar para o login
             </Link>
           </p>

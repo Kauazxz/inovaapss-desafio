@@ -5,12 +5,7 @@ import { formatCompactCurrency, formatInteger } from '@/lib/format';
 
 import { useRiskDashboard } from './api';
 import { DashboardEmpty, DashboardError, DashboardLoading } from './DashboardStates';
-import {
-  criticalBandHint,
-  formatCountDelta,
-  formatCurrencyDelta,
-  riskBandHint,
-} from './format';
+import { criticalBandHint, formatCountDelta, formatCurrencyDelta, riskBandHint } from './format';
 import { KpiRow } from './KpiRow';
 import { RankingTable } from './RankingTable';
 import { ScoreGuide } from './ScoreGuide';
@@ -36,7 +31,7 @@ export function RiskTab() {
   const { thresholds } = data.forecast;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <KpiRow
         label="Resumo da carteira"
         items={[
@@ -72,6 +67,8 @@ export function RiskTab() {
         <>
           <ScoreGuide example={data.ranking[0]!} priorityWeights={data.priorityWeights} />
 
+          {/* Gráfico não mora em card nem leva borda em volta (DATAVIZ.md §1.3): no celular
+              cada pixel de largura é escala do dumbbell. */}
           <ForecastDumbbellChart data={data.forecast} onSelect={openClient} />
 
           <section aria-labelledby="ranking-title" className="space-y-3">
@@ -79,12 +76,15 @@ export function RiskTab() {
               <h3 id="ranking-title" className="text-base font-semibold">
                 Ranking por prioridade
               </h3>
-              <p className="text-[13px] text-muted-foreground">
-                O primeiro cliente é a ação mais urgente. A ordem considera o sinal de risco atual
-                e o impacto comercial do contrato; "Analisar" abre os detalhes.
+              <p className="mt-1 text-sm text-muted-foreground">
+                O primeiro cliente é a ação mais urgente. A ordem considera o sinal de risco atual e
+                o impacto comercial do contrato; "Analisar" abre os detalhes.
               </p>
             </div>
-            <RankingTable rows={data.ranking} onSelect={openClient} />
+            {/* A tabela mora numa superfície elevada, como as outras tabelas do sistema. */}
+            <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+              <RankingTable rows={data.ranking} onSelect={openClient} />
+            </div>
           </section>
         </>
       )}

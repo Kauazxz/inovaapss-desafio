@@ -25,7 +25,7 @@ export interface InviteUsersDialogProps {
 }
 
 const textareaClassName =
-  'min-h-28 w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 font-mono text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive dark:bg-input/30';
+  'min-h-28 w-full rounded-lg border border-input bg-card px-3 py-2 font-mono text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive dark:bg-input/30';
 
 /**
  * Convida uma ou várias pessoas de uma vez, todas com o mesmo papel. Cada e-mail vira uma
@@ -126,11 +126,11 @@ function InviteUsersForm({
         </FormField>
 
         {outcomes ? (
-          <div className="space-y-2">
-            <p role="status" className="text-sm">
+          <div className="space-y-2 border-t border-border pt-4">
+            <p role="status" className="text-sm font-medium">
               {invited} de {outcomes.length} convidados.
             </p>
-            <ul aria-label="Resultado dos convites" className="space-y-1 text-sm">
+            <ul aria-label="Resultado dos convites" className="space-y-1.5 text-sm">
               {outcomes.map((outcome) => (
                 <li key={outcome.email} className="flex items-start gap-2">
                   {outcome.ok ? (
@@ -138,7 +138,8 @@ function InviteUsersForm({
                   ) : (
                     <X aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
                   )}
-                  <span className="min-w-0">
+                  {/* E-mail longo não tem espaço para quebrar: break-words evita estourar. */}
+                  <span className="min-w-0 flex-1 break-words">
                     <span className="font-medium">{outcome.email}</span>{' '}
                     <span className={outcome.ok ? 'text-muted-foreground' : 'text-destructive'}>
                       {outcome.message}

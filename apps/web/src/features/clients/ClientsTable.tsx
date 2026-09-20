@@ -29,11 +29,15 @@ export interface ClientsTableProps {
   onArchive: (client: PortfolioClient) => void;
 }
 
-const COLUMNS: { key: ClientSortField; label: string; numeric?: boolean }[] = [
+// `secondary` sai do caminho no celular (§8 do guia): sobra quem é o cliente, o plano, quanto
+// paga, como está e o que fazer. A mesma classe vai no <TableHead> e no <TableCell> da coluna.
+const HIDDEN_UNTIL_MD = 'hidden md:table-cell';
+
+const COLUMNS: { key: ClientSortField; label: string; numeric?: boolean; secondary?: boolean }[] = [
   { key: 'name', label: 'Nome' },
-  { key: 'externalCode', label: 'Código' },
-  { key: 'segment', label: 'Segmento' },
-  { key: 'size', label: 'Porte' },
+  { key: 'externalCode', label: 'Código', secondary: true },
+  { key: 'segment', label: 'Segmento', secondary: true },
+  { key: 'size', label: 'Porte', secondary: true },
   { key: 'planName', label: 'Plano' },
   { key: 'monthlyValue', label: 'Valor mensal', numeric: true },
   { key: 'status', label: 'Status' },
@@ -66,7 +70,7 @@ export function ClientsTable({
                 key={column.key}
                 scope="col"
                 aria-sort={isSorted ? (order === 'asc' ? 'ascending' : 'descending') : 'none'}
-                className={cn(column.numeric && 'text-right')}
+                className={cn(column.numeric && 'text-right', column.secondary && HIDDEN_UNTIL_MD)}
               >
                 <button
                   type="button"
@@ -92,7 +96,7 @@ export function ClientsTable({
       <TableBody>
         {items.map((client) => (
           <TableRow key={client.id} data-client-id={client.id}>
-            <TableCell className="font-medium">
+            <TableCell className="font-medium whitespace-normal">
               <Link
                 to={`/clients/${client.id}`}
                 className="rounded-md underline-offset-4 hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
@@ -100,9 +104,11 @@ export function ClientsTable({
                 {client.name}
               </Link>
             </TableCell>
-            <TableCell className="text-muted-foreground">{client.externalCode ?? '—'}</TableCell>
-            <TableCell>{client.segment ?? '—'}</TableCell>
-            <TableCell>{client.size ?? '—'}</TableCell>
+            <TableCell className={cn(HIDDEN_UNTIL_MD, 'text-muted-foreground')}>
+              {client.externalCode ?? '—'}
+            </TableCell>
+            <TableCell className={HIDDEN_UNTIL_MD}>{client.segment ?? '—'}</TableCell>
+            <TableCell className={HIDDEN_UNTIL_MD}>{client.size ?? '—'}</TableCell>
             <TableCell>
               {client.activeContract?.planName ?? (
                 <span className="text-muted-foreground">
@@ -118,7 +124,7 @@ export function ClientsTable({
             <TableCell>
               <span
                 className={cn(
-                  'inline-flex h-5 items-center rounded-4xl border border-border px-2 text-xs font-medium whitespace-nowrap',
+                  'inline-flex h-5 items-center rounded-full border border-border px-2 text-xs font-medium whitespace-nowrap',
                   client.status !== 'active' && 'text-muted-foreground',
                 )}
               >
@@ -127,11 +133,13 @@ export function ClientsTable({
             </TableCell>
             {canWrite ? (
               <TableCell className="text-right">
+                {/* Alvo de toque de 36 px no celular; a partir de sm o botão encolhe (§9). */}
                 <span className="inline-flex items-center gap-1">
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon-sm"
+                    className="size-9 sm:size-7"
                     onClick={() => onEdit(client)}
                     aria-label={`Editar ${client.name}`}
                   >
@@ -142,6 +150,7 @@ export function ClientsTable({
                       type="button"
                       variant="ghost"
                       size="icon-sm"
+                      className="size-9 sm:size-7"
                       onClick={() => onArchive(client)}
                       aria-label={`Arquivar ${client.name}`}
                     >

@@ -177,7 +177,7 @@ export function SuggestionForm({
           <Label htmlFor={`${id}-suggestedType`}>Tipo</Label>
           <select
             id={`${id}-suggestedType`}
-            className={cn(FIELD_CLASS, 'h-8')}
+            className={cn(FIELD_CLASS, 'h-9')}
             {...register('suggestedType')}
           >
             {METRIC_TYPES.map((type) => (
@@ -192,7 +192,7 @@ export function SuggestionForm({
           <Label htmlFor={`${id}-suggestedDirection`}>Direção</Label>
           <select
             id={`${id}-suggestedDirection`}
-            className={cn(FIELD_CLASS, 'h-8')}
+            className={cn(FIELD_CLASS, 'h-9')}
             {...register('suggestedDirection')}
           >
             {METRIC_DIRECTIONS.map((direction) => (

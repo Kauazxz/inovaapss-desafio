@@ -39,13 +39,14 @@ export function DashboardPage() {
           <TabsTrigger value="general">Geral</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="risk" className="pt-4">
+        {/* min-w-0: tabela larga rola dentro dela mesma, nunca empurra a página para o lado. */}
+        <TabsContent value="risk" className="min-w-0 pt-5">
           <Suspense fallback={<DashboardLoading label="Carregando a aba Em risco" />}>
             <RiskTab />
           </Suspense>
         </TabsContent>
 
-        <TabsContent value="general" className="pt-4">
+        <TabsContent value="general" className="min-w-0 pt-5">
           <Suspense fallback={<DashboardLoading label="Carregando a aba Geral" />}>
             <GeneralTab />
           </Suspense>

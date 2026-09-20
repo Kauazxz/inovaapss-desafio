@@ -23,7 +23,7 @@ export function HealthPill({
   return (
     <span
       className={cn(
-        'inline-flex h-5 items-center gap-1.5 rounded-4xl border border-border px-2 text-xs font-medium whitespace-nowrap',
+        'inline-flex h-5 shrink-0 items-center gap-1.5 rounded-full border border-border px-2 text-xs font-medium whitespace-nowrap',
         className,
       )}
     >
@@ -47,7 +47,7 @@ export function PriorityPill({
   return (
     <span
       className={cn(
-        'inline-flex h-5 items-center rounded-4xl bg-secondary px-2 text-xs font-medium whitespace-nowrap text-secondary-foreground',
+        'inline-flex h-5 shrink-0 items-center rounded-full bg-secondary px-2 text-xs font-medium whitespace-nowrap text-secondary-foreground',
         className,
       )}
     >

@@ -32,12 +32,13 @@ export function Pagination({
   return (
     <nav
       aria-label="Paginação"
-      className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground"
+      className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
     >
-      <p>
+      <p className="tabular-nums">
         {total === 0 ? `Nenhum ${noun.replace(/s$/, '')}` : `${from}–${to} de ${total} ${noun}`}
       </p>
-      <div className="flex items-center gap-2">
+      {/* No celular a linha de controles ocupa a largura toda e quebra sozinha se faltar espaço. */}
+      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
         <label htmlFor={sizeId} className="sr-only">
           Itens por página
         </label>
@@ -45,7 +46,7 @@ export function Pagination({
           id={sizeId}
           value={pageSize}
           onChange={(event) => onPageSizeChange(Number(event.target.value))}
-          className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+          className="h-9 min-w-0 rounded-lg border border-input bg-card px-3 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
         >
           {PAGE_SIZES.map((size) => (
             <option key={size} value={size}>
@@ -57,19 +58,21 @@ export function Pagination({
           type="button"
           variant="outline"
           size="icon-sm"
+          className="size-9 sm:size-7"
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
           aria-label="Página anterior"
         >
           <ChevronLeft aria-hidden="true" />
         </Button>
-        <span className="tabular-nums" aria-live="polite">
+        <span className="tabular-nums whitespace-nowrap" aria-live="polite">
           Página {page} de {pageCount}
         </span>
         <Button
           type="button"
           variant="outline"
           size="icon-sm"
+          className="size-9 sm:size-7"
           onClick={() => onPageChange(page + 1)}
           disabled={page >= pageCount}
           aria-label="Próxima página"

@@ -36,9 +36,13 @@ export function OrganizationTab() {
 
   if (organization.isPending) {
     return (
-      <div role="status" aria-label="Carregando a organização" className="space-y-2">
-        <Skeleton className="h-9 w-64" />
-        <Skeleton className="h-9 w-64" />
+      <div
+        role="status"
+        aria-label="Carregando a organização"
+        className="w-full max-w-md space-y-4 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5"
+      >
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
       </div>
     );
   }
@@ -115,10 +119,10 @@ function OrganizationForm({
   return (
     <section aria-labelledby="organizacao-titulo" className="space-y-4">
       <div>
-        <h3 id="organizacao-titulo" className="text-base font-semibold">
+        <h3 id="organizacao-titulo" className="text-base font-medium">
           Organização
         </h3>
-        <p className="text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground">
           O nome aparece para o time; o identificador é usado nos endereços e não muda sozinho.
         </p>
       </div>
@@ -127,7 +131,7 @@ function OrganizationForm({
         aria-label="Dados da organização"
         noValidate
         onSubmit={handleSubmit(onSubmit)}
-        className="max-w-md space-y-4"
+        className="w-full max-w-md space-y-4 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5"
       >
         <FormField label="Nome" error={errors.name?.message}>
           {(control) => <Input {...control} {...register('name')} disabled={!canEdit} />}
@@ -141,18 +145,25 @@ function OrganizationForm({
         </FormField>
 
         {genericError ? (
-          <p role="alert" className="text-sm text-destructive">
+          <p
+            role="alert"
+            className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
             {genericError}
           </p>
         ) : null}
         {update.isSuccess && !isDirty ? (
-          <p role="status" className="text-sm text-muted-foreground">
+          <p role="status" className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
             Dados da organização salvos.
           </p>
         ) : null}
 
         {canEdit ? (
-          <Button type="submit" disabled={isSubmitting || update.isPending || !isDirty}>
+          <Button
+            type="submit"
+            disabled={isSubmitting || update.isPending || !isDirty}
+            className="w-full sm:w-auto"
+          >
             {update.isPending ? 'Salvando…' : 'Salvar alterações'}
           </Button>
         ) : (
