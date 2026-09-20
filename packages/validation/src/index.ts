@@ -7,3 +7,4 @@ export * from './common.js';
 export * from './domain.js';
 export * from './env.js';
 export * from './metrics/index.js';
+export * from './clients/index.js';

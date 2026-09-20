@@ -318,6 +318,169 @@ const organizationMemberSchema: OpenAPIV3_1.SchemaObject = {
   },
 };
 
+// ---------- Etapa 2: clientes, planos e contratos (§36, §37) ----------
+
+const PORTFOLIO_CLIENT_STATUSES = ['active', 'inactive', 'cancelled', 'archived'];
+const CONTRACT_STATUSES = ['active', 'ended', 'suspended'];
+const CLIENT_SORT_FIELDS = [
+  'name',
+  'externalCode',
+  'segment',
+  'size',
+  'status',
+  'strategicImportance',
+  'planName',
+  'monthlyValue',
+  'createdAt',
+];
+
+const activeContractSummarySchema: OpenAPIV3_1.SchemaObject = {
+  type: 'object',
+  required: [
+    'id',
+    'planId',
+    'planName',
+    'monthlyValue',
+    'currency',
+    'startDate',
+    'endDate',
+    'status',
+    'contractedSlaHours',
+  ],
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    planId: { type: ['string', 'null'], format: 'uuid' },
+    planName: { type: ['string', 'null'], example: 'Premium' },
+    monthlyValue: { type: 'number', example: 1500 },
+    currency: { type: 'string', example: 'BRL' },
+    startDate: { type: 'string', format: 'date' },
+    endDate: { type: ['string', 'null'], format: 'date' },
+    status: { type: 'string', enum: CONTRACT_STATUSES },
+    contractedSlaHours: { type: ['integer', 'null'], example: 24 },
+  },
+};
+
+const portfolioClientSchema: OpenAPIV3_1.SchemaObject = {
+  type: 'object',
+  required: [
+    'id',
+    'organizationId',
+    'externalCode',
+    'name',
+    'segment',
+    'size',
+    'status',
+    'strategicImportance',
+    'createdAt',
+    'updatedAt',
+    'activeContract',
+  ],
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    organizationId: { type: 'string', format: 'uuid' },
+    externalCode: { type: ['string', 'null'], example: 'CLI-001' },
+    name: { type: 'string', example: 'Alfa Tech' },
+    segment: { type: ['string', 'null'], example: 'Varejo' },
+    size: { type: ['string', 'null'], example: 'PME' },
+    status: { type: 'string', enum: PORTFOLIO_CLIENT_STATUSES },
+    strategicImportance: { type: 'integer', minimum: 1, maximum: 5, example: 3 },
+    createdAt: { type: 'string', format: 'date-time' },
+    updatedAt: { type: 'string', format: 'date-time' },
+    activeContract: {
+      description: 'Contrato ativo do cliente, ou null.',
+      oneOf: [{ $ref: '#/components/schemas/ActiveContractSummary' }, { type: 'null' }],
+    },
+  },
+};
+
+const clientWritableProperties: Record<string, OpenAPIV3_1.SchemaObject> = {
+  name: { type: 'string', minLength: 2, maxLength: 160, example: 'Alfa Tech' },
+  externalCode: {
+    type: ['string', 'null'],
+    maxLength: 64,
+    description: 'Código no sistema de origem; único por organização.',
+  },
+  segment: { type: ['string', 'null'], maxLength: 80 },
+  size: { type: ['string', 'null'], maxLength: 40 },
+  status: { type: 'string', enum: PORTFOLIO_CLIENT_STATUSES },
+  strategicImportance: { type: 'integer', minimum: 1, maximum: 5 },
+};
+
+const planSchema: OpenAPIV3_1.SchemaObject = {
+  type: 'object',
+  required: ['id', 'organizationId', 'name', 'description', 'createdAt', 'updatedAt'],
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    organizationId: { type: 'string', format: 'uuid' },
+    name: { type: 'string', example: 'Premium' },
+    description: { type: ['string', 'null'] },
+    createdAt: { type: 'string', format: 'date-time' },
+    updatedAt: { type: 'string', format: 'date-time' },
+  },
+};
+
+const contractSchema: OpenAPIV3_1.SchemaObject = {
+  type: 'object',
+  required: [
+    'id',
+    'organizationId',
+    'portfolioClientId',
+    'planId',
+    'planName',
+    'monthlyValue',
+    'currency',
+    'startDate',
+    'endDate',
+    'status',
+    'contractedSlaHours',
+    'createdAt',
+    'updatedAt',
+  ],
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    organizationId: { type: 'string', format: 'uuid' },
+    portfolioClientId: { type: 'string', format: 'uuid' },
+    ...activeContractSummarySchema.properties,
+    createdAt: { type: 'string', format: 'date-time' },
+    updatedAt: { type: 'string', format: 'date-time' },
+  },
+};
+
+const contractWritableProperties: Record<string, OpenAPIV3_1.SchemaObject> = {
+  planId: { type: ['string', 'null'], format: 'uuid' },
+  monthlyValue: { type: 'number', minimum: 0, description: 'Até 2 casas decimais.' },
+  currency: { type: 'string', pattern: '^[A-Z]{3}$', default: 'BRL' },
+  startDate: { type: 'string', format: 'date' },
+  endDate: { type: ['string', 'null'], format: 'date' },
+  status: { type: 'string', enum: CONTRACT_STATUSES },
+  contractedSlaHours: { type: ['integer', 'null'], minimum: 1, maximum: 8760 },
+};
+
+const queryParam = (
+  name: string,
+  schema: NonNullable<OpenAPIV3_1.ParameterObject['schema']>,
+  description?: string,
+): OpenAPIV3_1.ParameterObject => ({
+  name,
+  in: 'query',
+  required: false,
+  schema,
+  ...(description !== undefined ? { description } : {}),
+});
+
+const uuidIdParam: OpenAPIV3_1.ParameterObject = {
+  name: 'id',
+  in: 'path',
+  required: true,
+  schema: { type: 'string', format: 'uuid' },
+};
+
+const pageParams: OpenAPIV3_1.ParameterObject[] = [
+  queryParam('page', { type: 'integer', minimum: 1, default: 1 }),
+  queryParam('pageSize', { type: 'integer', minimum: 1, maximum: 100, default: 20 }),
+  queryParam('order', { type: 'string', enum: ['asc', 'desc'], default: 'asc' }),
+];
+
 export const openapiDocument: OpenAPIV3_1.Document = {
   openapi: '3.1.0',
   info: {
@@ -332,6 +495,9 @@ export const openapiDocument: OpenAPIV3_1.Document = {
     { name: 'meta', description: 'Descoberta de rotas e documentação' },
     { name: 'session', description: 'Sessão do usuário autenticado (§37)' },
     { name: 'organizations', description: 'Organização atual e seus usuários (§4, §37)' },
+    { name: 'clients', description: 'Clientes da carteira (§36 portfolio_clients, §37 Clients)' },
+    { name: 'plans', description: 'Planos / níveis de atendimento (§36 plans)' },
+    { name: 'contracts', description: 'Contratos dos clientes (§36 contracts)' },
     { name: 'metrics', description: 'Definições de métrica — "tudo é métrica" (§6, §36, §37)' },
     {
       name: 'metric-models',
@@ -735,6 +901,231 @@ export const openapiDocument: OpenAPIV3_1.Document = {
         },
       },
     },
+    '/api/v1/clients': {
+      get: {
+        tags: ['clients'],
+        summary: 'Lista os clientes da carteira',
+        operationId: 'listClients',
+        description:
+          'Busca por nome ou código, ordenação, paginação e filtros §61. Sem `status`, os arquivados ficam de fora. `plan` filtra pelo nome do plano do contrato ativo.',
+        parameters: [
+          ...pageParams,
+          queryParam('search', { type: 'string', maxLength: 200 }, 'Nome ou código'),
+          queryParam('sort', { type: 'string', enum: CLIENT_SORT_FIELDS, default: 'name' }),
+          queryParam('status', { type: 'string', enum: PORTFOLIO_CLIENT_STATUSES }),
+          queryParam('segment', { type: 'string' }),
+          queryParam('size', { type: 'string' }),
+          queryParam('plan', { type: 'string' }, 'Nome do plano do contrato ativo'),
+          queryParam('strategic_importance', { type: 'integer', minimum: 1, maximum: 5 }),
+        ],
+        responses: {
+          '200': jsonResponse('Página de clientes', 'PortfolioClientPage'),
+          '400': { $ref: '#/components/responses/ValidationError' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+        },
+      },
+      post: {
+        tags: ['clients'],
+        summary: 'Cadastra um cliente (owner, admin ou analyst)',
+        operationId: 'createClient',
+        requestBody: jsonBody('CreatePortfolioClient'),
+        responses: {
+          '201': jsonResponse('Cliente criado', 'PortfolioClientEnvelope'),
+          '400': { $ref: '#/components/responses/ValidationError' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '409': errorResponse('Código externo já usado na organização (EXTERNAL_CODE_TAKEN)'),
+        },
+      },
+    },
+    '/api/v1/clients/filter-options': {
+      get: {
+        tags: ['clients'],
+        summary: 'Valores disponíveis para os filtros de clientes',
+        operationId: 'getClientFilterOptions',
+        responses: {
+          '200': jsonResponse(
+            'Segmentos, portes, planos e status da organização',
+            'ClientFilterOptions',
+          ),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+        },
+      },
+    },
+    '/api/v1/clients/{id}': {
+      get: {
+        tags: ['clients'],
+        summary: 'Cliente com contrato ativo e plano',
+        operationId: 'getClient',
+        parameters: [uuidIdParam],
+        responses: {
+          '200': jsonResponse('Cliente', 'PortfolioClientEnvelope'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+        },
+      },
+      patch: {
+        tags: ['clients'],
+        summary: 'Edita um cliente (owner, admin ou analyst)',
+        operationId: 'updateClient',
+        parameters: [uuidIdParam],
+        requestBody: jsonBody('UpdatePortfolioClient'),
+        responses: {
+          '200': jsonResponse('Cliente atualizado', 'PortfolioClientEnvelope'),
+          '400': { $ref: '#/components/responses/ValidationError' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '409': errorResponse('Código externo já usado na organização (EXTERNAL_CODE_TAKEN)'),
+        },
+      },
+      delete: {
+        tags: ['clients'],
+        summary: 'Arquiva um cliente (owner, admin ou analyst)',
+        operationId: 'archiveClient',
+        description:
+          'Nunca apaga: muda o status para `archived`. O cliente some da lista padrão (volte com `status=archived`) e o histórico fica.',
+        parameters: [uuidIdParam],
+        responses: {
+          '200': jsonResponse('Cliente arquivado', 'PortfolioClientEnvelope'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+        },
+      },
+    },
+    '/api/v1/plans': {
+      get: {
+        tags: ['plans'],
+        summary: 'Planos da organização',
+        operationId: 'listPlans',
+        responses: {
+          '200': jsonResponse('Planos em ordem alfabética', 'PlanList'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+        },
+      },
+      post: {
+        tags: ['plans'],
+        summary: 'Cria um plano (owner, admin ou analyst)',
+        operationId: 'createPlan',
+        requestBody: jsonBody('CreatePlan'),
+        responses: {
+          '201': jsonResponse('Plano criado', 'PlanEnvelope'),
+          '400': { $ref: '#/components/responses/ValidationError' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '409': errorResponse('Nome já usado na organização (PLAN_NAME_TAKEN)'),
+        },
+      },
+    },
+    '/api/v1/plans/{id}': {
+      get: {
+        tags: ['plans'],
+        summary: 'Um plano',
+        operationId: 'getPlan',
+        parameters: [uuidIdParam],
+        responses: {
+          '200': jsonResponse('Plano', 'PlanEnvelope'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+        },
+      },
+      patch: {
+        tags: ['plans'],
+        summary: 'Edita um plano (owner, admin ou analyst)',
+        operationId: 'updatePlan',
+        parameters: [uuidIdParam],
+        requestBody: jsonBody('UpdatePlan'),
+        responses: {
+          '200': jsonResponse('Plano atualizado', 'PlanEnvelope'),
+          '400': { $ref: '#/components/responses/ValidationError' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '409': errorResponse('Nome já usado na organização (PLAN_NAME_TAKEN)'),
+        },
+      },
+    },
+    '/api/v1/contracts': {
+      get: {
+        tags: ['contracts'],
+        summary: 'Lista contratos (por cliente e/ou status)',
+        operationId: 'listContracts',
+        parameters: [
+          ...pageParams,
+          queryParam('sort', {
+            type: 'string',
+            enum: ['startDate', 'endDate', 'monthlyValue', 'status', 'createdAt'],
+            default: 'startDate',
+          }),
+          queryParam('clientId', { type: 'string', format: 'uuid' }),
+          queryParam('status', { type: 'string', enum: CONTRACT_STATUSES }),
+        ],
+        responses: {
+          '200': jsonResponse(
+            'Página de contratos (padrão: início mais recente primeiro)',
+            'ContractPage',
+          ),
+          '400': { $ref: '#/components/responses/ValidationError' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+        },
+      },
+      post: {
+        tags: ['contracts'],
+        summary: 'Cria um contrato (owner, admin ou analyst)',
+        operationId: 'createContract',
+        description:
+          'Um cliente tem no máximo um contrato `active`: ao criar outro ativo, o anterior passa a `ended` com data de término = novo início.',
+        requestBody: jsonBody('CreateContract'),
+        responses: {
+          '201': jsonResponse('Contrato criado', 'ContractEnvelope'),
+          '400': { $ref: '#/components/responses/ValidationError' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': errorResponse(
+            'Cliente (NOT_FOUND) ou plano (PLAN_NOT_FOUND) não pertence à organização',
+          ),
+          '409': errorResponse('Cliente já tem contrato ativo (ACTIVE_CONTRACT_EXISTS)'),
+        },
+      },
+    },
+    '/api/v1/contracts/{id}': {
+      get: {
+        tags: ['contracts'],
+        summary: 'Um contrato',
+        operationId: 'getContract',
+        parameters: [uuidIdParam],
+        responses: {
+          '200': jsonResponse('Contrato', 'ContractEnvelope'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+        },
+      },
+      patch: {
+        tags: ['contracts'],
+        summary: 'Edita ou encerra um contrato (owner, admin ou analyst)',
+        operationId: 'updateContract',
+        description:
+          'Encerrar = `{ "status": "ended", "endDate": "AAAA-MM-DD" }`. Reativar (`status: active`) encerra o contrato ativo atual do cliente.',
+        parameters: [uuidIdParam],
+        requestBody: jsonBody('UpdateContract'),
+        responses: {
+          '200': jsonResponse('Contrato atualizado', 'ContractEnvelope'),
+          '400': { $ref: '#/components/responses/ValidationError' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '409': errorResponse('Cliente já tem contrato ativo (ACTIVE_CONTRACT_EXISTS)'),
+        },
+      },
+    },
   },
   components: {
     schemas: {
@@ -1095,6 +1486,102 @@ export const openapiDocument: OpenAPIV3_1.Document = {
           proposedTotal: { type: 'number' },
           saved: { type: 'boolean', enum: [false] },
         },
+      },
+      ActiveContractSummary: activeContractSummarySchema,
+      PortfolioClient: portfolioClientSchema,
+      PortfolioClientEnvelope: {
+        type: 'object',
+        required: ['client'],
+        properties: { client: { $ref: '#/components/schemas/PortfolioClient' } },
+      },
+      PortfolioClientPage: {
+        type: 'object',
+        required: ['items', 'page', 'pageSize', 'total'],
+        properties: {
+          items: { type: 'array', items: { $ref: '#/components/schemas/PortfolioClient' } },
+          page: { type: 'integer' },
+          pageSize: { type: 'integer' },
+          total: { type: 'integer' },
+        },
+      },
+      ClientFilterOptions: {
+        type: 'object',
+        required: ['segments', 'sizes', 'plans', 'statuses'],
+        properties: {
+          segments: { type: 'array', items: { type: 'string' } },
+          sizes: { type: 'array', items: { type: 'string' } },
+          plans: { type: 'array', items: { type: 'string' } },
+          statuses: { type: 'array', items: { type: 'string', enum: PORTFOLIO_CLIENT_STATUSES } },
+        },
+      },
+      CreatePortfolioClient: {
+        type: 'object',
+        required: ['name'],
+        properties: clientWritableProperties,
+      },
+      UpdatePortfolioClient: {
+        type: 'object',
+        description: 'Ao menos um dos campos.',
+        properties: clientWritableProperties,
+      },
+      Plan: planSchema,
+      PlanEnvelope: {
+        type: 'object',
+        required: ['plan'],
+        properties: { plan: { $ref: '#/components/schemas/Plan' } },
+      },
+      PlanList: {
+        type: 'object',
+        required: ['items', 'total'],
+        properties: {
+          items: { type: 'array', items: { $ref: '#/components/schemas/Plan' } },
+          total: { type: 'integer' },
+        },
+      },
+      CreatePlan: {
+        type: 'object',
+        required: ['name'],
+        properties: {
+          name: { type: 'string', minLength: 2, maxLength: 80, example: 'Premium' },
+          description: { type: ['string', 'null'], maxLength: 500 },
+        },
+      },
+      UpdatePlan: {
+        type: 'object',
+        description: 'Ao menos um dos campos.',
+        properties: {
+          name: { type: 'string', minLength: 2, maxLength: 80 },
+          description: { type: ['string', 'null'], maxLength: 500 },
+        },
+      },
+      Contract: contractSchema,
+      ContractEnvelope: {
+        type: 'object',
+        required: ['contract'],
+        properties: { contract: { $ref: '#/components/schemas/Contract' } },
+      },
+      ContractPage: {
+        type: 'object',
+        required: ['items', 'page', 'pageSize', 'total'],
+        properties: {
+          items: { type: 'array', items: { $ref: '#/components/schemas/Contract' } },
+          page: { type: 'integer' },
+          pageSize: { type: 'integer' },
+          total: { type: 'integer' },
+        },
+      },
+      CreateContract: {
+        type: 'object',
+        required: ['portfolioClientId', 'monthlyValue', 'startDate'],
+        properties: {
+          portfolioClientId: { type: 'string', format: 'uuid' },
+          ...contractWritableProperties,
+        },
+      },
+      UpdateContract: {
+        type: 'object',
+        description: 'Ao menos um dos campos. O cliente do contrato não muda.',
+        properties: contractWritableProperties,
       },
       ApiIndex: {
         type: 'object',
