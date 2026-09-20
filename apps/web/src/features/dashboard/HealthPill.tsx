@@ -1,5 +1,4 @@
 import {
-  HEALTH_CLASS_LABELS,
   PRIORITY_CLASS_LABELS,
   type HealthClass,
   type PriorityClass,
@@ -13,6 +12,13 @@ const CLASS_DOT: Readonly<Record<HealthClass, string>> = {
   ATTENTION: 'bg-class-attention',
   RISK: 'bg-class-risk',
   CRITICAL: 'bg-class-critical',
+};
+
+export const HEALTH_STATUS_LABELS: Readonly<Record<HealthClass, string>> = {
+  NORMAL: 'Saúde normal',
+  ATTENTION: 'Saúde em atenção',
+  RISK: 'Saúde em risco',
+  CRITICAL: 'Saúde crítica',
 };
 
 /** Pílula da classe de saúde: cor + nome escrito, nunca a cor sozinha (DATAVIZ.md §1.4). */
@@ -34,7 +40,7 @@ export function HealthPill({
         aria-hidden="true"
         className={cn('size-2 shrink-0 rounded-full', CLASS_DOT[healthClass])}
       />
-      {HEALTH_CLASS_LABELS[healthClass]}
+      {HEALTH_STATUS_LABELS[healthClass]}
     </span>
   );
 }

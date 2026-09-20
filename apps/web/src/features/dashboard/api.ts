@@ -7,19 +7,10 @@
  */
 import { useQuery } from '@tanstack/react-query';
 
-import {
-  type DashboardFilterOptions,
-  type DashboardFilters,
-  type GeneralDashboardData,
-  type RiskDashboardData,
-} from '@inovaapss/shared';
+import type { GeneralDashboardData, RiskDashboardData } from '@inovaapss/shared';
 
 import { apiFetch } from '@/lib/api';
-import {
-  buildMockGeneralDashboard,
-  buildMockRiskDashboard,
-  mockFilterOptions,
-} from '@/lib/mock/dashboard';
+import { buildMockGeneralDashboard, buildMockRiskDashboard } from '@/lib/mock/dashboard';
 
 /**
  * De onde os dados vêm. Controlado por VITE_DATA_SOURCE (padrão 'api'); com 'mock' a tela usa os
@@ -28,71 +19,38 @@ import {
 export const DASHBOARD_DATA_SOURCE: 'mock' | 'api' =
   import.meta.env.VITE_DATA_SOURCE === 'mock' ? 'mock' : 'api';
 
-export interface RiskDashboardQuery {
-  filters: DashboardFilters;
-  search: string;
-}
-
-export interface GeneralDashboardQuery {
-  filters: DashboardFilters;
-  selectedClientId: string | null;
-}
-
-export async function fetchRiskDashboard(query: RiskDashboardQuery): Promise<RiskDashboardData> {
+export async function fetchRiskDashboard(): Promise<RiskDashboardData> {
   if (DASHBOARD_DATA_SOURCE === 'api') {
     return apiFetch<RiskDashboardData>('/api/v1/dashboard/risk');
   }
   await Promise.resolve();
-  return buildMockRiskDashboard({ filters: query.filters, search: query.search });
+  return buildMockRiskDashboard();
 }
 
-export async function fetchGeneralDashboard(
-  query: GeneralDashboardQuery,
-): Promise<GeneralDashboardData> {
+export async function fetchGeneralDashboard(): Promise<GeneralDashboardData> {
   if (DASHBOARD_DATA_SOURCE === 'api') {
     return apiFetch<GeneralDashboardData>('/api/v1/dashboard/general');
   }
   await Promise.resolve();
-  return buildMockGeneralDashboard({
-    filters: query.filters,
-    selectedClientId: query.selectedClientId ?? undefined,
-  });
-}
-
-export async function fetchDashboardFilterOptions(): Promise<DashboardFilterOptions> {
-  // API real: return apiFetch<DashboardFilterOptions>('/api/v1/dashboard/filters');
-  await Promise.resolve();
-  return mockFilterOptions();
+  return buildMockGeneralDashboard();
 }
 
 export const dashboardKeys = {
   all: ['dashboard'] as const,
-  risk: (query: RiskDashboardQuery) => ['dashboard', 'risk', query] as const,
-  general: (query: GeneralDashboardQuery) => ['dashboard', 'general', query] as const,
-  filterOptions: () => ['dashboard', 'filter-options'] as const,
+  risk: () => ['dashboard', 'risk'] as const,
+  general: () => ['dashboard', 'general'] as const,
 };
 
-export function useRiskDashboard(query: RiskDashboardQuery) {
+export function useRiskDashboard() {
   return useQuery({
-    queryKey: dashboardKeys.risk(query),
-    queryFn: () => fetchRiskDashboard(query),
-    // Ao mudar filtro, mantém o resultado anterior visível (a 60 %) em vez de piscar um skeleton.
-    placeholderData: (previous) => previous,
+    queryKey: dashboardKeys.risk(),
+    queryFn: fetchRiskDashboard,
   });
 }
 
-export function useGeneralDashboard(query: GeneralDashboardQuery) {
+export function useGeneralDashboard() {
   return useQuery({
-    queryKey: dashboardKeys.general(query),
-    queryFn: () => fetchGeneralDashboard(query),
-    placeholderData: (previous) => previous,
-  });
-}
-
-export function useDashboardFilterOptions() {
-  return useQuery({
-    queryKey: dashboardKeys.filterOptions(),
-    queryFn: fetchDashboardFilterOptions,
-    staleTime: 5 * 60_000,
+    queryKey: dashboardKeys.general(),
+    queryFn: fetchGeneralDashboard,
   });
 }

@@ -21,7 +21,6 @@ import {
   DEFAULT_TREND_WINDOW_PERIODS,
   riskFromHealth,
   type ClassDistributionItem,
-  type DashboardFilterOptions,
   type DashboardFilters,
   type DimensionHealth,
   type ForecastRow,
@@ -609,17 +608,6 @@ function matchesQuery(
   if (status && row.status !== status) return false;
   if (query.search && !normalize(row.clientName).includes(normalize(query.search))) return false;
   return true;
-}
-
-/** Opções dos filtros de texto livre, tiradas dos próprios dados. */
-export function mockFilterOptions(): DashboardFilterOptions {
-  const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b));
-  return {
-    plans: unique(MOCK_CLIENTS.map((client) => client.plan)),
-    segments: unique(MOCK_CLIENTS.map((client) => client.segment)),
-    sizes: unique(MOCK_CLIENTS.map((client) => client.size)),
-    statuses: unique(MOCK_CLIENTS.map((client) => client.status)),
-  };
 }
 
 function kpi(value: number, previous: number | null): KpiValue {

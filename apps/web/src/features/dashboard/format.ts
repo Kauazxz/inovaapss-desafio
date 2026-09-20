@@ -25,17 +25,17 @@ export function formatCurrencyDelta(delta: number | null): string | null {
  * números escritos à mão na tela.
  */
 
-/** "health abaixo de 40" — a classe Crítico vai até `thresholds.critical` (exclusivo). */
+/** "saúde abaixo de 40" — a classe Crítico vai até `thresholds.critical` (exclusivo). */
 export function criticalBandHint(thresholds: HealthThresholds): string {
-  return `health abaixo de ${formatInteger(thresholds.critical)}`;
+  return `saúde abaixo de ${formatInteger(thresholds.critical)}`;
 }
 
-/** "health de 40 a 59" — a classe Risco vai de `critical` até `risk − 1`. */
+/** "saúde de 40 a 59" — a classe Risco vai de `critical` até `risk − 1`. */
 export function riskBandHint(thresholds: HealthThresholds): string {
-  return `health de ${formatInteger(thresholds.critical)} a ${formatInteger(thresholds.risk - 1)}`;
+  return `saúde de ${formatInteger(thresholds.critical)} a ${formatInteger(thresholds.risk - 1)}`;
 }
 
-/** "Prioridade = risco × 0,7 + impacto comercial × 0,3" com os pesos vigentes (§28). */
+/** Fórmula exibida com os pesos vigentes (§28). */
 export function priorityFormulaText(weights: PriorityWeights): string {
-  return `Prioridade = risco × ${decimal.format(weights.risk)} + impacto comercial × ${decimal.format(weights.impact)}`;
+  return `Prioridade = risco de cancelamento × ${decimal.format(weights.risk)} + impacto comercial × ${decimal.format(weights.impact)}`;
 }

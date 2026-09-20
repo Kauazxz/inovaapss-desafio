@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { ForecastDumbbellChart } from '@/components/charts/forecast-dumbbell-chart';
 import { formatCompactCurrency, formatInteger } from '@/lib/format';
 
-import { useRiskDashboard, type RiskDashboardQuery } from './api';
+import { useRiskDashboard } from './api';
 import { DashboardEmpty, DashboardError, DashboardLoading } from './DashboardStates';
 import {
   criticalBandHint,
@@ -14,17 +14,16 @@ import {
 } from './format';
 import { KpiRow } from './KpiRow';
 import { RankingTable } from './RankingTable';
-
-/** Sem filtros nem busca: a carteira inteira, sempre na mesma ordem de prioridade. */
-const FIXED_QUERY: RiskDashboardQuery = { filters: {}, search: '' };
+import { ScoreGuide } from './ScoreGuide';
 
 /**
  * Aba "Em risco" (§39): responde com quem falar, por quê, em que ordem e o que fazer.
- * KPIs em texto → gráfico de forecast priorizado (A2) → tabela de ranking. Sem filtros: é uma lista fixa para o representante.
+ * KPIs em texto → explicação dos scores → forecast priorizado → tabela de ranking. Sem filtros:
+ * é uma lista fixa para o representante.
  */
 export function RiskTab() {
   const navigate = useNavigate();
-  const query = useRiskDashboard(FIXED_QUERY);
+  const query = useRiskDashboard();
 
   const openClient = (clientId: string) => navigate(`/clients/${clientId}`);
 
@@ -48,22 +47,22 @@ export function RiskTab() {
             delta: formatCountDelta(kpis.activeClients.delta),
           },
           {
-            label: 'Em Crítico',
+            label: 'Saúde crítica',
             value: formatInteger(kpis.criticalClients.value),
             delta: formatCountDelta(kpis.criticalClients.delta),
             hint: criticalBandHint(thresholds),
           },
           {
-            label: 'Em Risco',
+            label: 'Saúde em risco',
             value: formatInteger(kpis.riskClients.value),
             delta: formatCountDelta(kpis.riskClients.delta),
             hint: riskBandHint(thresholds),
           },
           {
-            label: 'MRR em risco',
+            label: 'Receita em risco',
             value: formatCompactCurrency(kpis.mrrAtRisk.value),
             delta: formatCurrencyDelta(kpis.mrrAtRisk.delta),
-            hint: 'Risco + Crítico',
+            hint: 'clientes com saúde em risco ou crítica',
           },
         ]}
       />
@@ -72,6 +71,8 @@ export function RiskTab() {
         <DashboardEmpty filtered={false} />
       ) : (
         <>
+          <ScoreGuide example={data.ranking[0]!} />
+
           <ForecastDumbbellChart data={data.forecast} onSelect={openClient} />
 
           <section aria-labelledby="ranking-title" className="space-y-3">

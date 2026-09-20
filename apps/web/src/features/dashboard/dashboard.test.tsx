@@ -54,15 +54,41 @@ describe('aba Em risco', () => {
       )!;
       expect(kpis).toHaveAttribute('aria-label', 'Resumo da carteira');
       expect(within(kpis).getByText(String(mock.kpis.activeClients.value))).toBeInTheDocument();
-      expect(within(kpis).getByText('Em Crítico')).toBeInTheDocument();
-      expect(within(kpis).getByText('Em Risco')).toBeInTheDocument();
-      expect(within(kpis).getByText('MRR em risco')).toBeInTheDocument();
+      expect(within(kpis).getByText('Saúde crítica')).toBeInTheDocument();
+      expect(within(kpis).getByText('Saúde em risco')).toBeInTheDocument();
+      expect(within(kpis).getByText('Receita em risco')).toBeInTheDocument();
       // As faixas dos KPIs e a fórmula do ranking vêm do payload, não de números fixos (§65).
       const { thresholds } = mock.forecast;
       expect(within(kpis).getByText(criticalBandHint(thresholds))).toBeInTheDocument();
       expect(within(kpis).getByText(riskBandHint(thresholds))).toBeInTheDocument();
       const formula = priorityFormulaText(mock.priorityWeights);
       expect(screen.getByText((text) => text.startsWith(formula))).toBeInTheDocument();
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'explica saúde atual, saúde projetada e risco de cancelamento sem tratá-lo como porcentagem',
+    async () => {
+      renderWithProviders(<RiskTab />);
+
+      const guideTitle = await screen.findByRole(
+        'heading',
+        { name: 'O que significa cada número' },
+        LAZY_TIMEOUT,
+      );
+      const guide = guideTitle.closest('section')!;
+      expect(within(guide).getByRole('heading', { name: 'Saúde atual' })).toBeInTheDocument();
+      expect(within(guide).getByRole('heading', { name: 'Saúde projetada' })).toBeInTheDocument();
+      expect(
+        within(guide).getByRole('heading', { name: 'Risco de cancelamento' }),
+      ).toBeInTheDocument();
+      expect(
+        within(guide).getByText(/É um score de atenção, não a porcentagem/),
+      ).toBeInTheDocument();
+      expect(within(guide).getByText(/100 − saúde atual/)).toBeInTheDocument();
+      expect(within(guide).getByText('Confiança dos dados')).toBeInTheDocument();
+      expect(within(guide).getByText('Confiança da projeção')).toBeInTheDocument();
     },
     TEST_TIMEOUT,
   );
@@ -82,7 +108,7 @@ describe('aba Em risco', () => {
         await screen.findByRole('heading', { name: expectedTitle }, LAZY_TIMEOUT),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(/projeção por tendência .* não é modelo preditivo/i),
+        screen.getByText(/projeção pela tendência .* não é chance de cancelamento/i),
       ).toBeInTheDocument();
 
       const chart = screen.getByRole('list', { name: /clientes ordenados por prioridade/i });
@@ -143,16 +169,18 @@ describe('aba Em risco', () => {
 describe('textos derivados da configuração (§7, §28, §65)', () => {
   it('faixas de health e pesos da prioridade seguem a organização, não os padrões', () => {
     const custom = { attention: 85, risk: 65, critical: 45 };
-    expect(criticalBandHint(custom)).toBe('health abaixo de 45');
-    expect(riskBandHint(custom)).toBe('health de 45 a 64');
+    expect(criticalBandHint(custom)).toBe('saúde abaixo de 45');
+    expect(riskBandHint(custom)).toBe('saúde de 45 a 64');
     expect(priorityFormulaText({ risk: 0.6, impact: 0.4 })).toBe(
-      'Prioridade = risco × 0,6 + impacto comercial × 0,4',
+      'Prioridade = risco de cancelamento × 0,6 + impacto comercial × 0,4',
     );
     // Com os padrões (80/60/40 e 0,7/0,3) o texto continua o de sempre.
-    expect(criticalBandHint({ attention: 80, risk: 60, critical: 40 })).toBe('health abaixo de 40');
-    expect(riskBandHint({ attention: 80, risk: 60, critical: 40 })).toBe('health de 40 a 59');
+    expect(criticalBandHint({ attention: 80, risk: 60, critical: 40 })).toBe(
+      'saúde abaixo de 40',
+    );
+    expect(riskBandHint({ attention: 80, risk: 60, critical: 40 })).toBe('saúde de 40 a 59');
     expect(priorityFormulaText({ risk: 0.7, impact: 0.3 })).toBe(
-      'Prioridade = risco × 0,7 + impacto comercial × 0,3',
+      'Prioridade = risco de cancelamento × 0,7 + impacto comercial × 0,3',
     );
   });
 });
@@ -175,17 +203,24 @@ describe('tabela de ranking', () => {
     );
   });
 
-  it('mostra health com número e classe escrita, confiança e a ação sugerida', () => {
+  it('distingue saúde, risco, confiança dos dados e ação sugerida', () => {
     render(<RankingTable rows={mock.ranking.slice(0, 1)} onSelect={() => {}} />);
     const row = tableClientRows()[0]!;
     const first = mock.ranking[0]!;
 
-    expect(row).toHaveTextContent(String(first.healthCurrent));
-    expect(row).toHaveTextContent(/Normal|Atenção|Risco|Crítico/);
+    expect(row).toHaveTextContent(`${first.healthCurrent}/100`);
+    expect(row).toHaveTextContent(`${first.riskScore}/100`);
+    expect(row).toHaveTextContent(/Saúde normal|Saúde em atenção|Saúde em risco|Saúde crítica/);
     expect(row).toHaveTextContent(`${first.confidence} %`);
     expect(row).toHaveTextContent(first.suggestedAction);
     expect(
       within(row).getByRole('button', { name: `Analisar ${first.clientName}` }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: /Saúde atual maior é melhor/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: /Risco de cancelamento score, não %/ }),
     ).toBeInTheDocument();
   });
 });
@@ -209,6 +244,13 @@ describe('aba Geral', () => {
           within(figure).getByRole('row', { name: new RegExp(`^${labelOf(item.healthClass)} `) }),
         ).toBeInTheDocument();
       }
+
+      expect(screen.queryByRole('group', { name: 'Filtros' })).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Classe de saúde')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Classe de prioridade')).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText('Destacar cliente na evolução temporal'),
+      ).not.toBeInTheDocument();
     },
     TEST_TIMEOUT,
   );

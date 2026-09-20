@@ -140,7 +140,7 @@ export function ForecastDumbbellChart({
           height={height}
           viewBox={`0 0 ${width} ${height}`}
           role="list"
-          aria-label="Clientes ordenados por prioridade, health atual e projetado"
+          aria-label="Clientes ordenados por prioridade, saúde atual e projetada"
           style={{ fontFamily: CHART_TYPOGRAPHY.fontFamily, display: 'block' }}
         >
           {/* Faixas de classe ao fundo (band.fill) e nomes acima de cada faixa */}
@@ -195,10 +195,10 @@ export function ForecastDumbbellChart({
             const isActive = row.clientId === activeId;
             const moveColor = row.crossesDown ? palette.accent : palette.neutral;
             const projected = row.healthProjected;
-            const label = `#${index + 1} ${row.clientName}, ${formatCompactCurrency(row.mrr)} por ${'mês'}. Health atual ${formatInteger(row.healthCurrent)}, ${HEALTH_CLASS_LABELS[row.currentClass]}. ${
+            const label = `#${index + 1} ${row.clientName}, ${formatCompactCurrency(row.mrr)} por ${'mês'}. Saúde atual ${formatInteger(row.healthCurrent)} de 100, ${HEALTH_CLASS_LABELS[row.currentClass]}. ${
               projected === null
                 ? 'Sem histórico suficiente para projetar.'
-                : `Projetado ${formatInteger(projected)}, ${HEALTH_CLASS_LABELS[row.projectedClass ?? row.currentClass]}, confiança da projeção ${PROJECTION_CONFIDENCE_LABELS[row.projectionConfidence]}.`
+                : `Saúde projetada ${formatInteger(projected)} de 100, ${HEALTH_CLASS_LABELS[row.projectedClass ?? row.currentClass]}, confiança da projeção ${PROJECTION_CONFIDENCE_LABELS[row.projectionConfidence]}.`
             } ${row.topEvidence}.`;
 
             return (
@@ -391,16 +391,17 @@ function ForecastTooltip({ row }: { row: ForecastRow }) {
     <>
       <p className="font-medium">{row.clientName}</p>
       <p className="text-muted-foreground">
-        Health atual: {formatInteger(row.healthCurrent)} — {HEALTH_CLASS_LABELS[row.currentClass]}
+        Saúde atual: {formatInteger(row.healthCurrent)}/100 —{' '}
+        {HEALTH_CLASS_LABELS[row.currentClass]}
       </p>
       <p className="text-muted-foreground">
         {row.healthProjected === null
-          ? 'Projetado: sem histórico suficiente'
-          : `Projetado: ${formatInteger(row.healthProjected)} — ${HEALTH_CLASS_LABELS[row.projectedClass ?? row.currentClass]} (confiança da projeção ${PROJECTION_CONFIDENCE_LABELS[row.projectionConfidence]})`}
+          ? 'Saúde projetada: sem histórico suficiente'
+          : `Saúde projetada: ${formatInteger(row.healthProjected)}/100 — ${HEALTH_CLASS_LABELS[row.projectedClass ?? row.currentClass]} (confiança da projeção ${PROJECTION_CONFIDENCE_LABELS[row.projectionConfidence]})`}
       </p>
       <p className="text-muted-foreground">
         Prioridade: {formatInteger(row.priorityScore)} — {PRIORITY_CLASS_LABELS[row.priorityClass]}{' '}
-        · Confiança: {formatPercent(row.confidence)} · MRR: {formatCurrency(row.mrr)}
+        · Confiança dos dados: {formatPercent(row.confidence)} · MRR: {formatCurrency(row.mrr)}
       </p>
       <p className="mt-1">{row.topEvidence}</p>
     </>
@@ -422,10 +423,10 @@ function ForecastTable({
           <TableHead className="w-12">#</TableHead>
           <TableHead>Cliente</TableHead>
           <TableHead className="text-right">Valor mensal</TableHead>
-          <TableHead className="text-right">Health atual</TableHead>
-          <TableHead className="text-right">Health projetado</TableHead>
+          <TableHead className="text-right">Saúde atual</TableHead>
+          <TableHead className="text-right">Saúde projetada</TableHead>
           <TableHead>Confiança da projeção</TableHead>
-          <TableHead className="text-right">Confiança</TableHead>
+          <TableHead className="text-right">Confiança dos dados</TableHead>
           <TableHead>Principal evidência</TableHead>
         </TableRow>
       </TableHeader>
@@ -442,12 +443,12 @@ function ForecastTable({
             </TableCell>
             <TableCell className="text-right tabular-nums">{formatCurrency(row.mrr)}</TableCell>
             <TableCell className="text-right tabular-nums">
-              {formatInteger(row.healthCurrent)} · {HEALTH_CLASS_LABELS[row.currentClass]}
+              {formatInteger(row.healthCurrent)}/100 · {HEALTH_CLASS_LABELS[row.currentClass]}
             </TableCell>
             <TableCell className="text-right tabular-nums">
               {row.healthProjected === null
                 ? 'sem projeção'
-                : `${formatInteger(row.healthProjected)} · ${HEALTH_CLASS_LABELS[row.projectedClass ?? row.currentClass]}`}
+                : `${formatInteger(row.healthProjected)}/100 · ${HEALTH_CLASS_LABELS[row.projectedClass ?? row.currentClass]}`}
             </TableCell>
             <TableCell>{PROJECTION_CONFIDENCE_LABELS[row.projectionConfidence]}</TableCell>
             <TableCell className="text-right tabular-nums">

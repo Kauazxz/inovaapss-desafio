@@ -31,7 +31,7 @@ export function forecastTitle(data: Pick<ForecastChartData, 'rows' | 'crossingCo
 /** Subtítulo obrigatório (DATAVIZ.md §5.1) + a legenda em texto. */
 export function forecastSubtitle(data: Pick<ForecastChartData, 'trendWindow' | 'periodLabel'>) {
   const period = data.periodLabel === 'mês' ? 'meses' : `${data.periodLabel}s`;
-  return `Projeção por tendência dos últimos ${data.trendWindow} ${period} — não é modelo preditivo · ● atual ▶ projetado · em azul, quem cruza para Risco ou Crítico`;
+  return `Escala de saúde: 0 = pior e 100 = melhor · projeção pela tendência dos últimos ${data.trendWindow} ${period}, não é chance de cancelamento · ● atual ▶ projetada`;
 }
 
 /** Resumo para leitores de tela: o que o gráfico mostra, com os nomes e números que importam. */

@@ -1,7 +1,6 @@
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
 
 import {
-  HEALTH_CLASS_LABELS,
   PROJECTION_CONFIDENCE_LABELS,
   type HealthTrend,
   type RankingRow,
@@ -19,7 +18,7 @@ import {
 import { formatCurrency, formatInteger, formatPercent } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-import { HealthPill, PriorityPill } from './HealthPill';
+import { HEALTH_STATUS_LABELS, HealthPill, PriorityPill } from './HealthPill';
 
 export interface RankingTableProps {
   /** Já ordenado por prioridade pela API; a tabela mostra a lista na ordem recebida. */
@@ -28,13 +27,13 @@ export interface RankingTableProps {
   onSelect: (clientId: string) => void;
 }
 
-const COLUMNS: { label: string; numeric?: boolean }[] = [
+const COLUMNS: { label: string; hint?: string; numeric?: boolean }[] = [
   { label: 'Prioridade' },
   { label: 'Cliente' },
-  { label: 'Health', numeric: true },
-  { label: 'Health projetado', numeric: true },
-  { label: 'Risco', numeric: true },
-  { label: 'Confiança', numeric: true },
+  { label: 'Saúde atual', hint: 'maior é melhor', numeric: true },
+  { label: 'Saúde projetada', hint: 'próximo período', numeric: true },
+  { label: 'Risco de cancelamento', hint: 'score, não %', numeric: true },
+  { label: 'Confiança dos dados', hint: 'cobertura e atualidade', numeric: true },
   { label: 'Valor mensal', numeric: true },
 ];
 
@@ -55,15 +54,15 @@ function TrendIcon({ trend }: { trend: HealthTrend }) {
   );
 }
 
-/** Valor mensal ponderado pelo risco (`mrr × risco / 100`): o quanto da receita está em jogo. */
+/** Valor mensal ponderado pelo score de risco (`mrr × risco / 100`); não é perda esperada. */
 function revenueAtRisk(row: RankingRow): number {
   return (row.mrr * row.riskScore) / 100;
 }
 
 /**
- * Tabela de ranking (§39): Prioridade, Cliente, Health (número + pílula da classe), Health
- * projetado e Confiança da projeção (irmã do gráfico — DATAVIZ.md §5.1), Risco, Confiança,
- * Valor mensal (com a receita em risco), Principal evidência (com a ação sugerida), Ação.
+ * Tabela de ranking (§39): Prioridade, Cliente, Saúde atual (número + classe), Saúde projetada,
+ * Risco de cancelamento, Confiança dos dados, Valor mensal (com a receita em risco), Principal
+ * evidência (com a ação sugerida) e Ação.
  * Lista fixa, na ordem de prioridade: o representante não reordena nem filtra.
  */
 export function RankingTable({ rows, onSelect }: RankingTableProps) {
@@ -77,7 +76,12 @@ export function RankingTable({ rows, onSelect }: RankingTableProps) {
               scope="col"
               className={cn(column.numeric && 'text-right')}
             >
-              {column.label}
+              <span className="block">{column.label}</span>
+              {column.hint ? (
+                <span className="block text-[11px] font-normal text-muted-foreground">
+                  {column.hint}
+                </span>
+              ) : null}
             </TableHead>
           ))}
           <TableHead scope="col">Principal evidência</TableHead>
@@ -109,7 +113,7 @@ export function RankingTable({ rows, onSelect }: RankingTableProps) {
               <TableCell className="font-medium">{row.clientName}</TableCell>
               <TableCell className="text-right">
                 <span className="inline-flex items-center justify-end gap-2">
-                  <span className="tabular-nums">{formatInteger(row.healthCurrent)}</span>
+                  <span className="tabular-nums">{formatInteger(row.healthCurrent)}/100</span>
                   <HealthPill healthClass={row.currentClass} />
                   <TrendIcon trend={row.trend} />
                 </span>
@@ -119,16 +123,16 @@ export function RankingTable({ rows, onSelect }: RankingTableProps) {
                   <span className="text-muted-foreground">sem projeção</span>
                 ) : (
                   <span className={cn(row.crossesDown && 'font-semibold')}>
-                    {formatInteger(row.healthProjected)}
+                    {formatInteger(row.healthProjected)}/100
                     <span className="ml-1 text-muted-foreground">
-                      {HEALTH_CLASS_LABELS[row.projectedClass ?? row.currentClass]} · confiança{' '}
-                      {PROJECTION_CONFIDENCE_LABELS[row.projectionConfidence]}
+                      {HEALTH_STATUS_LABELS[row.projectedClass ?? row.currentClass]} · confiança da
+                      projeção: {PROJECTION_CONFIDENCE_LABELS[row.projectionConfidence]}
                     </span>
                   </span>
                 )}
               </TableCell>
               <TableCell className="text-right tabular-nums">
-                {formatInteger(row.riskScore)}
+                <span className="font-medium">{formatInteger(row.riskScore)}/100</span>
               </TableCell>
               <TableCell className="text-right tabular-nums">
                 {formatPercent(row.confidence)}
@@ -136,7 +140,7 @@ export function RankingTable({ rows, onSelect }: RankingTableProps) {
               <TableCell className="text-right tabular-nums">
                 <span className="block">{formatCurrency(row.mrr)}</span>
                 <span className="block text-xs text-muted-foreground">
-                  {formatCurrency(revenueAtRisk(row))} em risco
+                  {formatCurrency(revenueAtRisk(row))} ponderados pelo score
                 </span>
               </TableCell>
               <TableCell className="max-w-72 whitespace-normal">

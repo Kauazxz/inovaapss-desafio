@@ -22,7 +22,9 @@ export function DashboardPage() {
     <>
       <PageHeader
         title="Com quem falar hoje"
-        description="Quem está em risco, por quê, em que ordem e o que fazer."
+        description={
+          'Quem apresenta maior risco de cancelamento, por quê, em que ordem agir e o que fazer.'
+        }
       >
         {DASHBOARD_DATA_SOURCE === 'mock' ? (
           <Badge variant="outline">Dados de exemplo (mock)</Badge>
