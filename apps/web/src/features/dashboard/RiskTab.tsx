@@ -5,12 +5,7 @@ import { formatCompactCurrency, formatInteger } from '@/lib/format';
 
 import { useRiskDashboard } from './api';
 import { DashboardEmpty, DashboardError, DashboardLoading } from './DashboardStates';
-import {
-  criticalBandHint,
-  formatCountDelta,
-  formatCurrencyDelta,
-  riskBandHint,
-} from './format';
+import { criticalBandHint, formatCountDelta, formatCurrencyDelta, riskBandHint } from './format';
 import { KpiRow } from './KpiRow';
 import { RankingTable } from './RankingTable';
 import { ScoreGuide } from './ScoreGuide';
@@ -80,8 +75,8 @@ export function RiskTab() {
                 Ranking por prioridade
               </h3>
               <p className="text-[13px] text-muted-foreground">
-                O primeiro cliente é a ação mais urgente. A ordem considera o sinal de risco atual
-                e o impacto comercial do contrato; "Analisar" abre os detalhes.
+                O primeiro cliente é a ação mais urgente. A ordem considera o sinal de risco atual e
+                o impacto comercial do contrato; "Analisar" abre os detalhes.
               </p>
             </div>
             <RankingTable rows={data.ranking} onSelect={openClient} />

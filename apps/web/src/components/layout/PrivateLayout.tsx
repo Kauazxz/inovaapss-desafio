@@ -38,9 +38,7 @@ export function PrivateLayout() {
               <p className="max-w-56 truncate text-sm font-medium" data-testid="organization-name">
                 {me?.organization?.name ?? '—'}
               </p>
-              <p className="max-w-56 truncate text-xs text-muted-foreground">
-                {user?.email ?? ''}
-              </p>
+              <p className="max-w-56 truncate text-xs text-muted-foreground">{user?.email ?? ''}</p>
             </div>
             <Button
               variant="ghost"
