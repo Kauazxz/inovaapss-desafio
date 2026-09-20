@@ -43,6 +43,31 @@ function Kpi({ label, value, hint }: { label: string; value: string; hint?: stri
   );
 }
 
+const dataLocal = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
+const dataCivil = new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' });
+
+/**
+ * Um instante ("2026-09-20T13:02:00Z") sai no fuso de quem lê; uma data civil ("2026-06-30")
+ * não tem fuso nenhum e precisa sair em UTC, senão vira o dia anterior à noite.
+ */
+function formatarData(iso: string): string {
+  return iso.includes('T')
+    ? dataLocal.format(new Date(iso))
+    : dataCivil.format(new Date(`${iso}T00:00:00Z`));
+}
+
+/** A idade do alerta é o que diz se ele está apodrecendo na fila — por isso vem escrita. */
+function idadeEmDias(iso: string, agora: Date): string {
+  const dias = Math.floor((agora.getTime() - new Date(iso).getTime()) / 86_400_000);
+  if (dias <= 0) return 'hoje';
+  if (dias === 1) return 'ontem';
+  return `há ${dias} dias`;
+}
+
 function AlertRow({
   alert,
   onOpenClient,
@@ -86,6 +111,13 @@ function AlertRow({
             <span className="text-foreground">O que fazer:</span> {alert.suggestedAction}
           </p>
         ) : null}
+        {/* Quando disparou, há quanto tempo está aberto e de que período são os dados. */}
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {tratado && alert.resolvedAt !== null
+            ? `Tratado em ${formatarData(alert.resolvedAt)} · disparado em ${formatarData(alert.triggeredAt)}`
+            : `Disparado em ${formatarData(alert.triggeredAt)} · ${idadeEmDias(alert.triggeredAt, new Date())}`}
+          {` · dados até ${formatarData(alert.periodEnd)}`}
+        </p>
         {/* No celular o valor não cabe na coluna da direita: ele vem aqui embaixo. */}
         <p className="mt-0.5 text-xs text-muted-foreground tabular-nums md:hidden">
           {formatCurrency(alert.mrr)}/mês · saúde{' '}
