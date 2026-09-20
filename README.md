@@ -72,6 +72,36 @@ crie o primeiro usuário pelo seed de demonstração — **[docs/AUTH.md, seçã
 (_Authentication → Users → Add user_). Com as `VITE_SUPABASE_*` vazias o front mostra "Autenticação
 não configurada" em vez de quebrar.
 
+### Para quem vai avaliar o desafio
+
+O `.env` **não vem no repositório** — ele é entregue junto com o pacote. O repositório é público, e
+chave de API em repositório público é revogada automaticamente pelo provedor em minutos: a
+avaliação quebraria justamente na hora do teste. Se você recebeu só o link do GitHub e não recebeu
+o `.env`, peça: sem ele a aplicação sobe, mas sem banco e sem o Agente.
+
+Há dois jeitos de rodar, e o segundo não depende de nada nosso:
+
+**1. Com o ambiente que entregamos** (mais rápido): copie o `.env` recebido para a raiz do projeto,
+`pnpm install` e `pnpm dev`. O banco é o nosso Supabase, já com os dados de demonstração; o login
+de acesso vem junto com o `.env`, pelo mesmo canal — nunca pelo repositório.
+
+**2. Com o seu próprio banco** (independente — nada que a gente faça depois muda o que você vê):
+
+```powershell
+supabase start                                          # Supabase local via Docker
+# aponte SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY e DATABASE_URL para ele
+supabase db push                                        # cria o schema a partir de supabase/migrations/
+pnpm --filter @inovaapss/api seed:demo                  # usuário de acesso (credenciais no shell)
+pnpm --filter @inovaapss/api seed:globalsys             # o modelo de métricas do desafio
+pnpm --filter @inovaapss/api seed:globalsys-data        # a carteira de exemplo
+pnpm --filter @inovaapss/api recalculate                # calcula os scores dessa carteira
+pnpm dev
+```
+
+O **Agente IA** e a leitura assistida de documentos usam a `OPENAI_API_KEY` do `.env`. Sem ela o
+resto do sistema funciona igual: o Agente responde que não está configurado e a leitura de
+documentos cai na heurística local. Detalhes em [docs/IA.md](docs/IA.md).
+
 Antes de commitar (e o CI roda o mesmo):
 
 ```powershell
