@@ -18,12 +18,12 @@ import {
 
 import {
   alerts,
-  contracts,
   metricDefinitions,
   organizations,
   portfolioClients,
 } from '../../db/schema/index.js';
 import { GLOBALSYS_V1_METRICS } from '../../db/seed/presets/globalsys-v1.js';
+import { currentContractSubquery } from '../../shared/current-contract.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- o tipo do Drizzle varia com o schema
 type Database = any;
@@ -58,6 +58,9 @@ export function createAlertsService(getDb: () => Database): AlertsService {
   async function carregar(organizationId: string, status?: AlertStatus): Promise<AlertDto[]> {
     const condicoes = [eq(alerts.organizationId, organizationId)];
     if (status) condicoes.push(eq(alerts.status, status));
+    // Um contrato por cliente: sem isso o alerta de um cliente com histórico de contratos
+    // apareceria repetido na fila, uma vez por contrato.
+    const contract = currentContractSubquery(getDb(), organizationId);
 
     const rows = await getDb()
       .select({
@@ -76,15 +79,15 @@ export function createAlertsService(getDb: () => Database): AlertsService {
         clientName: portfolioClients.name,
         clientExternalCode: portfolioClients.externalCode,
         clientStatus: portfolioClients.status,
-        monthlyValue: contracts.monthlyValue,
-        currency: contracts.currency,
+        monthlyValue: contract.monthlyValue,
+        currency: contract.currency,
         metricId: metricDefinitions.id,
         metricName: metricDefinitions.name,
         metricSlug: metricDefinitions.slug,
       })
       .from(alerts)
       .innerJoin(portfolioClients, eq(portfolioClients.id, alerts.portfolioClientId))
-      .leftJoin(contracts, eq(contracts.portfolioClientId, portfolioClients.id))
+      .leftJoin(contract, eq(contract.portfolioClientId, portfolioClients.id))
       .leftJoin(metricDefinitions, eq(metricDefinitions.id, alerts.metricDefinitionId))
       .where(and(...condicoes))
       .orderBy(desc(alerts.periodEnd), desc(alerts.triggeredAt));

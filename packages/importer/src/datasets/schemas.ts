@@ -101,7 +101,17 @@ export const monthlyMetricsRowSchema = z
         message: `Reuniões realizadas (${row.meetings_completed}) não pode ser maior que previstas (${row.meetings_planned}).`,
       });
     }
-  });
+  })
+  .transform((row) => ({
+    ...row,
+    /**
+     * Mês sem chamado não tem aderência a SLA: é "não se aplica" (§15 — divisor zero), e é
+     * assim que a planilha do desafio vem. Um arquivo que mandasse 0 % num mês sem chamado
+     * faria a métrica de cumprimento de SLA (12 % do peso) pontuar zero num mês em que nada
+     * aconteceu de errado — por isso o valor é normalizado aqui, na entrada.
+     */
+    sla_compliance_pct: row.open_tickets === 0 ? null : row.sla_compliance_pct,
+  }));
 export type MonthlyMetricsRow = z.infer<typeof monthlyMetricsRowSchema>;
 
 export const NPS_CLASSIFICATIONS = ['promoter', 'neutral', 'detractor', 'no_answer'] as const;
@@ -136,6 +146,22 @@ export const npsRowSchema = z
         params: { code: 'MISSING_REQUIRED' },
         message: 'Nota é obrigatória quando o cliente respondeu.',
       });
+    }
+    /**
+     * §17 — a classificação é DERIVADA da nota, não um dado independente. Aceitar as duas
+     * colunas sem confrontá-las deixaria passar um "Promotor" com nota 3, e a tela mostraria
+     * um cliente satisfeito com a nota de um detrator. Melhor o arquivo ser recusado.
+     */
+    if (row.answered && row.score !== null && row.classification !== null) {
+      const esperada = classifyNps(row.score);
+      if (row.classification !== esperada) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['classification'],
+          params: { code: 'INCONSISTENT' },
+          message: `Classificação "${row.classification}" não corresponde à nota ${row.score} (esperado: "${esperada}").`,
+        });
+      }
     }
   })
   .transform((row) => ({

@@ -18,10 +18,33 @@ import {
   type RiskDashboardData,
 } from '@inovaapss/shared';
 
-import type { DashboardRepository, SnapshotRow } from './repository.js';
+import type { ClientRow, DashboardRepository, SnapshotRow } from './repository.js';
 
 const TREND_WINDOW = 3;
 const PERIOD_LABEL = 'mês';
+
+/**
+ * MRR = receita recorrente de HOJE. Cliente cancelado (ou com o contrato encerrado) não gera
+ * receita: entra como zero, não como o valor do contrato que acabou. Sem isso a carteira da
+ * planilha do desafio apareceria como R$ 982.964 em vez dos R$ 707.998 que de fato recorrem.
+ */
+function recurringMrr(client: ClientRow): number {
+  if (client.status !== 'active' || client.contractStatus !== 'active') return 0;
+  return Number(client.monthlyValue ?? 0);
+}
+
+/** Valor do último contrato conhecido — serve para medir o que se perdeu com um cancelamento. */
+function lastContractValue(client: ClientRow): number {
+  return Number(client.monthlyValue ?? 0);
+}
+
+/** Quem saiu no período mais recente: é a base da variação dos KPIs da aba Geral. */
+function cancelledIn(clients: readonly ClientRow[], periodEnd: string): ClientRow[] {
+  if (periodEnd === '') return [];
+  return clients.filter(
+    (client) => client.status === 'cancelled' && client.contractEndDate === periodEnd,
+  );
+}
 
 /** Limite inferior de uma classe nas faixas vigentes (§7). */
 function minOfClass(healthClass: HealthClass): number {
@@ -102,11 +125,21 @@ export function createDashboardService(repository: DashboardRepository): Dashboa
       );
 
       const byClient = new Map<string, SnapshotRow[]>();
+      let lastPeriod = '';
       for (const snapshot of snapshots) {
         const list = byClient.get(snapshot.portfolioClientId) ?? [];
         list.push(snapshot);
         byClient.set(snapshot.portfolioClientId, list);
+        if (snapshot.periodEnd > lastPeriod) lastPeriod = snapshot.periodEnd;
       }
+
+      /**
+       * "Clientes ativos" é a carteira, não "os ativos que o recálculo conseguiu pontuar".
+       * Contar só quem tem snapshot faria esta aba e a aba Geral darem números diferentes para
+       * o mesmo KPI.
+       */
+      const activeClients = clients.filter((client) => client.status === 'active').length;
+      const leftLastPeriod = cancelledIn(clients, lastPeriod).length;
 
       const currency = clients.find((c) => c.currency)?.currency ?? 'BRL';
       const rows: RankingRow[] = [];
@@ -122,7 +155,6 @@ export function createDashboardService(repository: DashboardRepository): Dashboa
       let riskNow = 0;
       let criticalPrevious = 0;
       let riskPrevious = 0;
-      let activeNow = 0;
       let generatedAt = '';
 
       for (const client of clients) {
@@ -135,7 +167,7 @@ export function createDashboardService(repository: DashboardRepository): Dashboa
         const previous = history.length > 1 ? (history[history.length - 2] as SnapshotRow) : null;
         if (latest.overallHealth === null || latest.priorityScore === null) continue;
 
-        const mrr = Number(client.monthlyValue ?? 0);
+        const mrr = recurringMrr(client);
         const healthHistory = history.map((s) => s.overallHealth);
         const drivers = readEvidence(latest.evidenceJson);
         const topEvidence = drivers[0]?.humanExplanation ?? 'Sem desvio relevante no período.';
@@ -158,8 +190,6 @@ export function createDashboardService(repository: DashboardRepository): Dashboa
           { trendWindow: TREND_WINDOW, healthBands: DEFAULT_HEALTH_BANDS },
         );
 
-        const isActive = client.status === 'active';
-        if (isActive) activeNow += 1;
         classCounts[forecast.currentClass] += 1;
         if (forecast.currentClass === 'CRITICAL') criticalNow += 1;
         if (forecast.currentClass === 'RISK') riskNow += 1;
@@ -214,7 +244,7 @@ export function createDashboardService(repository: DashboardRepository): Dashboa
 
       return {
         kpis: {
-          activeClients: { value: activeNow, delta: null },
+          activeClients: { value: activeClients, delta: -leftLastPeriod },
           criticalClients: { value: criticalNow, delta: criticalNow - criticalPrevious },
           riskClients: { value: riskNow, delta: riskNow - riskPrevious },
           mrrAtRisk: {
@@ -254,6 +284,7 @@ export function createDashboardService(repository: DashboardRepository): Dashboa
       const currency = clients.find((c) => c.currency)?.currency ?? 'BRL';
 
       // Último snapshot de cada cliente → distribuição e KPIs.
+      // (os snapshots chegam do mais antigo ao mais recente: a última escrita vence)
       const latestByClient = new Map<string, SnapshotRow>();
       const periodsSet = new Set<string>();
       for (const snapshot of snapshots) {
@@ -274,17 +305,29 @@ export function createDashboardService(repository: DashboardRepository): Dashboa
       let cancelados = 0;
 
       for (const client of clients) {
-        const mrr = Number(client.monthlyValue ?? 0);
-        mrrTotal += mrr;
-        if (client.status === 'active') ativos += 1;
-        if (client.status === 'cancelled') cancelados += 1;
+        mrrTotal += recurringMrr(client);
+        if (client.status === 'cancelled') {
+          cancelados += 1;
+          continue;
+        }
+        if (client.status !== 'active') continue;
+        ativos += 1;
+        /**
+         * A distribuição é a foto da carteira de hoje. O snapshot de quem cancelou ficou parado
+         * no mês da saída — contá-lo aqui inflaria Risco e Crítico com clientes que já foram
+         * embora (na planilha do desafio: 19 e 13 em vez de 10 e 2).
+         */
         const latest = latestByClient.get(client.id);
         const classe = latest?.healthClass as HealthClass | undefined;
         if (classe && counts[classe]) {
           counts[classe].count += 1;
-          counts[classe].mrr += mrr;
+          counts[classe].mrr += recurringMrr(client);
         }
       }
+
+      // Quem saiu no último período: é a variação dos três KPIs contra o período anterior.
+      const saidas = cancelledIn(clients, lastPeriod);
+      const mrrPerdido = saidas.reduce((total, client) => total + lastContractValue(client), 0);
 
       const totalClassificados = Object.values(counts).reduce((t, c) => t + c.count, 0) || 1;
       const distribution: ClassDistributionItem[] = (
@@ -339,9 +382,9 @@ export function createDashboardService(repository: DashboardRepository): Dashboa
 
       return {
         kpis: {
-          mrr: { value: Math.round(mrrTotal), delta: null },
-          activeClients: { value: ativos, delta: null },
-          cancelledClients: { value: cancelados, delta: null },
+          mrr: { value: Math.round(mrrTotal), delta: -Math.round(mrrPerdido) },
+          activeClients: { value: ativos, delta: -saidas.length },
+          cancelledClients: { value: cancelados, delta: saidas.length },
           currency,
         },
         distribution,

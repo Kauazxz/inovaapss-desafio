@@ -20,7 +20,6 @@ import type { ClientScoreResult, MetricConfig, MetricInput, PeriodValue } from '
 import {
   alerts,
   clientScoreSnapshots,
-  contracts,
   metricDefinitions,
   metricModelItems,
   metricModelVersions,
@@ -29,6 +28,7 @@ import {
   metricValues,
   portfolioClients,
 } from '../../db/schema/index.js';
+import { currentContractSubquery } from '../../shared/current-contract.js';
 
 type Db = {
   select: (...args: never[]) => never;
@@ -39,7 +39,14 @@ type Database = any;
 
 export interface RecalculateOptions {
   organizationId: string;
-  /** Quantos períodos finais de cada cliente recalcular (padrão 6, para a linha do tempo). */
+  /**
+   * Quantos períodos finais de cada cliente recalcular. Omitido = TODOS, que é o padrão certo:
+   * limitar a janela recalcula "os últimos N meses DE CADA CLIENTE", e como quem cancelou parou
+   * de ter dados no mês da saída, cada cliente acaba coberto num intervalo diferente. A linha do
+   * tempo da carteira vira então a média de populações que não se comparam — na planilha do
+   * desafio, os pontos de 2025 saíam da média de 4 a 12 clientes, TODOS eles clientes que viriam
+   * a cancelar, e o ponto de jan/2026 saltava para 69.
+   */
   periods?: number;
 }
 
@@ -54,7 +61,6 @@ export interface RecalculateResult {
   distribution: Record<string, number>;
 }
 
-const DEFAULT_PERIODS = 6;
 const CHUNK = 500;
 
 /** Converte a linha do item do modelo na configuração que o motor espera. */
@@ -109,7 +115,7 @@ export async function recalculateOrganization(
   options: RecalculateOptions,
 ): Promise<RecalculateResult> {
   const { organizationId } = options;
-  const periodsToScore = options.periods ?? DEFAULT_PERIODS;
+  const periodsToScore = options.periods ?? null;
 
   // ------------------------------------------------------------ versão ativa
   const [version] = await db
@@ -154,17 +160,20 @@ export async function recalculateOrganization(
   if (configs.length === 0) throw new Error('A versão ativa não tem métricas.');
 
   // ------------------------------------------------------------ clientes
+  // Um contrato por cliente: com o histórico de contratos inteiro o cliente apareceria N vezes
+  // aqui e seria pontuado N vezes por período, gravando snapshots duplicados.
+  const contract = currentContractSubquery(db, organizationId);
   const clientRows = await db
     .select({
       id: portfolioClients.id,
       name: portfolioClients.name,
       externalCode: portfolioClients.externalCode,
       strategicImportance: portfolioClients.strategicImportance,
-      monthlyValue: contracts.monthlyValue,
-      contractedSlaHours: contracts.contractedSlaHours,
+      monthlyValue: contract.monthlyValue,
+      contractedSlaHours: contract.contractedSlaHours,
     })
     .from(portfolioClients)
-    .leftJoin(contracts, eq(contracts.portfolioClientId, portfolioClients.id))
+    .leftJoin(contract, eq(contract.portfolioClientId, portfolioClients.id))
     .where(eq(portfolioClients.organizationId, organizationId));
 
   const mrrOf = (row: { monthlyValue: string | null }): number => Number(row.monthlyValue ?? 0);
@@ -224,7 +233,7 @@ export async function recalculateOrganization(
     const allPeriods = [
       ...new Set([...byMetric.values()].flatMap((list) => list.map((p) => p.periodEnd))),
     ].sort();
-    const targets = allPeriods.slice(-periodsToScore);
+    const targets = periodsToScore === null ? allPeriods : allPeriods.slice(-periodsToScore);
 
     for (const periodEnd of targets) {
       // §27 (sem vazamento): cada período enxerga só o que existia até ele.

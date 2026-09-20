@@ -6,13 +6,13 @@ import { and, asc, eq } from 'drizzle-orm';
 
 import {
   clientScoreSnapshots,
-  contracts,
   metricDefinitions,
   metricScoreSnapshots,
   metricValues,
   plans,
   portfolioClients,
 } from '../../db/schema/index.js';
+import { currentContractSubquery } from '../../shared/current-contract.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- o tipo do Drizzle varia com o schema
 type Database = any;
@@ -87,6 +87,9 @@ export interface ClientHealthRepository {
 export function createClientHealthRepository(getDb: () => Database): ClientHealthRepository {
   return {
     async findClient(organizationId, clientId) {
+      // Um contrato por cliente: com o histórico inteiro a mesma consulta devolveria N linhas e
+      // o `[row]` pegaria uma qualquer delas — o contrato mostrado no cabeçalho viraria loteria.
+      const contract = currentContractSubquery(getDb(), organizationId);
       const [row] = await getDb()
         .select({
           id: portfolioClients.id,
@@ -96,19 +99,19 @@ export function createClientHealthRepository(getDb: () => Database): ClientHealt
           size: portfolioClients.size,
           status: portfolioClients.status,
           strategicImportance: portfolioClients.strategicImportance,
-          contractId: contracts.id,
-          monthlyValue: contracts.monthlyValue,
-          currency: contracts.currency,
-          startDate: contracts.startDate,
-          endDate: contracts.endDate,
-          contractStatus: contracts.status,
-          contractedSlaHours: contracts.contractedSlaHours,
+          contractId: contract.contractId,
+          monthlyValue: contract.monthlyValue,
+          currency: contract.currency,
+          startDate: contract.startDate,
+          endDate: contract.endDate,
+          contractStatus: contract.status,
+          contractedSlaHours: contract.contractedSlaHours,
           planId: plans.id,
           planName: plans.name,
         })
         .from(portfolioClients)
-        .leftJoin(contracts, eq(contracts.portfolioClientId, portfolioClients.id))
-        .leftJoin(plans, eq(plans.id, contracts.planId))
+        .leftJoin(contract, eq(contract.portfolioClientId, portfolioClients.id))
+        .leftJoin(plans, eq(plans.id, contract.planId))
         .where(
           and(
             eq(portfolioClients.organizationId, organizationId),

@@ -7,12 +7,12 @@ import { and, asc, desc, eq, inArray, max } from 'drizzle-orm';
 
 import {
   clientScoreSnapshots,
-  contracts,
   metricDefinitions,
   metricScoreSnapshots,
   plans,
   portfolioClients,
 } from '../../db/schema/index.js';
+import { currentContractSubquery } from '../../shared/current-contract.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- o tipo do Drizzle varia com o schema
 type Database = any;
@@ -41,6 +41,10 @@ export interface ClientRow {
   monthlyValue: string | null;
   currency: string | null;
   planName: string | null;
+  /** Status do contrato devolvido: só `active` é receita recorrente de hoje. */
+  contractStatus: string | null;
+  /** Último dia do contrato encerrado (mês da saída); `null` enquanto vigente. */
+  contractEndDate: string | null;
 }
 
 /** Saúde de uma métrica de um cliente num período, com a categoria para agrupar por dimensão. */
@@ -62,6 +66,9 @@ export interface DashboardRepository {
 export function createDashboardRepository(getDb: () => Database): DashboardRepository {
   return {
     async listClients(organizationId) {
+      // Um contrato por cliente: sem isso quem tem histórico de contratos vira N linhas e é
+      // contado — e tem o MRR somado — N vezes nos KPIs, na distribuição e no ranking.
+      const contract = currentContractSubquery(getDb(), organizationId);
       return getDb()
         .select({
           id: portfolioClients.id,
@@ -70,13 +77,15 @@ export function createDashboardRepository(getDb: () => Database): DashboardRepos
           segment: portfolioClients.segment,
           size: portfolioClients.size,
           status: portfolioClients.status,
-          monthlyValue: contracts.monthlyValue,
-          currency: contracts.currency,
+          monthlyValue: contract.monthlyValue,
+          currency: contract.currency,
           planName: plans.name,
+          contractStatus: contract.status,
+          contractEndDate: contract.endDate,
         })
         .from(portfolioClients)
-        .leftJoin(contracts, eq(contracts.portfolioClientId, portfolioClients.id))
-        .leftJoin(plans, eq(plans.id, contracts.planId))
+        .leftJoin(contract, eq(contract.portfolioClientId, portfolioClients.id))
+        .leftJoin(plans, eq(plans.id, contract.planId))
         .where(eq(portfolioClients.organizationId, organizationId))
         .orderBy(asc(portfolioClients.name));
     },

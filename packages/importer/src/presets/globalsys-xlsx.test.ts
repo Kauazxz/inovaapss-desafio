@@ -270,3 +270,105 @@ describe.skipIf(!hasDataset)('importGlobalSysWorkbook — data/INOVAAPPS_base_de
     }
   });
 });
+
+/**
+ * Coerência ENTRE as abas — é o que o "Leia-me" da planilha promete e nada mais conferia.
+ * Cada uma destas regras é uma pergunta que o dashboard responde com dinheiro ou com contagem
+ * de cliente: se a planilha mudar e quebrar uma delas, é melhor o teste falhar aqui do que a
+ * tela mostrar um número errado com cara de certo.
+ */
+describe.skipIf(!hasDataset)('coerência entre as abas da planilha do desafio', () => {
+  const result = hasDataset ? importGlobalSysWorkbook(DATASET_PATH) : undefined;
+  const statusByCode = new Map(
+    (result?.clientStatus ?? []).map((status) => [status.external_code, status]),
+  );
+
+  it('todas as abas falam dos mesmos 80 clientes', () => {
+    const codes = new Set(result!.clients.map((c) => c.external_code));
+    expect(codes.size).toBe(80);
+    expect(result!.monthlyMetrics.every((m) => codes.has(m.external_code))).toBe(true);
+    expect(result!.nps.every((n) => codes.has(n.external_code))).toBe(true);
+    expect(result!.clientStatus.every((s) => codes.has(s.external_code))).toBe(true);
+    // Nenhum cliente sem histórico: todo mundo tem pelo menos um mês de atendimento.
+    const comHistorico = new Set(result!.monthlyMetrics.map((m) => m.external_code));
+    expect(comHistorico.size).toBe(80);
+  });
+
+  it('uma linha por cliente por mês, sem repetir', () => {
+    const chaves = result!.monthlyMetrics.map((m) => `${m.external_code}|${m.period}`);
+    expect(new Set(chaves).size).toBe(chaves.length);
+  });
+
+  it('quem cancelou não tem atendimento nem pesquisa depois do mês da saída', () => {
+    const depois = (code: string, period: string): boolean => {
+      const saida = statusByCode.get(code)?.cancellation_period;
+      return saida !== null && saida !== undefined && period > saida;
+    };
+    expect(result!.monthlyMetrics.filter((m) => depois(m.external_code, m.period))).toEqual([]);
+    expect(result!.nps.filter((n) => depois(n.external_code, n.period))).toEqual([]);
+  });
+
+  it('MRR: R$ 707.998 seguem recorrendo e R$ 274.966 saíram com os 22 cancelamentos', () => {
+    const soma = (ativo: boolean): number =>
+      result!.clients
+        .filter((c) => (statusByCode.get(c.external_code)?.status === 'cancelled') !== ativo)
+        .reduce((total, c) => total + c.monthly_value, 0);
+    expect(soma(true)).toBe(707_998);
+    expect(soma(false)).toBe(274_966);
+    expect(soma(true) + soma(false)).toBe(982_964);
+  });
+
+  it('nenhuma contagem vem vazia: só pct_sla_cumprido é N/A, e só sem chamado', () => {
+    const vazias = result!.monthlyMetrics.filter(
+      (linha) =>
+        linha.open_tickets === null ||
+        linha.critical_tickets === null ||
+        linha.reopened_tickets === null ||
+        linha.tickets_within_sla === null ||
+        linha.meetings_planned === null ||
+        linha.meetings_completed === null,
+    );
+    expect(vazias).toEqual([]);
+
+    const semPercentual = result!.monthlyMetrics.filter((l) => l.sla_compliance_pct === null);
+    expect(semPercentual).toHaveLength(23);
+    expect(semPercentual.every((l) => l.open_tickets === 0)).toBe(true);
+    // E o contrário também: mês com chamado sempre tem percentual.
+    expect(
+      result!.monthlyMetrics.filter((l) => l.open_tickets !== 0 && l.sla_compliance_pct === null),
+    ).toEqual([]);
+  });
+
+  it('pct_sla_cumprido bate com chamados_dentro_sla / chamados_abertos', () => {
+    for (const linha of result!.monthlyMetrics) {
+      const abertos = linha.open_tickets ?? 0;
+      if (abertos === 0) continue;
+      const calculado = ((linha.tickets_within_sla ?? 0) / abertos) * 100;
+      expect(Math.abs(calculado - (linha.sla_compliance_pct ?? -1))).toBeLessThan(0.15);
+    }
+  });
+
+  it('contagens de chamados e reuniões nunca passam do total do mês', () => {
+    for (const linha of result!.monthlyMetrics) {
+      const abertos = linha.open_tickets ?? 0;
+      expect(linha.tickets_within_sla ?? 0).toBeLessThanOrEqual(abertos);
+      expect(linha.reopened_tickets ?? 0).toBeLessThanOrEqual(abertos);
+      expect(linha.critical_tickets ?? 0).toBeLessThanOrEqual(abertos);
+      expect(linha.meetings_completed ?? 0).toBeLessThanOrEqual(linha.meetings_planned ?? 0);
+    }
+  });
+
+  it('NPS: nota só existe com resposta, e a classificação segue a nota', () => {
+    for (const pesquisa of result!.nps) {
+      if (!pesquisa.answered) {
+        expect(pesquisa.score).toBeNull();
+        continue;
+      }
+      const nota = pesquisa.score!;
+      expect(nota).toBeGreaterThanOrEqual(0);
+      expect(nota).toBeLessThanOrEqual(10);
+      const esperada = nota >= 9 ? 'promoter' : nota >= 7 ? 'neutral' : 'detractor';
+      expect(pesquisa.classification).toBe(esperada);
+    }
+  });
+});

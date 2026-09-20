@@ -144,6 +144,30 @@ describe('validateDataset — monthly_metrics', () => {
     ]);
   });
 
+  it('mês sem chamado não tem aderência a SLA: 0 % vira N/A (§15)', () => {
+    const result = importDataset('monthly_metrics', [
+      {
+        ...row,
+        open_tickets: 0,
+        critical_tickets: 0,
+        reopened_tickets: 0,
+        tickets_within_sla: 0,
+        sla_compliance_pct: 0,
+      },
+      {
+        ...row,
+        period: '2025-02',
+        open_tickets: 0,
+        critical_tickets: 0,
+        reopened_tickets: 0,
+        tickets_within_sla: 0,
+        sla_compliance_pct: '',
+      },
+    ]);
+    expect(result.report).toMatchObject({ total: 2, valid: 2, invalid: 0 });
+    expect(result.rows.map((r) => r.sla_compliance_pct)).toEqual([null, null]);
+  });
+
   it('duplicidade usa cliente + período', () => {
     const result = importDataset('monthly_metrics', [
       row,
@@ -220,6 +244,31 @@ describe('validateDataset — nps (§22)', () => {
     expect(classifyNps(9)).toBe('promoter');
     expect(classifyNps(7)).toBe('neutral');
     expect(classifyNps(6)).toBe('detractor');
+  });
+
+  it('classificação que contradiz a nota é recusada (§17: ela é derivada da nota)', () => {
+    const result = importDataset('nps', [
+      {
+        cliente_id: 'C001',
+        mes_ref: '2025-03',
+        respondeu: 1,
+        nota_nps: 3,
+        classificacao_nps: 'Promotor',
+      },
+      {
+        cliente_id: 'C002',
+        mes_ref: '2025-03',
+        respondeu: 1,
+        nota_nps: 3,
+        classificacao_nps: 'Detrator',
+      },
+    ]);
+    expect(result.report.errors).toEqual([
+      expect.objectContaining({ row: 1, field: 'classification', code: 'INCONSISTENT' }),
+    ]);
+    expect(result.rows.map((r) => [r.external_code, r.classification])).toEqual([
+      ['C002', 'detractor'],
+    ]);
   });
 });
 

@@ -19,7 +19,8 @@ async function main(): Promise<void> {
   requireEnv(env, 'DATABASE_URL');
 
   const slug = process.env.SEED_ORGANIZATION_SLUG?.trim() || DEFAULT_ORGANIZATION_SLUG;
-  const periods = Number(process.env.RECALCULATE_PERIODS ?? '6');
+  // Sem RECALCULATE_PERIODS, recalcula o histórico inteiro (ver RecalculateOptions.periods).
+  const periods = Number(process.env.RECALCULATE_PERIODS ?? '');
   const client = createDbClient(env.DATABASE_URL);
 
   try {
@@ -34,7 +35,7 @@ async function main(): Promise<void> {
     const started = process.hrtime.bigint();
     const result = await recalculateOrganization(db, {
       organizationId: organization.id,
-      periods: Number.isFinite(periods) && periods > 0 ? periods : 6,
+      ...(Number.isFinite(periods) && periods > 0 ? { periods } : {}),
     });
     const seconds = Number(process.hrtime.bigint() - started) / 1e9;
 

@@ -74,10 +74,15 @@ export function RankingTable({ rows, onSelect }: RankingTableProps) {
               className={cn(column.numeric && 'text-right')}
             >
               <span className="block">{column.label}</span>
+              {/* O espaço separa rótulo e dica no nome acessível: sem ele o leitor de tela
+                  anuncia "Saúde atualmaior é melhor". Entre dois blocos não muda o desenho. */}
               {column.hint ? (
-                <span className="block text-[11px] font-normal text-muted-foreground">
-                  {column.hint}
-                </span>
+                <>
+                  {' '}
+                  <span className="block text-[11px] font-normal text-muted-foreground">
+                    {column.hint}
+                  </span>
+                </>
               ) : null}
             </TableHead>
           ))}

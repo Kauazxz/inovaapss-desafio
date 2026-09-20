@@ -94,6 +94,7 @@ mesmo que o CI roda).
 | [docs/ETAPAS.md](docs/ETAPAS.md)                 | quadro de etapas: quem está em qual, dependências, o que pode rodar em paralelo               |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)     | monorepo, fluxo de dados, MVC modular, migrations, portas e scripts                           |
 | [docs/AUTH.md](docs/AUTH.md)                     | login, sessão, organizações, papéis, como criar o primeiro usuário e convidar alguém          |
+| [docs/DADOS.md](docs/DADOS.md)                   | regras de leitura dos dados: quem entra em cada número (MRR, distribuição, linha do tempo)    |
 | [docs/SCORING.md](docs/SCORING.md)               | fórmulas do motor: health, tendência, persistência, confiança, risco, prioridade, forecast    |
 | [docs/METRICS_ENGINE.md](docs/METRICS_ENGINE.md) | como uma métrica é configurada (tipos, normalização, gatilhos, fórmula segura)                |
 | [docs/SLA_ENGINE.md](docs/SLA_ENGINE.md)         | SLA contratual, meta operacional, consumo e health por chamado                                |

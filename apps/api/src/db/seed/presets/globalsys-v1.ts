@@ -63,7 +63,7 @@ export const GLOBALSYS_V1_METRICS: readonly PresetMetric[] = [
     slug: 'critical_tickets',
     name: 'Chamados críticos',
     description:
-      'Concentração, crescimento e recorrência de chamados de maior severidade. Avalia a quantidade do mês contra o padrão histórico do próprio cliente e também faixas absolutas, ficando com o pior dos dois. Origem: chamados_criticos (e chamados_abertos para a taxa).',
+      'Concentração, crescimento e recorrência de chamados de maior severidade. Avalia a quantidade do mês contra o padrão histórico do próprio cliente e também faixas absolutas, ficando com o pior dos dois. Origem: chamados_criticos (a quantidade do mês; a proporção sobre chamados_abertos já é lida pela métrica "Chamados abertos", que compara o volume com o padrão do próprio cliente — §17, evitar dupla contagem).',
     category: 'Atendimento',
     metricType: 'QUANTITY',
     unit: 'chamados',
@@ -138,7 +138,9 @@ export const GLOBALSYS_V1_METRICS: readonly PresetMetric[] = [
         name: 'Tempo de resolução comprometendo o SLA',
         field: 'health',
         operator: '<=',
-        threshold: 25,
+        // §6 do documento: o gatilho desta métrica é "saúde ≤ 50". O preset estava em 25 e
+        // deixava de avisar sobre 2 clientes ativos da planilha que o documento manda avisar.
+        threshold: 50,
         // Sinal antecipado, não emergência: avisa antes de o SLA agregado estourar.
         severity: 'WARNING',
         priorityFloor: 70,
