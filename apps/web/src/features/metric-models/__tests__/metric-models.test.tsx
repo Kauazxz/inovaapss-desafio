@@ -209,11 +209,19 @@ function mockApi() {
     const body = init?.body === undefined ? null : JSON.parse(String(init.body));
 
     if (path === '/api/v1/metrics' && method === 'GET') {
+      // A API recusa mais de 100 itens por página (§61). O dublê recusa igual: sem isto,
+      // um pedido grande demais passa no teste e só quebra na tela de quem usa.
+      const pageSize = Number(url.searchParams.get('pageSize') ?? 20);
+      if (pageSize > 100) {
+        return jsonResponse(400, {
+          error: { code: 'VALIDATION_ERROR', message: 'No máximo 100 itens por página.' },
+        });
+      }
       return jsonResponse(200, {
         items: DEFINITIONS,
         total: DEFINITIONS.length,
-        page: 1,
-        pageSize: 200,
+        page: Number(url.searchParams.get('page') ?? 1),
+        pageSize,
       });
     }
     if (path === `/api/v1/metrics/${USO_ID}/preview-score` && method === 'POST') {

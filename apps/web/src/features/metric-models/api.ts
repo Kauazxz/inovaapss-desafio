@@ -121,8 +121,10 @@ export const metricModelsKeys = {
   definitions: () => ['metric-models', 'definitions'] as const,
 };
 
-/** Máximo de métricas por versão no schema da API. */
-const DEFINITIONS_PAGE_SIZE = 200;
+/** Teto de itens por página aceito pela API (§61). Pedir mais que isso devolve 400. */
+const DEFINITIONS_PAGE_SIZE = 100;
+/** Trava de segurança: evita laço infinito se a API devolver um `total` incoerente. */
+const DEFINITIONS_MAX_PAGES = 20;
 
 export interface MetricDefinitionsResponse {
   items: MetricDefinitionDto[];
@@ -134,10 +136,18 @@ export interface MetricDefinitionsResponse {
  * nome, tipo e direção de cada linha e saber quais estão ATIVAS — só os pesos das ativas entram
  * na soma que precisa fechar 100 % (§41).
  */
-export function fetchAllMetricDefinitions(): Promise<MetricDefinitionsResponse> {
-  return apiFetch<MetricDefinitionsResponse>(
-    `/api/v1/metrics?page=1&pageSize=${DEFINITIONS_PAGE_SIZE}&sort=name`,
-  );
+export async function fetchAllMetricDefinitions(): Promise<MetricDefinitionsResponse> {
+  const items: MetricDefinitionDto[] = [];
+  let total = 0;
+  for (let page = 1; page <= DEFINITIONS_MAX_PAGES; page += 1) {
+    const resposta = await apiFetch<MetricDefinitionsResponse>(
+      `/api/v1/metrics?page=${page}&pageSize=${DEFINITIONS_PAGE_SIZE}&sort=name`,
+    );
+    items.push(...resposta.items);
+    total = resposta.total;
+    if (items.length >= total || resposta.items.length < DEFINITIONS_PAGE_SIZE) break;
+  }
+  return { items, total };
 }
 
 export function useAllMetricDefinitions() {
