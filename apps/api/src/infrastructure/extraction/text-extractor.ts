@@ -43,6 +43,11 @@ export class TextExtractionError extends AppError {
 export interface TextExtractorInput {
   buffer: Buffer;
   kind: DocumentKind;
+  /**
+   * Nome original do arquivo. Os extratores locais decidem pelo `kind` e o ignoram; quem lê por
+   * serviço externo (unstructured-extractor.ts) usa o nome para o serviço escolher o parser.
+   */
+  fileName?: string | undefined;
 }
 
 export interface TextExtractor {

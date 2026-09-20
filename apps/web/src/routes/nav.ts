@@ -1,5 +1,6 @@
 import {
   Bell,
+  Bot,
   Database,
   FileText,
   Gauge,
@@ -49,6 +50,13 @@ export const NAV_ENTRIES: readonly NavEntry[] = [
     label: 'Alertas',
     icon: Bell,
     hint: 'O que mudou e merece atenção.',
+  },
+  {
+    kind: 'link',
+    to: '/assistant',
+    label: 'Agente IA',
+    icon: Bot,
+    hint: 'Pergunte sobre a carteira e monte a decisão.',
   },
   {
     kind: 'group',

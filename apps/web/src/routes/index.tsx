@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router';
 import { PrivateLayout } from '@/components/layout/PrivateLayout';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { AlertsPage } from '@/features/alerts/AlertsPage';
+import { AssistantPage } from '@/features/assistant/AssistantPage';
 import { AuthProvider } from '@/features/auth/AuthProvider';
 import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
 import { LoginPage } from '@/features/auth/LoginPage';
@@ -63,6 +64,7 @@ export function AppRoutes() {
               <Route path="/documents" element={<DocumentsPage />} />
               <Route path="/documents/:id" element={<DocumentDetailPage />} />
               <Route path="/alerts" element={<AlertsPage />} />
+              <Route path="/assistant" element={<AssistantPage />} />
               <Route path="/calibration" element={<CalibrationPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>

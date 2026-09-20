@@ -95,6 +95,8 @@ mesmo que o CI roda).
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)     | monorepo, fluxo de dados, MVC modular, migrations, portas e scripts                           |
 | [docs/AUTH.md](docs/AUTH.md)                     | login, sessão, organizações, papéis, como criar o primeiro usuário e convidar alguém          |
 | [docs/DADOS.md](docs/DADOS.md)                   | regras de leitura dos dados: quem entra em cada número (MRR, distribuição, linha do tempo)    |
+| [docs/IMPORTS.md](docs/IMPORTS.md)               | importação de planilhas: formatos, datasets, mapeamento de colunas, erros e o que é gravado   |
+| [docs/IA.md](docs/IA.md)                         | IA: leitura de documentos, Agente sobre o relatório e Canvas de Decisão com dados verificados |
 | [docs/SCORING.md](docs/SCORING.md)               | fórmulas do motor: health, tendência, persistência, confiança, risco, prioridade, forecast    |
 | [docs/METRICS_ENGINE.md](docs/METRICS_ENGINE.md) | como uma métrica é configurada (tipos, normalização, gatilhos, fórmula segura)                |
 | [docs/SLA_ENGINE.md](docs/SLA_ENGINE.md)         | SLA contratual, meta operacional, consumo e health por chamado                                |
