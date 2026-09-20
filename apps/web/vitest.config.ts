@@ -8,6 +8,21 @@ export default mergeConfig(
   defineConfig({
     test: {
       environment: 'jsdom',
+      /**
+       * Como a suíte roda. O padrão do vitest é um PROCESSO por arquivo de teste: com 19
+       * arquivos isso vira 19 processos, cada um subindo o jsdom do zero. Em máquina ocupada
+       * eles não respondem a tempo e a suíte inteira morre em "Timeout waiting for worker",
+       * sem rodar um único teste. Linha de execução é bem mais leve que processo, e o vitest
+       * já limita a quantidade ao número de núcleos.
+       *
+       * NÃO usar isolate: false aqui. Já foi tentado: reaproveitar a linha entre arquivos faz
+       * o estado de um teste vazar para o seguinte e derruba RequireAuth.test.tsx, que depende
+       * de começar sem sessão. O ganho seria de poucos segundos; a confiança vale mais.
+       */
+      pool: 'threads',
+      poolOptions: { threads: { useAtomics: true } },
+      /** Guarda a transformação entre execuções: a segunda rodada não recompila tudo de novo. */
+      fsModuleCache: true,
       globals: false,
       setupFiles: ['./src/test/setup.ts'],
       include: ['src/**/*.test.{ts,tsx}'],
