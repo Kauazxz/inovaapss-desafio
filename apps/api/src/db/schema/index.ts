@@ -12,3 +12,4 @@ export * from './organizations.js';
 export * from './metrics.js';
 export * from './clients.js';
 export * from './contracts.js';
+export * from './documents.js';

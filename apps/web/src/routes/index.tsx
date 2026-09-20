@@ -11,6 +11,7 @@ import { CalibrationPage } from '@/features/calibration/CalibrationPage';
 import { ClientDetailPage } from '@/features/client-detail/ClientDetailPage';
 import { ClientsPage } from '@/features/clients/ClientsPage';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
+import { DocumentDetailPage } from '@/features/documents/DocumentDetailPage';
 import { DocumentsPage } from '@/features/documents/DocumentsPage';
 import { ImportPage } from '@/features/import/ImportPage';
 import { MetricModelDetailPage } from '@/features/metric-models/MetricModelDetailPage';
@@ -60,6 +61,7 @@ export function AppRoutes() {
               <Route path="/metric-models/:id" element={<MetricModelDetailPage />} />
               <Route path="/import" element={<ImportPage />} />
               <Route path="/documents" element={<DocumentsPage />} />
+              <Route path="/documents/:id" element={<DocumentDetailPage />} />
               <Route path="/alerts" element={<AlertsPage />} />
               <Route path="/calibration" element={<CalibrationPage />} />
               <Route path="/settings" element={<SettingsPage />} />

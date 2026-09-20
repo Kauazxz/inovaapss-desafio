@@ -1,0 +1,261 @@
+import {
+  ArrowLeft,
+  CircleAlert,
+  Download,
+  FileSearch,
+  Plus,
+  RefreshCw,
+  Sparkles,
+} from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router';
+
+import { EmptyState } from '@/components/empty-state';
+import { PageHeader } from '@/components/page-header';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ApiError } from '@/lib/api';
+
+import {
+  type MetricSuggestion,
+  useCreateSuggestion,
+  useDocument,
+  useExtractMetrics,
+  useReviewSuggestion,
+  useSuggestions,
+} from './api';
+import { DocumentStatusBadge } from './DocumentStatusBadge';
+import { DOCUMENT_KIND_LABELS, formatDateTime, formatFileSize } from './format';
+import { SuggestionForm } from './SuggestionForm';
+import { SuggestionsTable } from './SuggestionsTable';
+
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+/**
+ * /documents/:id — metadados, texto extraído, sugestões e o formulário de sugestão manual
+ * (§35 fluxo manual). Aceitar uma sugestão leva a /metrics com `state.prefill`.
+ */
+export function DocumentDetailPage() {
+  const { id = '' } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const document = useDocument(id);
+  const suggestions = useSuggestions(id);
+  const extract = useExtractMetrics(id);
+  const create = useCreateSuggestion(id);
+  const review = useReviewSuggestion(id);
+  const [showForm, setShowForm] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+
+  if (document.isPending) {
+    return (
+      <div role="status" aria-label="Carregando documento" className="space-y-6">
+        <Skeleton className="h-8 w-1/2" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  if (document.isError) {
+    const notFound = document.error instanceof ApiError && document.error.status === 404;
+    return (
+      <>
+        <PageHeader title="Documento" />
+        <EmptyState
+          icon={CircleAlert}
+          title={notFound ? 'Documento não encontrado' : 'Não foi possível carregar o documento'}
+          description={
+            notFound
+              ? 'Ele pode ter sido removido ou pertencer a outra organização.'
+              : errorMessage(document.error, 'Tente de novo em instantes.')
+          }
+          action={
+            <Button asChild variant="outline">
+              <Link to="/documents">
+                <ArrowLeft aria-hidden="true" />
+                Voltar para documentos
+              </Link>
+            </Button>
+          }
+        />
+      </>
+    );
+  }
+
+  const doc = document.data;
+  const busyId = review.accept.isPending
+    ? review.accept.variables
+    : review.reject.isPending
+      ? review.reject.variables
+      : null;
+
+  const onAccept = (suggestion: MetricSuggestion) => {
+    setReviewError(null);
+    review.accept
+      .mutateAsync(suggestion.id)
+      .then((result) => {
+        navigate('/metrics', { state: { prefill: result.metricPayload } });
+      })
+      .catch((error: unknown) => {
+        setReviewError(errorMessage(error, 'Não foi possível aceitar a sugestão.'));
+      });
+  };
+
+  const onReject = (suggestion: MetricSuggestion) => {
+    setReviewError(null);
+    review.reject.mutateAsync(suggestion.id).catch((error: unknown) => {
+      setReviewError(errorMessage(error, 'Não foi possível rejeitar a sugestão.'));
+    });
+  };
+
+  return (
+    <>
+      <PageHeader
+        title={doc.fileName}
+        description={`${DOCUMENT_KIND_LABELS[doc.kind]} · ${formatFileSize(doc.sizeBytes)} · enviado em ${formatDateTime(doc.createdAt)}`}
+      >
+        <Button asChild variant="ghost">
+          <Link to="/documents">
+            <ArrowLeft aria-hidden="true" />
+            Documentos
+          </Link>
+        </Button>
+        <Button asChild variant="outline">
+          <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer">
+            <Download aria-hidden="true" />
+            Baixar
+          </a>
+        </Button>
+        <Button
+          type="button"
+          disabled={extract.isPending}
+          onClick={() => extract.mutate()}
+          aria-label={doc.hasExtractedText ? 'Extrair texto de novo' : 'Extrair texto'}
+        >
+          <FileSearch aria-hidden="true" />
+          {extract.isPending
+            ? 'Extraindo…'
+            : doc.hasExtractedText
+              ? 'Extrair de novo'
+              : 'Extrair texto'}
+        </Button>
+      </PageHeader>
+
+      <div className="mb-6 flex flex-wrap items-center gap-3 text-sm">
+        <DocumentStatusBadge status={doc.status} />
+        {doc.extractedAt ? (
+          <span className="text-muted-foreground">
+            Texto extraído em {formatDateTime(doc.extractedAt)}
+          </span>
+        ) : null}
+        <span className="text-xs text-muted-foreground">
+          Link de download válido por {Math.round(doc.downloadUrlExpiresInSeconds / 60)} min.
+        </span>
+      </div>
+
+      {extract.isError ? (
+        <p role="alert" className="mb-4 text-sm text-destructive">
+          {errorMessage(extract.error, 'Não foi possível extrair o texto.')}
+        </p>
+      ) : null}
+      {doc.status === 'failed' && doc.extractionError ? (
+        <p role="alert" className="mb-4 text-sm text-destructive">
+          Última extração falhou: {doc.extractionError}
+        </p>
+      ) : null}
+
+      <section aria-labelledby="texto-extraido" className="mb-8">
+        <h3 id="texto-extraido" className="mb-2 text-base font-semibold">
+          Texto extraído
+        </h3>
+        {doc.extractedTextPreview ? (
+          <pre className="max-h-96 overflow-auto rounded-lg border border-border bg-muted/30 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+            {doc.extractedTextPreview}
+          </pre>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Ainda não há texto extraído. Clique em “Extrair texto” para ler o documento; o conteúdo
+            aparece aqui para você anotar as métricas que ele descreve.
+          </p>
+        )}
+      </section>
+
+      <section aria-labelledby="sugestoes" className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 id="sugestoes" className="text-base font-semibold">
+              Sugestões de métrica
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Nesta fase as sugestões são criadas por uma pessoa a partir do texto; a revisão por IA
+              entra depois (ajuste A5). Aceitar leva ao cadastro da métrica — nada é ativado
+              sozinho.
+            </p>
+          </div>
+          {!showForm ? (
+            <Button type="button" variant="outline" onClick={() => setShowForm(true)}>
+              <Plus aria-hidden="true" />
+              Nova sugestão a partir deste documento
+            </Button>
+          ) : null}
+        </div>
+
+        {showForm ? (
+          <div className="rounded-xl border border-border p-4">
+            <SuggestionForm
+              submitting={create.isPending}
+              serverError={
+                create.isError ? errorMessage(create.error, 'Não foi possível salvar.') : null
+              }
+              onCancel={() => {
+                create.reset();
+                setShowForm(false);
+              }}
+              onSubmit={async (body) => {
+                await create.mutateAsync(body);
+                setShowForm(false);
+              }}
+            />
+          </div>
+        ) : null}
+
+        {reviewError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {reviewError}
+          </p>
+        ) : null}
+
+        {suggestions.isPending ? (
+          <Skeleton className="h-32 w-full" aria-label="Carregando sugestões" />
+        ) : suggestions.isError ? (
+          <EmptyState
+            icon={CircleAlert}
+            title="Não foi possível carregar as sugestões"
+            description={errorMessage(suggestions.error, 'Tente de novo em instantes.')}
+            action={
+              <Button type="button" variant="outline" onClick={() => void suggestions.refetch()}>
+                <RefreshCw aria-hidden="true" />
+                Tentar de novo
+              </Button>
+            }
+          />
+        ) : suggestions.data.length === 0 ? (
+          <EmptyState
+            icon={Sparkles}
+            title="Nenhuma sugestão ainda"
+            description="Leia o texto extraído e registre as métricas que o documento descreve: nome, tipo, direção e, se houver, peso, fórmula e faixas."
+          />
+        ) : (
+          <SuggestionsTable
+            suggestions={suggestions.data}
+            onAccept={onAccept}
+            onReject={onReject}
+            busyId={busyId ?? null}
+          />
+        )}
+      </section>
+    </>
+  );
+}

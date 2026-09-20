@@ -9,6 +9,13 @@
 import { Router } from 'express';
 
 import { API_VERSION } from '../config/version.js';
+import {
+  createManualMetricExtractionProvider,
+  createTextExtractor,
+  type MetricExtractionProvider,
+  type TextExtractor,
+} from '../infrastructure/extraction/index.js';
+import { createSupabaseDocumentStorage } from '../infrastructure/storage/supabase-storage.js';
 import { createRequireAuth, type GetUserByToken, supabaseGetUser } from '../middleware/auth.js';
 import { createResolveTenant } from '../middleware/tenant.js';
 import { createAuthController } from '../modules/auth/controller.js';
@@ -26,6 +33,13 @@ import {
 } from '../modules/contracts/repository.js';
 import { createContractsRouter, createPlansRouter } from '../modules/contracts/routes.js';
 import { createContractsService, createPlansService } from '../modules/contracts/service.js';
+import { createDocumentsController } from '../modules/documents/controller.js';
+import {
+  createDocumentsRepository,
+  type DocumentsRepository,
+} from '../modules/documents/repository.js';
+import { createDocumentsRouter } from '../modules/documents/routes.js';
+import { createDocumentsService } from '../modules/documents/service.js';
 import { createMetricsController } from '../modules/metrics/controller.js';
 import { createMetricsRepository, type MetricsRepository } from '../modules/metrics/repository.js';
 import {
@@ -49,6 +63,7 @@ import { createPortfolioClientsRouter } from '../modules/portfolio-clients/route
 import { createPortfolioClientsService } from '../modules/portfolio-clients/service.js';
 
 import type { DbClient } from '../infrastructure/db/index.js';
+import type { DocumentStorage } from '../infrastructure/storage/document-storage.js';
 import type { SupabaseClients } from '../infrastructure/supabase.js';
 
 export const API_V1_PREFIX = '/api/v1';
@@ -214,6 +229,42 @@ export const ROUTES: readonly RouteDescriptor[] = [
     path: `${API_V1_PREFIX}/contracts/:id`,
     description: 'Edita ou encerra um contrato (owner, admin ou analyst)',
   },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/documents`,
+    description: 'Upload de documento (PDF, DOCX, XLSX, CSV, JSON, MD, TXT; até 10 MB)',
+  },
+  { method: 'GET', path: `${API_V1_PREFIX}/documents`, description: 'Documentos enviados' },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/documents/{id}`,
+    description: 'Documento com URL assinada de download',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/documents/{id}/extract-metrics`,
+    description: 'Extrai o texto do documento e roda o provider de sugestões',
+  },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/documents/{id}/suggestions`,
+    description: 'Sugestões de métrica do documento',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/documents/{id}/suggestions`,
+    description: 'Cria uma sugestão de métrica manual a partir do documento',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/metric-suggestions/{id}/accept`,
+    description: 'Aceita a sugestão e devolve o payload para POST /metrics',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/metric-suggestions/{id}/reject`,
+    description: 'Rejeita a sugestão',
+  },
 ];
 
 export interface ApiV1Dependencies {
@@ -223,6 +274,14 @@ export interface ApiV1Dependencies {
   getUser?: GetUserByToken;
   /** Testes: substitui a persistência de organizações. */
   organizationsRepository?: OrganizationsRepository;
+  /** Testes: substitui a persistência de documentos e sugestões. */
+  documentsRepository?: DocumentsRepository;
+  /** Testes/dev: substitui o Supabase Storage (ex.: createInMemoryDocumentStorage). */
+  documentStorage?: DocumentStorage;
+  /** Substitui o provider de sugestões (padrão: manual — ajuste A5). */
+  metricExtractionProvider?: MetricExtractionProvider;
+  /** Testes: substitui a extração de texto. */
+  textExtractor?: TextExtractor;
   /** Testes: substitui a persistência de clientes, planos e contratos (Etapa 2). */
   portfolioClientsRepository?: PortfolioClientsRepository;
   plansRepository?: PlansRepository;
@@ -327,6 +386,22 @@ export function createApiV1Router(deps: ApiV1Dependencies): Router {
           clients: portfolioClientsRepository,
         }),
       ),
+    }),
+  );
+
+  const documentsService = createDocumentsService({
+    repository: deps.documentsRepository ?? createDocumentsRepository(() => deps.db.getDb()),
+    storage:
+      deps.documentStorage ??
+      createSupabaseDocumentStorage({ getClient: () => deps.supabase.getAdmin() }),
+    textExtractor: deps.textExtractor ?? createTextExtractor(),
+    provider: deps.metricExtractionProvider ?? createManualMetricExtractionProvider(),
+  });
+  router.use(
+    createDocumentsRouter({
+      requireAuth,
+      resolveTenant,
+      controller: createDocumentsController(documentsService),
     }),
   );
 

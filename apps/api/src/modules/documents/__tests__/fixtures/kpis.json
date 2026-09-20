@@ -1,0 +1,10 @@
+{
+  "organizacao": "GlobalSys",
+  "periodicidade": "mensal",
+  "kpis": [
+    { "nome": "Tempo médio de resolução", "unidade": "h", "meta": 8, "direcao": "menor é melhor" },
+    { "nome": "Cumprimento de SLA", "unidade": "%", "meta": 95, "direcao": "maior é melhor" },
+    { "nome": "Reclamações formais", "unidade": "un", "meta": 0, "direcao": "menor é melhor" }
+  ],
+  "faixas": { "normal": 80, "atencao": 60, "risco": 40 }
+}

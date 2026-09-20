@@ -1,0 +1,5 @@
+cliente_id,mes_ref,chamados_abertos,chamados_criticos,pct_sla_cumprido
+C001,2026-06,10,2,92.5
+C001,2026-07,12,3,88.0
+C002,2026-07,4,0,100
+C003,2026-07,7,1,95.2

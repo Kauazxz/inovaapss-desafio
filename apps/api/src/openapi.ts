@@ -503,6 +503,10 @@ export const openapiDocument: OpenAPIV3_1.Document = {
       name: 'metric-models',
       description: 'Modelos de métricas, versões imutáveis e pesos (§31, §32, §41)',
     },
+    {
+      name: 'documents',
+      description: 'Documentos enviados e descoberta de métricas — fluxo manual (§35, §37, A5)',
+    },
   ],
   security: [{ bearerAuth: [] }],
   paths: {
@@ -1126,8 +1130,173 @@ export const openapiDocument: OpenAPIV3_1.Document = {
         },
       },
     },
+    '/api/v1/documents': {
+      post: {
+        tags: ['documents'],
+        summary: 'Upload de documento (owner, admin ou analyst)',
+        operationId: 'uploadDocument',
+        description:
+          'multipart/form-data com o campo `file`. Aceita PDF, DOCX, XLSX, CSV, JSON, MD e TXT (allowlist de MIME + extensão, §45) até 10 MB. O arquivo vai para o bucket privado "documents" do Supabase Storage.',
+        requestBody: {
+          required: true,
+          content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                required: ['file'],
+                properties: { file: { type: 'string', format: 'binary' } },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': jsonResponse('Documento registrado (status uploaded)', 'DocumentEnvelope'),
+          '400': errorResponse('Sem arquivo (FILE_REQUIRED) ou multipart inválido (UPLOAD_ERROR)'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '413': errorResponse('Arquivo acima de 10 MB (FILE_TOO_LARGE)'),
+          '415': errorResponse('Extensão/MIME fora da allowlist (UNSUPPORTED_FILE_TYPE)'),
+        },
+      },
+      get: {
+        tags: ['documents'],
+        summary: 'Documentos enviados (paginado, §61)',
+        operationId: 'listDocuments',
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          {
+            name: 'pageSize',
+            in: 'query',
+            schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+          },
+          { name: 'search', in: 'query', schema: { type: 'string' } },
+          {
+            name: 'sort',
+            in: 'query',
+            schema: { type: 'string', enum: ['createdAt', 'fileName', 'status', 'sizeBytes'] },
+          },
+          { name: 'order', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'] } },
+          { name: 'status', in: 'query', schema: { $ref: '#/components/schemas/DocumentStatus' } },
+        ],
+        responses: {
+          '200': jsonResponse('Página de documentos', 'DocumentPage'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+        },
+      },
+    },
+    '/api/v1/documents/{id}': {
+      get: {
+        tags: ['documents'],
+        summary: 'Documento com URL assinada de download',
+        operationId: 'getDocument',
+        parameters: [{ $ref: '#/components/parameters/DocumentId' }],
+        responses: {
+          '200': jsonResponse(
+            'Metadados e URL válida por poucos minutos',
+            'DocumentDetailEnvelope',
+          ),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+        },
+      },
+    },
+    '/api/v1/documents/{id}/extract-metrics': {
+      post: {
+        tags: ['documents'],
+        summary: 'Extrai o texto e roda o provider de sugestões (owner, admin ou analyst)',
+        operationId: 'extractDocumentMetrics',
+        description:
+          'Extrai o texto conforme o tipo (PDF, DOCX, XLSX, CSV, JSON, MD/TXT), guarda o texto completo no storage e um preview de até 20 kB no banco, marca o documento como `extracted` e chama o MetricExtractionProvider. Nesta fase o provider é o manual (ajuste A5): não gera sugestões; uma pessoa as cria em POST /documents/{id}/suggestions.',
+        parameters: [{ $ref: '#/components/parameters/DocumentId' }],
+        responses: {
+          '200': jsonResponse('Documento atualizado e sugestões geradas', 'ExtractMetricsResult'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '422': errorResponse('Não foi possível ler o arquivo (TEXT_EXTRACTION_FAILED)'),
+        },
+      },
+    },
+    '/api/v1/documents/{id}/suggestions': {
+      get: {
+        tags: ['documents'],
+        summary: 'Sugestões de métrica do documento',
+        operationId: 'listDocumentSuggestions',
+        parameters: [{ $ref: '#/components/parameters/DocumentId' }],
+        responses: {
+          '200': jsonResponse('Sugestões', 'MetricSuggestionList'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+        },
+      },
+      post: {
+        tags: ['documents'],
+        summary: 'Cria uma sugestão manual a partir do documento (owner, admin ou analyst)',
+        operationId: 'createDocumentSuggestion',
+        description:
+          'A fórmula (JSON Logic) passa pela allowlist de operadores do engine (`isSafeRule`); regra insegura responde 400 UNSAFE_FORMULA.',
+        parameters: [{ $ref: '#/components/parameters/DocumentId' }],
+        requestBody: jsonBody('CreateMetricSuggestion'),
+        responses: {
+          '201': jsonResponse('Sugestão criada (status pending)', 'MetricSuggestionEnvelope'),
+          '400': errorResponse(
+            'Dados inválidos (VALIDATION_ERROR) ou fórmula insegura (UNSAFE_FORMULA)',
+          ),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+        },
+      },
+    },
+    '/api/v1/metric-suggestions/{id}/accept': {
+      post: {
+        tags: ['documents'],
+        summary: 'Aceita a sugestão e devolve o payload para POST /metrics',
+        operationId: 'acceptMetricSuggestion',
+        description:
+          'Marca `accepted` com quem revisou e quando. A métrica NÃO é criada aqui: o web leva `metricPayload` para /metrics (state.prefill) e a pessoa confirma lá (§35).',
+        parameters: [{ $ref: '#/components/parameters/SuggestionId' }],
+        responses: {
+          '200': jsonResponse('Sugestão aceita e payload da métrica', 'AcceptSuggestionResult'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+        },
+      },
+    },
+    '/api/v1/metric-suggestions/{id}/reject': {
+      post: {
+        tags: ['documents'],
+        summary: 'Rejeita a sugestão',
+        operationId: 'rejectMetricSuggestion',
+        parameters: [{ $ref: '#/components/parameters/SuggestionId' }],
+        responses: {
+          '200': jsonResponse('Sugestão rejeitada', 'MetricSuggestionEnvelope'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+        },
+      },
+    },
   },
   components: {
+    parameters: {
+      DocumentId: {
+        name: 'id',
+        in: 'path',
+        required: true,
+        schema: { type: 'string', format: 'uuid' },
+      },
+      SuggestionId: {
+        name: 'id',
+        in: 'path',
+        required: true,
+        schema: { type: 'string', format: 'uuid' },
+      },
+    },
     schemas: {
       Error: errorSchema,
       Health: {
@@ -1582,6 +1751,247 @@ export const openapiDocument: OpenAPIV3_1.Document = {
         type: 'object',
         description: 'Ao menos um dos campos. O cliente do contrato não muda.',
         properties: contractWritableProperties,
+      },
+      DocumentStatus: { type: 'string', enum: ['uploaded', 'extracted', 'failed'] },
+      MetricSuggestionStatus: { type: 'string', enum: ['pending', 'accepted', 'rejected'] },
+      UploadedDocument: {
+        type: 'object',
+        required: [
+          'id',
+          'organizationId',
+          'fileName',
+          'mimeType',
+          'kind',
+          'sizeBytes',
+          'status',
+          'uploadedBy',
+          'hasExtractedText',
+          'extractedTextPreview',
+          'extractionError',
+          'extractedAt',
+          'createdAt',
+          'updatedAt',
+        ],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          organizationId: { type: 'string', format: 'uuid' },
+          fileName: { type: 'string', example: 'politica-de-sla.pdf' },
+          mimeType: { type: 'string', example: 'application/pdf' },
+          kind: {
+            type: 'string',
+            enum: ['pdf', 'docx', 'xlsx', 'csv', 'json', 'markdown', 'text'],
+          },
+          sizeBytes: { type: 'integer' },
+          status: { $ref: '#/components/schemas/DocumentStatus' },
+          uploadedBy: { type: 'string', format: 'uuid' },
+          hasExtractedText: { type: 'boolean' },
+          extractedTextPreview: {
+            type: ['string', 'null'],
+            description: 'Primeiros 20 kB do texto extraído.',
+          },
+          extractionError: { type: ['string', 'null'] },
+          extractedAt: { type: ['string', 'null'], format: 'date-time' },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      DocumentEnvelope: {
+        type: 'object',
+        required: ['document'],
+        properties: { document: { $ref: '#/components/schemas/UploadedDocument' } },
+      },
+      DocumentDetailEnvelope: {
+        type: 'object',
+        required: ['document'],
+        properties: {
+          document: {
+            allOf: [
+              { $ref: '#/components/schemas/UploadedDocument' },
+              {
+                type: 'object',
+                required: ['downloadUrl', 'downloadUrlExpiresInSeconds'],
+                properties: {
+                  downloadUrl: { type: 'string', format: 'uri' },
+                  downloadUrlExpiresInSeconds: { type: 'integer', example: 300 },
+                },
+              },
+            ],
+          },
+        },
+      },
+      DocumentPage: {
+        type: 'object',
+        required: ['items', 'page', 'pageSize', 'total'],
+        properties: {
+          items: { type: 'array', items: { $ref: '#/components/schemas/UploadedDocument' } },
+          page: { type: 'integer' },
+          pageSize: { type: 'integer' },
+          total: { type: 'integer' },
+        },
+      },
+      SuggestedThresholds: {
+        type: 'object',
+        description:
+          'Estratégia de normalização e seus campos (METRICS_ENGINE.md §2). Campos extras são aceitos.',
+        properties: {
+          strategy: {
+            type: 'string',
+            enum: [
+              'THRESHOLD_BANDS',
+              'LINEAR_RANGE',
+              'RATIO_TO_TARGET',
+              'BASELINE_DEVIATION',
+              'BOOLEAN_MAP',
+              'SCORE_MAP',
+              'CUSTOM_SAFE_RULE',
+            ],
+          },
+          bands: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['upTo', 'health'],
+              properties: {
+                upTo: { type: ['number', 'null'] },
+                health: { type: 'number', minimum: 0, maximum: 100 },
+              },
+            },
+          },
+          min: { type: 'number' },
+          max: { type: 'number' },
+          target: { type: 'number' },
+        },
+        additionalProperties: true,
+      },
+      MetricSuggestion: {
+        type: 'object',
+        required: [
+          'id',
+          'uploadedDocumentId',
+          'organizationId',
+          'suggestedName',
+          'suggestedType',
+          'suggestedDirection',
+          'status',
+          'provider',
+          'createdAt',
+          'updatedAt',
+        ],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          uploadedDocumentId: { type: 'string', format: 'uuid' },
+          organizationId: { type: 'string', format: 'uuid' },
+          suggestedName: { type: 'string', example: 'Tempo médio de resolução' },
+          description: { type: ['string', 'null'] },
+          suggestedType: { type: 'string', enum: METRIC_TYPES },
+          suggestedDirection: { type: 'string', enum: METRIC_DIRECTIONS },
+          unit: { type: ['string', 'null'], example: 'h' },
+          suggestedWeight: { type: ['number', 'null'], minimum: 0, maximum: 1 },
+          suggestedFormula: { type: ['object', 'null'], description: 'Regra JSON Logic segura.' },
+          suggestedThresholds: {
+            oneOf: [{ $ref: '#/components/schemas/SuggestedThresholds' }, { type: 'null' }],
+          },
+          confidence: { type: ['number', 'null'], minimum: 0, maximum: 1 },
+          sourceExcerpt: { type: ['string', 'null'] },
+          provider: { type: 'string', example: 'manual' },
+          status: { $ref: '#/components/schemas/MetricSuggestionStatus' },
+          createdBy: { type: ['string', 'null'], format: 'uuid' },
+          reviewedBy: { type: ['string', 'null'], format: 'uuid' },
+          reviewedAt: { type: ['string', 'null'], format: 'date-time' },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      MetricSuggestionEnvelope: {
+        type: 'object',
+        required: ['suggestion'],
+        properties: { suggestion: { $ref: '#/components/schemas/MetricSuggestion' } },
+      },
+      MetricSuggestionList: {
+        type: 'object',
+        required: ['items', 'total'],
+        properties: {
+          items: { type: 'array', items: { $ref: '#/components/schemas/MetricSuggestion' } },
+          total: { type: 'integer' },
+        },
+      },
+      CreateMetricSuggestion: {
+        type: 'object',
+        required: ['suggestedName', 'suggestedType', 'suggestedDirection'],
+        properties: {
+          suggestedName: { type: 'string', minLength: 2, maxLength: 120 },
+          description: { type: 'string', maxLength: 1000 },
+          suggestedType: { type: 'string', enum: METRIC_TYPES },
+          suggestedDirection: { type: 'string', enum: METRIC_DIRECTIONS },
+          unit: { type: 'string', maxLength: 24 },
+          suggestedWeight: { type: 'number', minimum: 0, maximum: 1 },
+          suggestedFormula: {
+            type: 'object',
+            description: 'Regra JSON Logic (um operador na raiz).',
+          },
+          suggestedThresholds: { $ref: '#/components/schemas/SuggestedThresholds' },
+          sourceExcerpt: { type: 'string', maxLength: 2000 },
+        },
+      },
+      ExtractMetricsResult: {
+        type: 'object',
+        required: ['document', 'suggestions', 'extraction'],
+        properties: {
+          document: { $ref: '#/components/schemas/UploadedDocument' },
+          suggestions: { type: 'array', items: { $ref: '#/components/schemas/MetricSuggestion' } },
+          extraction: {
+            type: 'object',
+            required: ['provider', 'chars', 'truncated'],
+            properties: {
+              provider: { type: 'string', example: 'manual' },
+              chars: { type: 'integer' },
+              truncated: { type: 'boolean' },
+              pages: { type: 'integer' },
+              sheets: { type: 'integer' },
+              rows: { type: 'integer' },
+            },
+          },
+        },
+      },
+      MetricPrefill: {
+        type: 'object',
+        description:
+          'Payload pronto para POST /metrics (Etapa 3). O web leva em state.prefill ao navegar para /metrics.',
+        required: ['name', 'slug', 'metricType', 'direction', 'sourceType', 'isActive', 'origin'],
+        properties: {
+          name: { type: 'string' },
+          slug: { type: 'string' },
+          description: { type: ['string', 'null'] },
+          category: { type: 'string' },
+          metricType: { type: 'string', enum: METRIC_TYPES },
+          unit: { type: ['string', 'null'] },
+          direction: { type: 'string', enum: METRIC_DIRECTIONS },
+          sourceType: { type: 'string', enum: ['DOCUMENT'] },
+          periodicity: { type: 'string', enum: ['MONTHLY'] },
+          weight: { type: ['number', 'null'] },
+          normalization: {
+            oneOf: [{ $ref: '#/components/schemas/SuggestedThresholds' }, { type: 'null' }],
+          },
+          formula: { type: ['object', 'null'] },
+          isActive: { type: 'boolean', enum: [false] },
+          origin: {
+            type: 'object',
+            required: ['documentId', 'suggestionId', 'fileName'],
+            properties: {
+              documentId: { type: 'string', format: 'uuid' },
+              suggestionId: { type: 'string', format: 'uuid' },
+              fileName: { type: ['string', 'null'] },
+            },
+          },
+        },
+      },
+      AcceptSuggestionResult: {
+        type: 'object',
+        required: ['suggestion', 'metricPayload'],
+        properties: {
+          suggestion: { $ref: '#/components/schemas/MetricSuggestion' },
+          metricPayload: { $ref: '#/components/schemas/MetricPrefill' },
+        },
       },
       ApiIndex: {
         type: 'object',
