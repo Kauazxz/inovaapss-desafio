@@ -3,6 +3,7 @@ import { CircleAlert, Inbox, RefreshCw } from 'lucide-react';
 import { EmptyState } from '@/components/empty-state';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ImportDataButton } from '@/features/import/ImportDataButton';
 
 /** Estado de carregamento inicial de uma aba (§57): só na primeira carga; recargas mantêm o anterior. */
 export function DashboardLoading({ label }: { label: string }) {
@@ -67,6 +68,7 @@ export function DashboardEmpty({
       icon={Inbox}
       title="Ainda não há clientes com score"
       description="Importe os dados da carteira em Importar dados; o dashboard passa a mostrar quem está em risco assim que o primeiro cálculo terminar."
+      action={<ImportDataButton variant="default" />}
     />
   );
 }

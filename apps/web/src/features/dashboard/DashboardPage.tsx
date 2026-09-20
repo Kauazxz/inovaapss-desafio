@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ImportDataButton } from '@/features/import/ImportDataButton';
 
 import { DASHBOARD_DATA_SOURCE } from './api';
 import { DashboardLoading } from './DashboardStates';
@@ -29,6 +30,7 @@ export function DashboardPage() {
         {DASHBOARD_DATA_SOURCE === 'mock' ? (
           <Badge variant="outline">Dados de exemplo (mock)</Badge>
         ) : null}
+        <ImportDataButton />
       </PageHeader>
 
       <Tabs defaultValue="risk">

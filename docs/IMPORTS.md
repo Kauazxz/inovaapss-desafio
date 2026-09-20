@@ -1,10 +1,14 @@
 # Importação de dados — `@inovaapss/importer`
 
 Como um arquivo XLSX, CSV ou JSON vira linhas validadas de clientes, atendimento mensal, NPS e
-situação de clientes ([SPEC.md](SPEC.md) §34, §44, ajuste A4). Este documento cobre o **núcleo
-puro** (`packages/importer`): leitura, detecção de colunas, mapeamento, coerção, validação e
-relatório. Ele não conhece banco nem HTTP — a API da Etapa 7 (`apps/api/src/modules/imports/`)
-chama estas funções, guarda `import_jobs` / `import_row_errors` e dispara o recálculo.
+situação de clientes ([SPEC.md](SPEC.md) §34, §44, ajuste A4), e daí em clientes, contratos e
+valores de métrica no banco.
+
+As seções 1 a 6 cobrem o **núcleo puro** (`packages/importer`): leitura, detecção de colunas,
+mapeamento, coerção, validação e relatório. Ele não conhece banco nem HTTP. As seções 7 a 10
+cobrem a **API** (`apps/api/src/modules/imports/`), que guarda `import_jobs` /
+`import_row_errors`, grava os dados e dispara o recálculo, e a **tela** `/import`
+(`apps/web/src/features/import/`), por onde a pessoa passa.
 
 ---
 
@@ -214,30 +218,122 @@ planilha (80 clientes somando R$ 982.964, 1.295 linhas mensais em 18 períodos d
 2026-06, 422 pesquisas com 338 respondidas, 22 cancelados, relatório sem erros) e é pulado com
 aviso se o arquivo não estiver no checkout.
 
-## 7. Como a Etapa 7 (API e web) usa o pacote
+## 7. A API: rotas e o que cada uma faz
 
-| Passo do fluxo | Rota (§37)                  | O que faz com o pacote                                                                                                                                                                                                                                                                                                    |
-| -------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Upload         | `POST /imports`             | Valida MIME (`ALLOWED_UPLOAD_MIME_TYPES`) e tamanho, guarda o arquivo no Storage, cria `import_jobs` (`status = uploaded`, `file_type`), chama `readTabular` e responde com as tabelas encontradas (`name`, `headers`, amostra de linhas) e `detectDataset` para cada uma.                                                |
-| Mapeamento     | `GET /imports/:id`          | Devolve `suggestMapping(headers, dataset)`; a interface (`apps/web/src/features/import/`) mostra campo × coluna com a confiança e deixa o usuário trocar. O mapeamento final vai em `mapping_json`.                                                                                                                       |
-| Preview        | `POST /imports/:id/preview` | `importDataset(dataset, rows, mapping, headers)`; responde `report` + primeiras linhas válidas. Nada é gravado além de `summary_json`.                                                                                                                                                                                    |
-| Confirmação    | `POST /imports/:id/confirm` | Repete a validação (nunca confia no preview), grava `import_row_errors` a partir de `report.errors` (`row_number`, `error_code`, `message`, `raw_data_json`), faz upsert pela chave natural em `portfolio_clients` / `metric_values` / `contracts` conforme o dataset, marca `status = done` e dispara o recálculo (§62). |
-| Erros          | `GET /imports/:id`          | `summary_json` = `ImportReport` sem `errors` + contagem; a lista paginada vem de `import_row_errors` (§61).                                                                                                                                                                                                               |
+Tudo abaixo de `/api/v1/imports`. Ler é para qualquer membro; enviar, conferir e importar exigem
+**owner, admin ou analyst** (viewer só acompanha o histórico).
 
-Mapeamento para as tabelas (§36): `clients` → `portfolio_clients` (`external_code`, `name` ou
-código, `segment`, `size`) + `contracts`/`plans` (`plan`, `monthly_value`,
-`contracted_sla_hours × 60` em `sla_policies.resolution_minutes`, `contract_start`);
-`monthly_metrics` → uma linha em `metric_values` por campo não nulo, com `period = "AAAA-MM"`,
-`source = CSV | XLSX | JSON` e o `metric_definition_id` do preset (chave do campo = `key` da
-métrica); `nps` → `metric_values` da métrica `nps` com `value = score` e `extra = { answered,
-classification }`; `client_status` → `portfolio_clients.status` e `cancelled_at` (base da
-calibração, §33). Tudo é `upsert` pela chave natural para reimportações serem idempotentes.
+| Passo do fluxo | Rota                        | O que faz                                                                                                                                                                                                                                                                                                                    |
+| -------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Upload         | `POST /imports`             | multipart, campo `file`. Confere extensão + MIME + os primeiros bytes (§45) e o limite de **20 MB**, lê o arquivo com `readTabular`, guarda no bucket privado `imports` do Supabase Storage e cria o `import_jobs` (`status = uploaded`). Responde com as tabelas, os cabeçalhos, uma amostra e `detectDataset` de cada uma. |
+| Histórico      | `GET /imports`              | Importações anteriores, da mais recente para a mais antiga, paginadas (§61).                                                                                                                                                                                                                                                 |
+| Detalhe        | `GET /imports/:id`          | O job, as tabelas relidas do arquivo e os erros por linha guardados em `import_row_errors`.                                                                                                                                                                                                                                  |
+| Preview        | `POST /imports/:id/preview` | Escolhe o mapeamento de cada tabela, roda `importDataset` e responde válidas, inválidas, duplicadas, campos ausentes e os erros por linha. Grava só `mapping_json` e `summary_json` (`status = previewed`).                                                                                                                  |
+| Confirmação    | `POST /imports/:id/confirm` | **Relê o arquivo do storage e revalida**: o preview é informação, não autorização. Grava os dados, registra os erros recusados e dispara o recálculo (`status = confirmed`).                                                                                                                                                 |
 
-Segurança (§45): o pacote não executa nada do arquivo (sem fórmulas, sem `eval`); o SheetJS é usado
-só para ler células. Limite de linhas por arquivo e tempo de processamento ficam na API.
+O corpo de `preview` e de `confirm` é o mesmo:
 
-## 8. Testes
+```jsonc
+{
+  "sheets": [
+    { "sheet": "clientes", "dataset": "clients", "mapping": { "external_code": "cliente_id" } },
+  ],
+  "recalculate": true, // só em confirm; false grava sem refazer os scores
+}
+```
 
-`pnpm --filter @inovaapss/importer test` — Vitest com cobertura v8 (limiares 90 % linhas /
-funções / statements, 85 % branches). Fixtures pequenas geradas no próprio teste (CSV, JSON, XLSX
-via `writeWorkbook`) mais a planilha real do desafio quando presente.
+Sem `sheets`, a API decide sozinha, nesta ordem:
+
+1. **Preset da planilha do desafio** — o nome da aba casa com `GLOBALSYS_SHEET_PRESETS` (§6) e
+   todos os cabeçalhos do preset existem: usa o mapeamento fixo (`mappingSource: "preset"`).
+2. **Detecção pelos cabeçalhos** — `detectDataset` com confiança ≥ 0,5 (`"suggested"`).
+3. **Ignora** — a tabela entra em `skipped` com o motivo. É o que acontece com as abas `Leia-me`
+   e `dicionario`: são texto, não dado.
+
+Na confirmação sem `sheets`, vale o mapeamento que o preview guardou em `mapping_json`.
+
+### O que a confirmação grava (§36)
+
+| Dataset           | Onde vai                                                                                                                                                                                                        |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `clients`         | `plans` (os que faltarem nascem), `portfolio_clients` (`external_code`, `name` ou o código, `segment`, `size`) e um `contracts` por cliente (`plan_id`, `monthly_value`, `contracted_sla_hours`, `start_date`). |
+| `client_status`   | `portfolio_clients.status`; cancelado encerra o contrato no **último dia do mês** da saída (`end_date`), que é o que a calibração usa (§33). Código sem cliente cadastrado vira aviso, não erro.                |
+| `monthly_metrics` | Uma linha em `metric_values` por métrica, resolvendo o cliente por `external_code` e a métrica por `slug`. Além dos campos diretos, grava as duas taxas derivadas (reabertura e reuniões perdidas).             |
+| `nps`             | `metric_values` da métrica `nps_dissatisfaction`, com `answered` numa coluna própria.                                                                                                                           |
+
+Campo → slug da métrica: `open_tickets`, `critical_tickets`, `avg_resolution_hours` →
+`resolution_vs_sla`, `platform_usage_pct` → `platform_usage`, `sla_compliance_pct` →
+`sla_compliance`, `formal_complaints`, `payment_delay_days` → `payment_delay`, mais
+`reopened_tickets` (reabertos ÷ abertos) e `missed_meetings` ((previstas − realizadas) ÷
+previstas). Métrica que a organização não tem cadastrada é ignorada e aparece em `skipped`.
+
+### As duas regras que não podem se perder
+
+Valem aqui e no seed da planilha, e estão travadas por teste em
+`apps/api/src/modules/imports/__tests__/ingest.test.ts`:
+
+- **Reuniões previstas = 0 → valor NULO** (§15 de [DEFINICOES_METRICAS.md](DEFINICOES_METRICAS.md)),
+  nunca 0 %. Zero por cento diria "não perdeu nenhuma reunião"; a verdade é que não havia reunião
+  marcada. Vale para qualquer taxa com divisor zero.
+- **NPS não respondido → valor NULO com `answered = 'false'`** (§16), nunca nota zero. Zero é a
+  pior avaliação possível; silêncio não é avaliação. Se a planilha trouxer nota com
+  `respondeu = 0`, a nota é descartada.
+
+## 8. A tela `/import`
+
+Quatro passos, com volta em qualquer um deles:
+
+1. **Arquivo** — arrastar ou escolher. A allowlist e o limite de 20 MB são conferidos no
+   navegador antes de subir, com a mesma função da API (`resolveImportFileType`).
+2. **Colunas** — as tabelas do arquivo com o conjunto de dados que a API detectou; dá para trocar
+   ou marcar "não importar".
+3. **Conferência** — as quatro contagens da §34, os campos obrigatórios sem coluna, as tabelas
+   ignoradas, os erros por linha e a tabela **coluna → campo** com a confiança de cada escolha e
+   o porquê ("sinônimo conhecido", "planilha do desafio"…). Corrigir uma coluna e revalidar não
+   custa nova importação. Obrigatório sem coluna **bloqueia** o botão de importar.
+4. **Resultado** — o que foi gravado, o que ficou de fora e links para o dashboard e para a lista
+   de clientes.
+
+Abaixo, sempre visível, o **histórico**: data, arquivo, tamanho, contagens e situação de cada
+importação anterior.
+
+O atalho **Importar dados** fica no topo do dashboard e no estado vazio dele — é onde a pergunta
+"como coloco meus dados aqui?" costuma aparecer.
+
+## 9. Reimportar sem duplicar
+
+Reimportar o mesmo arquivo (ou uma versão corrigida dele) **atualiza**; não duplica. Tudo é
+resolvido pela chave natural:
+
+| O quê          | Chave                                 | Reimportar faz                                   |
+| -------------- | ------------------------------------- | ------------------------------------------------ |
+| Plano          | nome, dentro da organização           | reaproveita o existente                          |
+| Cliente        | `external_code`                       | atualiza nome, segmento, porte e situação        |
+| Contrato       | um por cliente                        | atualiza plano, valor, SLA e datas               |
+| Valor mensal   | cliente + métrica + início do período | corrige o valor no lugar                         |
+| Erros da linha | o próprio job                         | os erros antigos do job são trocados pelos novos |
+
+**Nada é apagado.** Um período que não veio no arquivo continua no banco: importar a planilha de
+um mês não pode fazer os outros meses sumirem. Por isso, para corrigir um mês, basta reenviar
+aquele mês.
+
+Fluxo recomendado quando o preview acusa erros: corrija a planilha, envie o arquivo corrigido e
+confirme. As linhas boas que já tinham entrado serão atualizadas com o mesmo conteúdo, e as que
+faltavam entram. Para importar vários arquivos em sequência, mande `recalculate: false` em todos
+menos no último — o recálculo da carteira inteira roda uma vez só.
+
+## 10. Testes
+
+- `pnpm --filter @inovaapss/importer test` — o núcleo puro. Vitest com cobertura v8 (limiares
+  90 % linhas / funções / statements, 85 % branches). Fixtures pequenas geradas no próprio teste
+  (CSV, JSON, XLSX via `writeWorkbook`) mais a planilha real do desafio quando presente.
+- `pnpm --filter @inovaapss/api test` — as rotas com repositórios em memória e uma planilha em
+  miniatura montada no teste, com os mesmos nomes de aba e coluna do desafio (é assim que o
+  preset é exercitado); as regras de N/A de reuniões e NPS; a recusa de MIME e de tamanho; o
+  isolamento entre organizações; e a integração com o Supabase real, que fica **skipped** com
+  aviso quando faltam as variáveis de ambiente ou a tabela `import_jobs`.
+- `pnpm --filter @inovaapss/web test` — a tela: caminho completo, arquivo recusado no navegador
+  sem chamar a API, campo obrigatório sem coluna bloqueando a importação e o histórico.
+
+Segurança (§45): nada do arquivo é executado (sem fórmulas, sem `eval`); o SheetJS só lê células.
+O teto de linhas por tabela (`IMPORT_MAX_ROWS_PER_SHEET`) e o limite de 20 MB ficam na API.

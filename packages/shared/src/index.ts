@@ -11,4 +11,5 @@ export * from './dashboard/index.js';
 export * from './metrics/index.js';
 export * from './client-health/index.js';
 export * from './alerts/index.js';
+export * from './imports/index.js';
 export * from './calibration/index.js';

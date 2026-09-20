@@ -8,6 +8,8 @@
  */
 import { Router } from 'express';
 
+import type { ImportRecalculationDto } from '@inovaapss/shared';
+
 import { API_VERSION } from '../config/version.js';
 import {
   createManualMetricExtractionProvider,
@@ -55,6 +57,16 @@ import {
 } from '../modules/documents/repository.js';
 import { createDocumentsRouter } from '../modules/documents/routes.js';
 import { createDocumentsService } from '../modules/documents/service.js';
+import { createImportsController } from '../modules/imports/controller.js';
+import {
+  createImportIngestRepository,
+  type ImportIngestRepository,
+} from '../modules/imports/ingest-repository.js';
+import { createRecalculateAfterImport } from '../modules/imports/recalculate.js';
+import { createImportsRepository, type ImportsRepository } from '../modules/imports/repository.js';
+import { createImportsRouter } from '../modules/imports/routes.js';
+import { createImportsService } from '../modules/imports/service.js';
+import { IMPORTS_BUCKET } from '../modules/imports/storage.js';
 import { createMetricsController } from '../modules/metrics/controller.js';
 import { createMetricsRepository, type MetricsRepository } from '../modules/metrics/repository.js';
 import {
@@ -352,6 +364,31 @@ export const ROUTES: readonly RouteDescriptor[] = [
     path: `${API_V1_PREFIX}/calibration/runs/:id/apply-suggestions`,
     description: 'Cria um rascunho de versão com os pesos aceitos; a ativa não muda (owner/admin)',
   },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/imports`,
+    description: 'Envia uma planilha ou arquivo de dados (XLSX, CSV ou JSON; até 20 MB)',
+  },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/imports`,
+    description: 'Histórico de importações',
+  },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/imports/{id}`,
+    description: 'Importação com as tabelas do arquivo e os erros por linha',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/imports/{id}/preview`,
+    description: 'Mapeia as colunas e valida: válidas, inválidas, duplicadas e campos ausentes',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/imports/{id}/confirm`,
+    description: 'Grava clientes, contratos e valores e recalcula a carteira',
+  },
 ];
 
 export interface ApiV1Dependencies {
@@ -377,6 +414,14 @@ export interface ApiV1Dependencies {
   metricsRepository?: MetricsRepository;
   /** Testes: substitui a leitura do histórico e das execuções de calibração. */
   calibrationRepository?: CalibrationRepository;
+  /** Testes: substitui a persistência de import_jobs / import_row_errors. */
+  importsRepository?: ImportsRepository;
+  /** Testes: substitui a gravação de clientes, contratos e valores vinda da importação. */
+  importIngestRepository?: ImportIngestRepository;
+  /** Testes/dev: substitui o Supabase Storage do bucket "imports". */
+  importStorage?: DocumentStorage;
+  /** Testes: substitui o recálculo disparado ao confirmar uma importação. */
+  importRecalculate?: (organizationId: string) => Promise<ImportRecalculationDto | null>;
   /** Variáveis para os serviços que dependem de configuração (e-mail, URL do painel). */
   env?: Pick<ApiEnv, 'RESEND_API_KEY' | 'EMAIL_FROM' | 'WEB_BASE_URL'>;
   /** Testes: substitui o envio de e-mail. */
@@ -539,6 +584,29 @@ export function createApiV1Router(deps: ApiV1Dependencies): Router {
       requireAuth,
       resolveTenant,
       controller: createDocumentsController(documentsService),
+    }),
+  );
+
+  // Etapa 7 — importação de dados (§34). O bucket é outro (privado "imports") e o limite é
+  // maior que o dos documentos, por isso o storage é uma instância própria.
+  router.use(
+    '/imports',
+    createImportsRouter({
+      requireAuth,
+      resolveTenant,
+      controller: createImportsController(
+        createImportsService({
+          repository: deps.importsRepository ?? createImportsRepository(getDb),
+          ingest: deps.importIngestRepository ?? createImportIngestRepository(getDb),
+          storage:
+            deps.importStorage ??
+            createSupabaseDocumentStorage({
+              getClient: () => deps.supabase.getAdmin(),
+              bucket: IMPORTS_BUCKET,
+            }),
+          recalculate: deps.importRecalculate ?? createRecalculateAfterImport(getDb),
+        }),
+      ),
     }),
   );
 

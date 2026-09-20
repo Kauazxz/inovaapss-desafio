@@ -2,6 +2,13 @@
  * Documento OpenAPI 3.1 escrito à mão (objeto tipado, sem gerador).
  * Cada módulo acrescenta os seus `paths` e `components.schemas` aqui quando registra rotas.
  */
+import {
+  IMPORT_DATASET_KEYS,
+  IMPORT_FILE_TYPES,
+  IMPORT_JOB_STATUSES,
+  IMPORT_MAPPING_SOURCES,
+} from '@inovaapss/shared';
+
 import { API_VERSION } from './config/version.js';
 
 import type { OpenAPIV3_1 } from 'openapi-types';
@@ -510,6 +517,10 @@ export const openapiDocument: OpenAPIV3_1.Document = {
     {
       name: 'calibration',
       description: 'Backtest com os cancelamentos reais e sugestão assistida de pesos (§26, §33)',
+    },
+    {
+      name: 'imports',
+      description: 'Importação de dados: XLSX, CSV e JSON (§34, §36, §37, A4)',
     },
   ],
   security: [{ bearerAuth: [] }],
@@ -1361,6 +1372,127 @@ export const openapiDocument: OpenAPIV3_1.Document = {
         },
       },
     },
+    '/api/v1/imports': {
+      post: {
+        tags: ['imports'],
+        summary: 'Envia um arquivo de dados (owner, admin ou analyst)',
+        operationId: 'uploadImport',
+        description:
+          'multipart/form-data com o campo `file`. Aceita XLSX, CSV e JSON (allowlist de MIME + extensão, §45) até 20 MB. O arquivo vai para o bucket privado "imports" do Supabase Storage e a resposta já traz as tabelas encontradas, os cabeçalhos, uma amostra e o conjunto de dados provável de cada uma.',
+        requestBody: {
+          required: true,
+          content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                required: ['file'],
+                properties: { file: { type: 'string', format: 'binary' } },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': jsonResponse('Importação registrada e arquivo lido', 'ImportUpload'),
+          '400': errorResponse('Sem arquivo (FILE_REQUIRED) ou multipart inválido (UPLOAD_ERROR)'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '413': errorResponse('Arquivo acima de 20 MB (FILE_TOO_LARGE)'),
+          '415': errorResponse('Extensão/MIME fora da allowlist (UNSUPPORTED_FILE_TYPE)'),
+          '422': errorResponse('Arquivo ilegível ou sem tabelas (IMPORT_FILE_UNREADABLE)'),
+        },
+      },
+      get: {
+        tags: ['imports'],
+        summary: 'Histórico de importações (paginado, §61)',
+        operationId: 'listImports',
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          {
+            name: 'pageSize',
+            in: 'query',
+            schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+          },
+          { name: 'status', in: 'query', schema: { $ref: '#/components/schemas/ImportJobStatus' } },
+        ],
+        responses: {
+          '200': jsonResponse('Página do histórico', 'ImportJobPage'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+        },
+      },
+    },
+    '/api/v1/imports/{id}': {
+      get: {
+        tags: ['imports'],
+        summary: 'Importação com as tabelas do arquivo e os erros por linha',
+        operationId: 'getImport',
+        parameters: [
+          { $ref: '#/components/parameters/ImportId' },
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+        ],
+        responses: {
+          '200': jsonResponse('Importação, tabelas e erros', 'ImportJobDetail'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+        },
+      },
+    },
+    '/api/v1/imports/{id}/preview': {
+      post: {
+        tags: ['imports'],
+        summary: 'Mapeia as colunas e valida sem gravar (owner, admin ou analyst)',
+        operationId: 'previewImport',
+        description:
+          'Relê o arquivo do storage, escolhe o mapeamento de cada tabela (preset da planilha do desafio quando os cabeçalhos casam, senão sugestão pelos cabeçalhos, senão o que veio no corpo) e devolve linhas válidas, inválidas, duplicadas, campos ausentes e os erros por linha (§34). Nada é gravado além do mapeamento e do resumo no próprio job.',
+        parameters: [{ $ref: '#/components/parameters/ImportId' }],
+        requestBody: {
+          required: false,
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/ImportSelection' } },
+          },
+        },
+        responses: {
+          '200': jsonResponse('Prévia com as contagens e os erros', 'ImportPreview'),
+          '400': errorResponse('Tabela inexistente no arquivo (IMPORT_SHEET_NOT_FOUND)'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '422': errorResponse(
+            'Arquivo ilegível (IMPORT_FILE_UNREADABLE) ou nenhuma tabela reconhecida (IMPORT_NO_DATASET)',
+          ),
+        },
+      },
+    },
+    '/api/v1/imports/{id}/confirm': {
+      post: {
+        tags: ['imports'],
+        summary: 'Grava os dados e recalcula a carteira (owner, admin ou analyst)',
+        operationId: 'confirmImport',
+        description:
+          'Relê o arquivo e revalida (o preview é informação, não autorização). Cria os planos que faltam, grava clientes, contratos e situação pela chave natural, grava os valores mensais e de NPS em metric_values e registra os erros recusados em import_row_errors. Ao final dispara o recálculo (§62), a menos que `recalculate` venha false. Reimportar o mesmo arquivo atualiza em vez de duplicar.',
+        parameters: [{ $ref: '#/components/parameters/ImportId' }],
+        requestBody: {
+          required: false,
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/ImportConfirm' } },
+          },
+        },
+        responses: {
+          '200': jsonResponse(
+            'O que foi gravado e o resultado do recálculo',
+            'ImportConfirmResult',
+          ),
+          '400': errorResponse('Tabela inexistente no arquivo (IMPORT_SHEET_NOT_FOUND)'),
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '422': errorResponse(
+            'Arquivo ilegível (IMPORT_FILE_UNREADABLE) ou nenhuma tabela selecionada (IMPORT_NO_DATASET)',
+          ),
+        },
+      },
+    },
   },
   components: {
     parameters: {
@@ -1382,9 +1514,262 @@ export const openapiDocument: OpenAPIV3_1.Document = {
         required: true,
         schema: { type: 'string', format: 'uuid' },
       },
+      ImportId: {
+        name: 'id',
+        in: 'path',
+        required: true,
+        schema: { type: 'string', format: 'uuid' },
+      },
     },
     schemas: {
       Error: errorSchema,
+      ImportJobStatus: { type: 'string', enum: [...IMPORT_JOB_STATUSES] },
+      ImportDataset: { type: 'string', enum: [...IMPORT_DATASET_KEYS] },
+      ImportCounts: {
+        type: 'object',
+        required: ['total', 'valid', 'invalid', 'duplicates', 'missingFields'],
+        properties: {
+          total: { type: 'integer', description: 'Linhas de dados lidas' },
+          valid: { type: 'integer' },
+          invalid: { type: 'integer' },
+          duplicates: {
+            type: 'integer',
+            description: 'Chave natural repetida; a primeira ocorrência fica',
+          },
+          missingFields: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Campos obrigatórios sem coluna mapeada',
+          },
+        },
+      },
+      ImportRowError: {
+        type: 'object',
+        required: ['row', 'sheet', 'dataset', 'field', 'code', 'message'],
+        properties: {
+          row: { type: 'integer', description: '1 = primeira linha depois do cabeçalho' },
+          sheet: { type: 'string' },
+          dataset: { $ref: '#/components/schemas/ImportDataset' },
+          field: { type: ['string', 'null'] },
+          code: { type: 'string', example: 'MISSING_REQUIRED' },
+          message: { type: 'string' },
+        },
+      },
+      ImportJob: {
+        type: 'object',
+        required: [
+          'id',
+          'organizationId',
+          'fileName',
+          'fileType',
+          'sizeBytes',
+          'status',
+          'createdBy',
+          'createdAt',
+        ],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          organizationId: { type: 'string', format: 'uuid' },
+          fileName: { type: 'string', example: 'INOVAAPPS_base_de_dados.xlsx' },
+          fileType: { type: 'string', enum: [...IMPORT_FILE_TYPES] },
+          sizeBytes: { type: 'integer' },
+          status: { $ref: '#/components/schemas/ImportJobStatus' },
+          mapping: { type: ['array', 'null'], items: { type: 'object' } },
+          summary: { type: ['object', 'null'], additionalProperties: true },
+          error: { type: ['string', 'null'] },
+          createdBy: { type: 'string', format: 'uuid' },
+          createdAt: { type: 'string', format: 'date-time' },
+          finishedAt: { type: ['string', 'null'], format: 'date-time' },
+        },
+      },
+      ImportSheet: {
+        type: 'object',
+        required: [
+          'name',
+          'headers',
+          'rowCount',
+          'sample',
+          'detectedDataset',
+          'detectionConfidence',
+        ],
+        properties: {
+          name: { type: 'string', description: 'Aba do XLSX, `csv` ou a chave do JSON' },
+          headers: { type: 'array', items: { type: 'string' } },
+          rowCount: { type: 'integer' },
+          sample: { type: 'array', items: { type: 'object', additionalProperties: true } },
+          detectedDataset: {
+            oneOf: [{ $ref: '#/components/schemas/ImportDataset' }, { type: 'null' }],
+          },
+          detectionConfidence: { type: 'number', minimum: 0, maximum: 1 },
+        },
+      },
+      ImportUpload: {
+        type: 'object',
+        required: ['job', 'sheets'],
+        properties: {
+          job: { $ref: '#/components/schemas/ImportJob' },
+          sheets: { type: 'array', items: { $ref: '#/components/schemas/ImportSheet' } },
+        },
+      },
+      ImportFieldMapping: {
+        type: 'object',
+        required: ['field', 'label', 'required', 'type', 'header', 'confidence', 'reason'],
+        properties: {
+          field: { type: 'string', example: 'external_code' },
+          label: { type: 'string', example: 'Código do cliente' },
+          required: { type: 'boolean' },
+          type: {
+            type: 'string',
+            enum: ['text', 'integer', 'number', 'period', 'date', 'boolean', 'enum'],
+          },
+          description: { type: ['string', 'null'] },
+          header: { type: ['string', 'null'], description: 'Coluna do arquivo; null = sem coluna' },
+          confidence: { type: 'number', minimum: 0, maximum: 1 },
+          reason: {
+            type: 'string',
+            enum: ['exact', 'synonym', 'partial', 'tokens', 'none', 'preset', 'manual'],
+          },
+        },
+      },
+      ImportSheetPreview: {
+        type: 'object',
+        required: [
+          'sheet',
+          'dataset',
+          'mapping',
+          'mappingSource',
+          'fields',
+          'unmappedHeaders',
+          'counts',
+          'sample',
+          'errors',
+        ],
+        properties: {
+          sheet: { type: 'string' },
+          dataset: { $ref: '#/components/schemas/ImportDataset' },
+          mapping: { type: 'object', additionalProperties: { type: ['string', 'null'] } },
+          mappingSource: { type: 'string', enum: [...IMPORT_MAPPING_SOURCES] },
+          fields: { type: 'array', items: { $ref: '#/components/schemas/ImportFieldMapping' } },
+          unmappedHeaders: { type: 'array', items: { type: 'string' } },
+          counts: { $ref: '#/components/schemas/ImportCounts' },
+          sample: { type: 'array', items: { type: 'object', additionalProperties: true } },
+          errors: { type: 'array', items: { $ref: '#/components/schemas/ImportRowError' } },
+        },
+      },
+      ImportPreview: {
+        type: 'object',
+        required: ['job', 'sheets', 'skipped', 'counts', 'errorCount'],
+        properties: {
+          job: { $ref: '#/components/schemas/ImportJob' },
+          sheets: { type: 'array', items: { $ref: '#/components/schemas/ImportSheetPreview' } },
+          skipped: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['sheet', 'reason'],
+              properties: { sheet: { type: 'string' }, reason: { type: 'string' } },
+            },
+          },
+          counts: { $ref: '#/components/schemas/ImportCounts' },
+          errorCount: { type: 'integer', description: 'Total; cada tabela mostra os primeiros' },
+        },
+      },
+      ImportSelection: {
+        type: 'object',
+        description: 'Sem `sheets`, a API detecta as tabelas e sugere o mapeamento.',
+        properties: {
+          sheets: {
+            type: 'array',
+            maxItems: 20,
+            items: {
+              type: 'object',
+              required: ['sheet', 'dataset'],
+              properties: {
+                sheet: { type: 'string' },
+                dataset: { $ref: '#/components/schemas/ImportDataset' },
+                mapping: { type: 'object', additionalProperties: { type: ['string', 'null'] } },
+              },
+            },
+          },
+        },
+      },
+      ImportConfirm: {
+        allOf: [
+          { $ref: '#/components/schemas/ImportSelection' },
+          {
+            type: 'object',
+            properties: {
+              recalculate: {
+                type: 'boolean',
+                default: true,
+                description: 'false grava sem refazer os scores (§62)',
+              },
+            },
+          },
+        ],
+      },
+      ImportResult: {
+        type: 'object',
+        required: [
+          'plansCreated',
+          'clientsCreated',
+          'clientsUpdated',
+          'clientsCancelled',
+          'contractsCreated',
+          'contractsUpdated',
+          'metricValues',
+          'rowErrors',
+          'skipped',
+        ],
+        properties: {
+          plansCreated: { type: 'integer' },
+          clientsCreated: { type: 'integer' },
+          clientsUpdated: { type: 'integer' },
+          clientsCancelled: { type: 'integer' },
+          contractsCreated: { type: 'integer' },
+          contractsUpdated: { type: 'integer' },
+          metricValues: { type: 'integer' },
+          rowErrors: { type: 'integer' },
+          skipped: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Clientes ou métricas que não existiam e foram ignorados',
+          },
+          recalculation: { type: ['object', 'null'], additionalProperties: true },
+        },
+      },
+      ImportConfirmResult: {
+        type: 'object',
+        required: ['job', 'result'],
+        properties: {
+          job: { $ref: '#/components/schemas/ImportJob' },
+          result: { $ref: '#/components/schemas/ImportResult' },
+        },
+      },
+      ImportJobDetail: {
+        type: 'object',
+        required: ['job', 'sheets', 'errors', 'errorTotal'],
+        properties: {
+          job: { $ref: '#/components/schemas/ImportJob' },
+          sheets: {
+            type: ['array', 'null'],
+            items: { $ref: '#/components/schemas/ImportSheet' },
+            description: 'null quando o arquivo não pôde ser relido do storage',
+          },
+          errors: { type: 'array', items: { $ref: '#/components/schemas/ImportRowError' } },
+          errorTotal: { type: 'integer' },
+        },
+      },
+      ImportJobPage: {
+        type: 'object',
+        required: ['items', 'page', 'pageSize', 'total'],
+        properties: {
+          items: { type: 'array', items: { $ref: '#/components/schemas/ImportJob' } },
+          page: { type: 'integer' },
+          pageSize: { type: 'integer' },
+          total: { type: 'integer' },
+        },
+      },
       Health: {
         type: 'object',
         required: ['status', 'version', 'uptime'],
