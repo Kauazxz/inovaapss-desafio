@@ -31,7 +31,7 @@ Tudo vem de `apps/web/src/index.css`. Nunca escreva cor crua (`#fff`, `bg-white`
 > Verde, âmbar, laranja e vermelho são reservados à saúde do cliente. Nenhum enfeite usa essas
 > cores — se aparecer vermelho na tela, é porque algo está crítico, não porque ficou bonito.
 
-A cor de ação é um **azul-petróleo**. Ela marca o que se pode fazer e onde você está; o resto da
+A cor de ação é um **azul**. Ela marca o que se pode fazer e onde você está; o resto da
 tela é neutro. Se uma tela tem cinco coisas em azul, quatro não são a ação principal.
 
 ## 2. Superfícies: sombra em vez de borda

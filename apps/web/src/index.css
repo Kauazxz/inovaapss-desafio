@@ -2,7 +2,7 @@
  * Estilos globais: Tailwind CSS 4 + tokens do shadcn/ui (base neutral) + tokens de gráfico
  * do DATAVIZ.md expostos para o resto da interface.
  *
- * Cor de ação do produto: azul-petróleo (teal). Ela aparece no botão principal, no item ativo da
+ * Cor de ação do produto: azul. Ela aparece no botão principal, no item ativo da
  * navegação, nos links e no anel de foco. As cores de risco (verde/âmbar/laranja/vermelho) seguem
  * reservadas às classes de saúde — nunca decore nada com elas.
  *
@@ -103,26 +103,26 @@
   --card-foreground: oklch(0.185 0.012 215);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.185 0.012 215);
-  --primary: oklch(0.475 0.082 194);
-  --primary-foreground: oklch(0.99 0.004 190);
+  --primary: oklch(0.545 0.185 259);
+  --primary-foreground: oklch(0.99 0.004 260);
   --secondary: oklch(0.968 0.004 210);
   --secondary-foreground: oklch(0.255 0.014 215);
   --muted: oklch(0.968 0.004 210);
   --muted-foreground: oklch(0.525 0.014 215);
-  --accent: oklch(0.952 0.027 194);
-  --accent-foreground: oklch(0.395 0.073 194);
+  --accent: oklch(0.948 0.031 258);
+  --accent-foreground: oklch(0.455 0.155 259);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.915 0.005 215);
   --input: oklch(0.915 0.005 215);
-  --ring: oklch(0.575 0.082 194);
+  --ring: oklch(0.62 0.15 259);
   --sidebar: oklch(0.985 0.003 210);
   --sidebar-foreground: oklch(0.185 0.012 215);
-  --sidebar-primary: oklch(0.475 0.082 194);
-  --sidebar-primary-foreground: oklch(0.99 0.004 190);
-  --sidebar-accent: oklch(0.952 0.027 194);
-  --sidebar-accent-foreground: oklch(0.395 0.073 194);
+  --sidebar-primary: oklch(0.545 0.185 259);
+  --sidebar-primary-foreground: oklch(0.99 0.004 260);
+  --sidebar-accent: oklch(0.948 0.031 258);
+  --sidebar-accent-foreground: oklch(0.455 0.155 259);
   --sidebar-border: oklch(0.915 0.005 215);
-  --sidebar-ring: oklch(0.575 0.082 194);
+  --sidebar-ring: oklch(0.62 0.15 259);
 
   /* Elevação: sombra difusa e de baixa opacidade, no lugar de borda dura. */
   --elevation-soft:
@@ -159,26 +159,26 @@
     --card-foreground: oklch(0.975 0.003 210);
     --popover: oklch(0.222 0.009 215);
     --popover-foreground: oklch(0.975 0.003 210);
-    --primary: oklch(0.755 0.095 190);
-    --primary-foreground: oklch(0.195 0.025 200);
+    --primary: oklch(0.735 0.135 258);
+    --primary-foreground: oklch(0.17 0.045 262);
     --secondary: oklch(0.275 0.008 215);
     --secondary-foreground: oklch(0.975 0.003 210);
     --muted: oklch(0.275 0.008 215);
     --muted-foreground: oklch(0.715 0.012 215);
-    --accent: oklch(0.315 0.035 197);
-    --accent-foreground: oklch(0.895 0.055 190);
+    --accent: oklch(0.315 0.065 260);
+    --accent-foreground: oklch(0.875 0.075 258);
     --destructive: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.62 0.075 194);
+    --ring: oklch(0.645 0.13 259);
     --sidebar: oklch(0.222 0.009 215);
     --sidebar-foreground: oklch(0.975 0.003 210);
-    --sidebar-primary: oklch(0.755 0.095 190);
-    --sidebar-primary-foreground: oklch(0.195 0.025 200);
-    --sidebar-accent: oklch(0.315 0.035 197);
-    --sidebar-accent-foreground: oklch(0.895 0.055 190);
+    --sidebar-primary: oklch(0.735 0.135 258);
+    --sidebar-primary-foreground: oklch(0.17 0.045 262);
+    --sidebar-accent: oklch(0.315 0.065 260);
+    --sidebar-accent-foreground: oklch(0.875 0.075 258);
     --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.62 0.075 194);
+    --sidebar-ring: oklch(0.645 0.13 259);
 
     --elevation-soft: 0 1px 2px oklch(0 0 0 / 0.3), 0 6px 16px -10px oklch(0 0 0 / 0.5);
     --elevation-float: 0 1px 2px oklch(0 0 0 / 0.35), 0 10px 30px -12px oklch(0 0 0 / 0.6);
@@ -203,26 +203,26 @@
   --card-foreground: oklch(0.975 0.003 210);
   --popover: oklch(0.222 0.009 215);
   --popover-foreground: oklch(0.975 0.003 210);
-  --primary: oklch(0.755 0.095 190);
-  --primary-foreground: oklch(0.195 0.025 200);
+  --primary: oklch(0.735 0.135 258);
+  --primary-foreground: oklch(0.17 0.045 262);
   --secondary: oklch(0.275 0.008 215);
   --secondary-foreground: oklch(0.975 0.003 210);
   --muted: oklch(0.275 0.008 215);
   --muted-foreground: oklch(0.715 0.012 215);
-  --accent: oklch(0.315 0.035 197);
-  --accent-foreground: oklch(0.895 0.055 190);
+  --accent: oklch(0.315 0.065 260);
+  --accent-foreground: oklch(0.875 0.075 258);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.62 0.075 194);
+  --ring: oklch(0.645 0.13 259);
   --sidebar: oklch(0.222 0.009 215);
   --sidebar-foreground: oklch(0.975 0.003 210);
-  --sidebar-primary: oklch(0.755 0.095 190);
-  --sidebar-primary-foreground: oklch(0.195 0.025 200);
-  --sidebar-accent: oklch(0.315 0.035 197);
-  --sidebar-accent-foreground: oklch(0.895 0.055 190);
+  --sidebar-primary: oklch(0.735 0.135 258);
+  --sidebar-primary-foreground: oklch(0.17 0.045 262);
+  --sidebar-accent: oklch(0.315 0.065 260);
+  --sidebar-accent-foreground: oklch(0.875 0.075 258);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.62 0.075 194);
+  --sidebar-ring: oklch(0.645 0.13 259);
 
   --elevation-soft: 0 1px 2px oklch(0 0 0 / 0.3), 0 6px 16px -10px oklch(0 0 0 / 0.5);
   --elevation-float: 0 1px 2px oklch(0 0 0 / 0.35), 0 10px 30px -12px oklch(0 0 0 / 0.6);
