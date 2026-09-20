@@ -23,6 +23,16 @@ import {
 /** Tipo lógico do documento; decide qual extrator de texto é usado (docs/DOCUMENTS.md). */
 export const DOCUMENT_KINDS = ['pdf', 'docx', 'xlsx', 'csv', 'json', 'markdown', 'text'] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
+export const documentKindSchema = z.enum(DOCUMENT_KINDS);
+
+/**
+ * De onde o arquivo veio para o arquivo da organização (§35):
+ * - `upload`: alguém enviou pela tela de documentos (contrato, manual de KPI, política de SLA);
+ * - `import`: a planilha que alimentou a importação de dados (§34) e ficou guardada.
+ */
+export const DOCUMENT_ORIGINS = ['upload', 'import'] as const;
+export type DocumentOrigin = (typeof DOCUMENT_ORIGINS)[number];
+export const documentOriginSchema = z.enum(DOCUMENT_ORIGINS);
 
 /** Limite de upload (§45): 10 MB. */
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -137,6 +147,10 @@ export const EXTRACTED_TEXT_PREVIEW_MAX_BYTES = 20 * 1024;
 
 export const documentListQuerySchema = paginationQuerySchema.extend({
   status: documentStatusSchema.optional(),
+  /** Filtro por tipo de arquivo (a tela do arquivo mostra PDF, XLSX, ...). */
+  kind: documentKindSchema.optional(),
+  /** Filtro por procedência: enviado na tela de documentos ou vindo da importação de dados. */
+  origin: documentOriginSchema.optional(),
 });
 export type DocumentListQuery = z.infer<typeof documentListQuerySchema>;
 

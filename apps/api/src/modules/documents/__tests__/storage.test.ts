@@ -13,6 +13,7 @@ import { createInMemoryDocumentStorage } from '../../../infrastructure/storage/m
 import {
   createSupabaseDocumentStorage,
   DOCUMENTS_BUCKET,
+  IMPORTS_BUCKET,
   StorageError,
 } from '../../../infrastructure/storage/supabase-storage.js';
 
@@ -47,6 +48,24 @@ describe('storage em memória', () => {
     await storage.remove(['o/d/a.txt']);
     await expect(storage.download('o/d/a.txt')).rejects.toThrow(/não encontrado/);
   });
+
+  it('lista os objetos de um prefixo com tamanho e tipo', async () => {
+    const storage = createInMemoryDocumentStorage();
+    await storage.upload({
+      path: 'org/job/a.csv',
+      body: Buffer.from('a,b'),
+      contentType: 'text/csv',
+    });
+    await storage.upload({
+      path: 'outra/job/b.csv',
+      body: Buffer.from('c'),
+      contentType: 'text/csv',
+    });
+
+    expect(await storage.list('org/')).toEqual([
+      { path: 'org/job/a.csv', sizeBytes: 3, mimeType: 'text/csv', createdAt: null },
+    ]);
+  });
 });
 
 interface FakeStorageClient {
@@ -57,6 +76,7 @@ interface FakeStorageClient {
   download: ReturnType<typeof vi.fn>;
   createSignedUrl: ReturnType<typeof vi.fn>;
   remove: ReturnType<typeof vi.fn>;
+  list: ReturnType<typeof vi.fn>;
 }
 
 function fakeClient(options: { bucketExists: boolean; bucketPublic?: boolean }): FakeStorageClient {
@@ -73,9 +93,29 @@ function fakeClient(options: { bucketExists: boolean; bucketPublic?: boolean }):
     error: null,
   }));
   const remove = vi.fn(async () => ({ data: [], error: null }));
-  const from = vi.fn(() => ({ upload, download, createSignedUrl, remove }));
+  // Como no Supabase, `list` é por pasta: a pasta do job aparece com id nulo.
+  const list = vi.fn(async (folder: string) => {
+    if (folder === 'org') {
+      return { data: [{ name: 'job', id: null, created_at: null, metadata: null }], error: null };
+    }
+    if (folder === 'org/job') {
+      return {
+        data: [
+          {
+            name: 'clientes.xlsx',
+            id: 'obj-1',
+            created_at: '2026-09-19T12:00:00.000Z',
+            metadata: { size: 2048, mimetype: 'application/octet-stream' },
+          },
+        ],
+        error: null,
+      };
+    }
+    return { data: [], error: null };
+  });
+  const from = vi.fn(() => ({ upload, download, createSignedUrl, remove, list }));
   const client = { storage: { getBucket, createBucket, from } } as unknown as SupabaseClient;
-  return { client, getBucket, createBucket, upload, download, createSignedUrl, remove };
+  return { client, getBucket, createBucket, upload, download, createSignedUrl, remove, list };
 }
 
 describe('storage do Supabase (client dublê)', () => {
@@ -131,6 +171,33 @@ describe('storage do Supabase (client dublê)', () => {
     expect(fake.remove).toHaveBeenCalledWith(['org/doc/a.csv', 'org/doc/extracted.txt']);
     await storage.remove([]);
     expect(fake.remove).toHaveBeenCalledTimes(1);
+  });
+
+  it('varre o prefixo e a pasta de baixo, devolvendo os arquivos com tamanho e data', async () => {
+    const fake = fakeClient({ bucketExists: true });
+    const storage = createSupabaseDocumentStorage({ getClient: () => fake.client });
+    expect(await storage.list('org/')).toEqual([
+      {
+        path: 'org/job/clientes.xlsx',
+        sizeBytes: 2048,
+        mimeType: 'application/octet-stream',
+        createdAt: '2026-09-19T12:00:00.000Z',
+      },
+    ]);
+  });
+
+  it('bucket de outro módulo: só lê, nunca cria, e erro na listagem devolve lista vazia', async () => {
+    const fake = fakeClient({ bucketExists: false });
+    const storage = createSupabaseDocumentStorage({
+      getClient: () => fake.client,
+      bucket: IMPORTS_BUCKET,
+      createBucketIfMissing: false,
+    });
+    fake.list.mockResolvedValueOnce({ data: null, error: { message: 'Bucket not found' } });
+
+    expect(await storage.list('org/')).toEqual([]);
+    expect(fake.createBucket).not.toHaveBeenCalled();
+    expect(fake.getBucket).not.toHaveBeenCalled();
   });
 
   it('erro do provedor vira StorageError (502) sem vazar detalhes', async () => {

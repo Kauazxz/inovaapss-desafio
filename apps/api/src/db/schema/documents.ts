@@ -25,12 +25,17 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 import { authenticatedRole } from 'drizzle-orm/supabase';
 
 import { METRIC_DIRECTIONS, METRIC_TYPES } from '@inovaapss/shared';
-import { DOCUMENT_STATUSES, METRIC_SUGGESTION_STATUSES } from '@inovaapss/validation';
+import {
+  DOCUMENT_ORIGINS,
+  DOCUMENT_STATUSES,
+  METRIC_SUGGESTION_STATUSES,
+} from '@inovaapss/validation';
 
 import { organizations } from './organizations.js';
 
@@ -57,8 +62,16 @@ export const uploadedDocuments = pgTable(
     mimeType: text('mime_type').notNull(),
     sizeBytes: integer('size_bytes').notNull(),
     status: documentStatusEnum('status').notNull().default('uploaded'),
-    /** id em auth.users de quem enviou. Referência lógica, sem FK. */
-    uploadedBy: uuid('uploaded_by').notNull(),
+    /**
+     * Procedência do arquivo: `upload` (tela de documentos) ou `import` (planilha que veio da
+     * importação de dados, §34). Texto com CHECK, e não pgEnum, para o módulo de importação
+     * poder gravar a linha sem depender de um tipo novo no banco.
+     */
+    origin: text('origin').notNull().default('upload'),
+    /** Job de importação que trouxe o arquivo, quando houver (referência lógica, sem FK). */
+    importJobId: uuid('import_job_id'),
+    /** id em auth.users de quem enviou. Nulo quando o arquivo veio da importação. */
+    uploadedBy: uuid('uploaded_by'),
     extractedTextPath: text('extracted_text_path'),
     extractedTextPreview: text('extracted_text_preview'),
     extractionError: text('extraction_error'),
@@ -68,7 +81,16 @@ export const uploadedDocuments = pgTable(
   },
   (table) => [
     index('uploaded_documents_organization_idx').on(table.organizationId, table.createdAt),
+    index('uploaded_documents_origin_idx').on(table.organizationId, table.origin),
+    uniqueIndex('uploaded_documents_storage_path_unique').on(
+      table.organizationId,
+      table.storagePath,
+    ),
     check('uploaded_documents_size_bytes_check', sql`${table.sizeBytes} >= 0`),
+    check(
+      'uploaded_documents_origin_check',
+      sql`${table.origin} in (${sqlList(DOCUMENT_ORIGINS)})`,
+    ),
     pgPolicy('uploaded_documents_select_member', {
       for: 'select',
       to: authenticatedRole,

@@ -12,6 +12,17 @@ export interface StoredObject {
   path: string;
 }
 
+/** Objeto encontrado numa listagem do bucket (usado para ler o bucket da importação). */
+export interface StoredObjectInfo {
+  /** Caminho completo dentro do bucket. */
+  path: string;
+  sizeBytes: number;
+  /** MIME declarado pelo bucket; vazio quando o provedor não sabe. */
+  mimeType: string;
+  /** Criação do objeto em ISO 8601, quando o provedor informa. */
+  createdAt: string | null;
+}
+
 export interface UploadObjectInput {
   path: string;
   body: Buffer;
@@ -24,6 +35,11 @@ export interface DocumentStorage {
   /** URL de download com validade curta (segundos). */
   createSignedUrl(path: string, expiresInSeconds: number): Promise<string>;
   remove(paths: readonly string[]): Promise<void>;
+  /**
+   * Objetos sob um prefixo (`<organizationId>/`), incluindo os de subpastas. É o que permite
+   * ao arquivo da organização enxergar as planilhas gravadas por outro módulo no bucket dele.
+   */
+  list(prefix: string): Promise<StoredObjectInfo[]>;
 }
 
 /** Nome do objeto extraído (texto completo) dentro da pasta do documento. */

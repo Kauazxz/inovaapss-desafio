@@ -4,7 +4,7 @@
  */
 import { randomUUID } from 'node:crypto';
 
-import { documentKindOf, toPublicDocument } from '../repository.js';
+import { documentKindOf, extensionsOfKind, toPublicDocument } from '../repository.js';
 
 import type { DocumentsRepository } from '../repository.js';
 import type { MetricSuggestion, UploadedDocumentRecord } from '../types.js';
@@ -34,7 +34,10 @@ export function createFakeDocumentsRepository(): FakeDocumentsRepository {
         kind: documentKindOf(input.fileName),
         sizeBytes: input.sizeBytes,
         status: 'uploaded',
+        origin: input.origin ?? 'upload',
+        importJobId: input.importJobId ?? null,
         uploadedBy: input.uploadedBy,
+        uploadedByEmail: input.uploadedBy === null ? null : `${input.uploadedBy}@exemplo.test`,
         hasExtractedText: false,
         extractedTextPreview: null,
         extractionError: null,
@@ -56,6 +59,13 @@ export function createFakeDocumentsRepository(): FakeDocumentsRepository {
     async listDocuments(organizationId, query) {
       let rows = documents.filter((d) => d.organizationId === organizationId);
       if (query.status !== undefined) rows = rows.filter((d) => d.status === query.status);
+      if (query.origin !== undefined) rows = rows.filter((d) => d.origin === query.origin);
+      if (query.kind !== undefined) {
+        const extensions = extensionsOfKind(query.kind);
+        rows = rows.filter((d) =>
+          extensions.some((extension) => d.fileName.toLowerCase().endsWith(extension)),
+        );
+      }
       if (query.search) {
         const needle = query.search.toLowerCase();
         rows = rows.filter((d) => d.fileName.toLowerCase().includes(needle));
@@ -92,6 +102,40 @@ export function createFakeDocumentsRepository(): FakeDocumentsRepository {
       }
       found.updatedAt = stamp();
       return { ...found };
+    },
+
+    async registerImportedDocuments(inputs) {
+      let registered = 0;
+      for (const input of inputs) {
+        const already = documents.some(
+          (d) => d.organizationId === input.organizationId && d.storagePath === input.storagePath,
+        );
+        if (already) continue;
+        const stamped = input.createdAt?.toISOString() ?? stamp();
+        documents.push({
+          id: input.id,
+          organizationId: input.organizationId,
+          fileName: input.fileName,
+          mimeType: input.mimeType,
+          kind: documentKindOf(input.fileName),
+          sizeBytes: input.sizeBytes,
+          status: 'uploaded',
+          origin: input.origin ?? 'import',
+          importJobId: input.importJobId ?? null,
+          uploadedBy: input.uploadedBy,
+          uploadedByEmail: null,
+          hasExtractedText: false,
+          extractedTextPreview: null,
+          extractionError: null,
+          extractedAt: null,
+          createdAt: stamped,
+          updatedAt: stamped,
+          storagePath: input.storagePath,
+          extractedTextPath: null,
+        });
+        registered += 1;
+      }
+      return registered;
     },
 
     async deleteDocument(organizationId, id) {

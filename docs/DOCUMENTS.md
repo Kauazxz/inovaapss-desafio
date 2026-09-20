@@ -1,9 +1,22 @@
 # Documentos e descoberta de métricas (Etapa 11)
 
-Como um contrato, um manual de KPI ou uma política de SLA entra no sistema e vira **sugestão de
-métrica** para o modelo da organização. Regras na [SPEC.md](SPEC.md) §35 (fluxo), §36
-(`uploaded_documents`, `metric_extraction_suggestions`), §37 (rotas Documents), §45 (allowlist de
-MIME e limite de upload) e os ajustes **A4** (DOCX e JSON) e **A5** (IA fica para depois).
+A tela `/documents` é o **arquivo da organização**: um lugar só para tudo o que a empresa guarda
+— contratos, manuais de KPI, políticas de SLA, relatórios **e as planilhas enviadas na importação
+de dados** (§34). Do arquivo sai a **sugestão de métrica** para o modelo da organização. Regras na
+[SPEC.md](SPEC.md) §35 (fluxo), §36 (`uploaded_documents`, `metric_extraction_suggestions`),
+§37 (rotas Documents), §45 (allowlist de MIME e limite de upload) e os ajustes **A4** (DOCX e
+JSON) e **A5** (IA fica para depois).
+
+O que o arquivo guarda:
+
+| Procedência (`origin`) | De onde vem                                                      | Quem envia             |
+| ---------------------- | ---------------------------------------------------------------- | ---------------------- |
+| `upload`               | arrastar/soltar ou botão na própria tela                         | owner/admin/analyst    |
+| `import`               | bucket `imports`, onde a importação de dados guarda as planilhas | o módulo de importação |
+
+Um arquivo `import` é só leitura para esta tela: ela lista, deixa baixar por URL assinada e
+extrai o texto (uma planilha de importação vira prévia de abas e linhas), mas quem grava o
+arquivo é a importação.
 
 ---
 
@@ -64,16 +77,16 @@ que a pessoa vê no navegador é o mesmo que a API daria.
 
 ## 3. Rotas (§37)
 
-| Rota                                         | Papéis                | Resposta                                                                                           |
-| -------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------- |
-| `POST /api/v1/documents`                     | owner, admin, analyst | 201 `{ document }` · 413 `FILE_TOO_LARGE` · 415 `UNSUPPORTED_FILE_TYPE` · 400 `FILE_REQUIRED`      |
-| `GET /api/v1/documents`                      | membro                | `{ items, page, pageSize, total }` — `page`, `pageSize`, `search`, `sort`, `order`, `status` (§61) |
-| `GET /api/v1/documents/:id`                  | membro                | `{ document }` com `downloadUrl` (assinada, 300 s) · 404                                           |
-| `POST /api/v1/documents/:id/extract-metrics` | owner, admin, analyst | `{ document, suggestions, extraction }` · 422 `TEXT_EXTRACTION_FAILED` (status `failed`)           |
-| `GET /api/v1/documents/:id/suggestions`      | membro                | `{ items, total }`                                                                                 |
-| `POST /api/v1/documents/:id/suggestions`     | owner, admin, analyst | 201 `{ suggestion }` · 400 `VALIDATION_ERROR` / `UNSAFE_FORMULA`                                   |
-| `POST /api/v1/metric-suggestions/:id/accept` | owner, admin, analyst | `{ suggestion, metricPayload }`                                                                    |
-| `POST /api/v1/metric-suggestions/:id/reject` | owner, admin, analyst | `{ suggestion }`                                                                                   |
+| Rota                                         | Papéis                | Resposta                                                                                                             |
+| -------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/v1/documents`                     | owner, admin, analyst | 201 `{ document }` · 413 `FILE_TOO_LARGE` · 415 `UNSUPPORTED_FILE_TYPE` · 400 `FILE_REQUIRED`                        |
+| `GET /api/v1/documents`                      | membro                | `{ items, page, pageSize, total }` — `page`, `pageSize`, `search`, `sort`, `order`, `status`, `kind`, `origin` (§61) |
+| `GET /api/v1/documents/:id`                  | membro                | `{ document }` com `downloadUrl` (assinada, 300 s) · 404                                                             |
+| `POST /api/v1/documents/:id/extract-metrics` | owner, admin, analyst | `{ document, suggestions, extraction }` · 422 `TEXT_EXTRACTION_FAILED` (status `failed`)                             |
+| `GET /api/v1/documents/:id/suggestions`      | membro                | `{ items, total }`                                                                                                   |
+| `POST /api/v1/documents/:id/suggestions`     | owner, admin, analyst | 201 `{ suggestion }` · 400 `VALIDATION_ERROR` / `UNSAFE_FORMULA`                                                     |
+| `POST /api/v1/metric-suggestions/:id/accept` | owner, admin, analyst | `{ suggestion, metricPayload }`                                                                                      |
+| `POST /api/v1/metric-suggestions/:id/reject` | owner, admin, analyst | `{ suggestion }`                                                                                                     |
 
 `viewer` só lê. Documentação viva em `/api/docs` (tag **documents**).
 
@@ -135,9 +148,16 @@ e gatilhos entram no modelo pelo configurador (Etapa 10). `isActive: false` de p
 ## 4. Banco (§36) — `apps/api/src/db/schema/documents.ts`
 
 **`uploaded_documents`**: `id`, `organization_id` (FK, cascade), `storage_path`, `file_name`,
-`mime_type`, `size_bytes`, `status` (`uploaded | extracted | failed`), `uploaded_by` (auth.users,
-lógico), `extracted_text_path` (nullable), `extracted_text_preview` (até 20 kB),
+`mime_type`, `size_bytes`, `status` (`uploaded | extracted | failed`), **`origin`**
+(`upload | import`, texto com CHECK e default `upload`), **`import_job_id`** (uuid, referência
+lógica ao job da importação), `uploaded_by` (auth.users, lógico — **nulo** quando o arquivo veio
+da importação), `extracted_text_path` (nullable), `extracted_text_preview` (até 20 kB),
 `extraction_error`, `extracted_at`, `created_at`, `updated_at`.
+
+Índice único **(`organization_id`, `storage_path`)**: é ele que torna a varredura do bucket da
+importação idempotente — o mesmo arquivo nunca entra duas vezes no arquivo da organização.
+`origin` é texto com CHECK (e não `pgEnum`) de propósito: o módulo de importação grava a linha
+sem depender de um tipo novo no banco.
 
 **`metric_extraction_suggestions`**: `id`, `uploaded_document_id` (FK, cascade), `organization_id`,
 `suggested_name`, `description`, `suggested_type`, `suggested_direction` (texto com CHECK nos
@@ -164,11 +184,14 @@ integrador depois do merge.
   allowlist de MIME; se alguém tornar o bucket público a API se recusa a usá-lo. Erros do provedor
   viram `502 STORAGE_ERROR` sem detalhes internos.
 - `memory-storage.ts`: mesma interface em memória, para testes e para rodar sem Supabase.
+- `list(prefixo)`: devolve os objetos sob `<organization_id>/` (e uma subpasta abaixo). É o que
+  permite ler o bucket `imports`, criado por outro módulo — por isso aquela instância nasce com
+  `createBucketIfMissing: false`: este código nunca cria nem escreve no bucket alheio (§8).
 
 Trocar de provedor = implementar `DocumentStorage` e passar `documentStorage` em
 `createApiV1Router`.
 
-## 6. Onde a IA entra depois (A5) — `apps/api/src/infrastructure/extraction/`
+## 6. Onde a IA entra depois (A5 — a fase manual é a de hoje) — `apps/api/src/infrastructure/extraction/`
 
 ```ts
 interface MetricExtractionProvider {
@@ -190,15 +213,45 @@ o conteúdo do documento.
 
 ## 7. Telas (apps/web/src/features/documents/)
 
-| Rota             | O que faz                                                                                                                                                                                                            |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/documents`     | Área de arrastar/soltar + botão (tipos e limite exibidos; validação local antes de enviar), avisos por arquivo, lista paginada com busca e status.                                                                   |
-| `/documents/:id` | Metadados, download por URL assinada, botão **Extrair texto**, preview do texto, tabela de sugestões (Aceitar → `/metrics` com `state.prefill`; Rejeitar) e o formulário **Nova sugestão a partir deste documento**. |
+| Rota             | O que faz                                                                                                                                                                                                                                                                  |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/documents`     | **Arquivo da organização**: área de arrastar/soltar + botão (tipos e limite exibidos; validação local antes de enviar), avisos por arquivo e a lista unificada — filtro por **tipo**, filtro por **origem**, busca pelo nome, status e paginação.                          |
+| `/documents/:id` | Metadados (arquivo, tipo, tamanho, origem, quem enviou, quando), download por URL assinada, botão **Extrair texto**, preview do texto, tabela de sugestões (Aceitar → `/metrics` com `state.prefill`; Rejeitar) e o formulário **Nova sugestão a partir deste documento**. |
 
 Estados vazio/carregando/erro em todas as consultas (§57). O upload usa `fetch` direto com
 `FormData` (o `apiFetch` é só para JSON) e o token do `AuthContext`.
 
-## 8. Segurança (§45)
+## 8. A costura com a importação de dados (§34)
+
+As planilhas da importação ficam no bucket **`imports`**, que pertence ao módulo de importação.
+O arquivo da organização **só lê** esse bucket:
+
+```text
+apps/api/src/modules/documents/import-archive.ts     varre <organization_id>/ e monta as linhas
+apps/api/src/infrastructure/storage/supabase-storage.ts   list() + createBucketIfMissing: false
+```
+
+Em `GET /documents`, antes de consultar o banco, o service varre o bucket (no máximo uma vez a
+cada 30 s por organização, até 200 arquivos) e registra em `uploaded_documents` o que ainda não
+estava lá, com `origin = 'import'` e `uploaded_by = null`. A varredura é **silenciosa**: bucket
+inexistente, permissão negada ou provedor fora do ar não derrubam a listagem — o arquivo mostra
+o que já tem. O caminho esperado é `<organization_id>/<import_job_id>/<arquivo>`; quando o
+segundo segmento é um uuid, ele vira `import_job_id`.
+
+Na resposta, cada item traz `origin` (`upload | import`) e `importJobId`, que é o que a tela usa
+para agrupar e filtrar. O download de um arquivo `import` é assinado no bucket `imports`; o texto
+extraído é sempre gravado no bucket `documents`, para não escrever no bucket do outro módulo.
+
+### Pendência para o integrador
+
+> **Ligar o `import_job_id` na origem.** Se o módulo de importação gravar ele mesmo a linha em
+> `uploaded_documents` (com `origin = 'import'`, `import_job_id` do job e `uploaded_by` de quem
+> subiu a planilha), a varredura deixa de encontrar novidade e o vínculo fica exato, sem depender
+> da convenção de caminho. Basta inserir a linha com o `storage_path` do objeto no bucket — a
+> chave (`organization_id`, `storage_path`) evita duplicidade nos dois sentidos. Nada mais muda na
+> tela: ela já lê `origin` e `importJobId` da API.
+
+## 9. Segurança (§45)
 
 - Bucket **privado**; o navegador nunca recebe a chave do storage, só uma **URL assinada de 5 min**
   emitida pela API depois de conferir o tenant.
@@ -209,12 +262,14 @@ Estados vazio/carregando/erro em todas as consultas (§57). O upload usa `fetch`
 - Escrita para `owner`/`admin`/`analyst`; `viewer` só lê. RLS como segunda barreira.
 - Caminhos no bucket começam pelo `organization_id`; toda query filtra pelo tenant.
 
-## 9. Testes
+## 10. Testes
 
 - `apps/api/src/modules/documents/__tests__/documents.test.ts` — rotas com dublês (token,
   organizações, repositório e storage em memória, extrator real): 401, RBAC, upload aceito/recusado
-  (extensão, MIME, assinatura, 10 MB), lista/detalhe, extração, sugestões (Zod, `UNSAFE_FORMULA`),
-  aceite/rejeição, isolamento entre organizações, provider externo com rascunhos inválidos.
+  (extensão, MIME, assinatura, 10 MB), lista/detalhe, filtros de tipo e origem, planilhas do bucket
+  da importação (origem, job, idempotência, download assinado, bucket fora do ar), extração,
+  sugestões (Zod, `UNSAFE_FORMULA`), aceite/rejeição, isolamento entre organizações, provider
+  externo com rascunhos inválidos.
 - `text-extractor.test.ts` — fixtures pequenas em `__tests__/fixtures/` (CSV, JSON, MD escritos à
   mão; DOCX, XLSX e PDF gerados por `fixtures/generate.ts`).
 - `storage.test.ts` — storage em memória e o do Supabase com client dublê (bucket privado criado
@@ -222,6 +277,7 @@ Estados vazio/carregando/erro em todas as consultas (§57). O upload usa `fetch`
 - `providers.test.ts` — manual devolve `[]`; provider de IA recusa ser construído.
 - `documents.integration.test.ts` — contra o Supabase real; fica _skipped_ com aviso até as
   migrations desta etapa serem aplicadas.
-- `apps/web/src/features/documents/__tests__/documents.test.tsx` — lista, vazio, erro, recusa
-  local de tipo, upload multipart, detalhe, extração, aceitar (navega para `/metrics` com
-  `prefill`), rejeitar, formulário.
+- `apps/web/src/features/documents/__tests__/documents.test.tsx` — lista com origem, filtros de
+  tipo/origem e busca, vazio, erro, recusa local de tipo e de tamanho, upload multipart, detalhe
+  com metadados e prévia, extração, aceitar (navega para `/metrics` com `prefill`), rejeitar,
+  formulário.

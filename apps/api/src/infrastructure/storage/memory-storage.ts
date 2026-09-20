@@ -33,5 +33,15 @@ export function createInMemoryDocumentStorage(): InMemoryDocumentStorage {
     async remove(paths) {
       for (const path of paths) objects.delete(path);
     },
+    async list(prefix) {
+      return [...objects.entries()]
+        .filter(([path]) => path.startsWith(prefix))
+        .map(([path, object]) => ({
+          path,
+          sizeBytes: object.body.length,
+          mimeType: object.contentType,
+          createdAt: null,
+        }));
+    },
   };
 }

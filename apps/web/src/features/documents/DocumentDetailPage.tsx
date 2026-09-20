@@ -7,7 +7,7 @@ import {
   RefreshCw,
   Sparkles,
 } from 'lucide-react';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 
 import { EmptyState } from '@/components/empty-state';
@@ -24,13 +24,28 @@ import {
   useReviewSuggestion,
   useSuggestions,
 } from './api';
-import { DocumentStatusBadge } from './DocumentStatusBadge';
-import { DOCUMENT_KIND_LABELS, formatDateTime, formatFileSize } from './format';
+import { DocumentOriginBadge, DocumentStatusBadge } from './DocumentStatusBadge';
+import {
+  DOCUMENT_KIND_LABELS,
+  DOCUMENT_ORIGIN_DESCRIPTIONS,
+  formatDateTime,
+  formatFileSize,
+} from './format';
 import { SuggestionForm } from './SuggestionForm';
 import { SuggestionsTable } from './SuggestionsTable';
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
+}
+
+/** Uma linha de metadado do arquivo (rótulo acima, valor abaixo). */
+function MetadataItem({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="text-sm font-medium break-words">{children}</dd>
+    </div>
+  );
 }
 
 /**
@@ -143,8 +158,33 @@ export function DocumentDetailPage() {
         </Button>
       </PageHeader>
 
+      <section aria-labelledby="metadados" className="mb-6">
+        <h3 id="metadados" className="sr-only">
+          Dados do arquivo
+        </h3>
+        <dl className="grid grid-cols-2 gap-4 rounded-xl border border-border p-4 sm:grid-cols-3 lg:grid-cols-6">
+          <MetadataItem label="Arquivo">{doc.fileName}</MetadataItem>
+          <MetadataItem label="Tipo">
+            {DOCUMENT_KIND_LABELS[doc.kind]}{' '}
+            <span className="font-normal text-muted-foreground">({doc.mimeType})</span>
+          </MetadataItem>
+          <MetadataItem label="Tamanho">{formatFileSize(doc.sizeBytes)}</MetadataItem>
+          <MetadataItem label="Origem">
+            <DocumentOriginBadge origin={doc.origin} />
+          </MetadataItem>
+          <MetadataItem label="Enviado por">
+            {doc.uploadedByEmail ?? (doc.origin === 'import' ? 'Importação de dados' : '—')}
+          </MetadataItem>
+          <MetadataItem label="Guardado em">{formatDateTime(doc.createdAt)}</MetadataItem>
+        </dl>
+      </section>
+
       <div className="mb-6 flex flex-wrap items-center gap-3 text-sm">
         <DocumentStatusBadge status={doc.status} />
+        <span className="text-muted-foreground">{DOCUMENT_ORIGIN_DESCRIPTIONS[doc.origin]}</span>
+        {doc.importJobId ? (
+          <span className="text-xs text-muted-foreground">Job de importação {doc.importJobId}</span>
+        ) : null}
         {doc.extractedAt ? (
           <span className="text-muted-foreground">
             Texto extraído em {formatDateTime(doc.extractedAt)}

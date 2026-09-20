@@ -18,7 +18,10 @@ import {
   type TextExtractor,
 } from '../infrastructure/extraction/index.js';
 import { createMailer } from '../infrastructure/mailer.js';
-import { createSupabaseDocumentStorage } from '../infrastructure/storage/supabase-storage.js';
+import {
+  createSupabaseDocumentStorage,
+  IMPORTS_BUCKET,
+} from '../infrastructure/storage/supabase-storage.js';
 import { createRequireAuth, type GetUserByToken, supabaseGetUser } from '../middleware/auth.js';
 import { createResolveTenant } from '../middleware/tenant.js';
 import { createAlertsRouter } from '../modules/alerts/routes.js';
@@ -66,7 +69,6 @@ import { createRecalculateAfterImport } from '../modules/imports/recalculate.js'
 import { createImportsRepository, type ImportsRepository } from '../modules/imports/repository.js';
 import { createImportsRouter } from '../modules/imports/routes.js';
 import { createImportsService } from '../modules/imports/service.js';
-import { IMPORTS_BUCKET } from '../modules/imports/storage.js';
 import { createMetricsController } from '../modules/metrics/controller.js';
 import { createMetricsRepository, type MetricsRepository } from '../modules/metrics/repository.js';
 import {
@@ -308,7 +310,11 @@ export const ROUTES: readonly RouteDescriptor[] = [
     path: `${API_V1_PREFIX}/documents`,
     description: 'Upload de documento (PDF, DOCX, XLSX, CSV, JSON, MD, TXT; até 10 MB)',
   },
-  { method: 'GET', path: `${API_V1_PREFIX}/documents`, description: 'Documentos enviados' },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/documents`,
+    description: 'Arquivo da organização: documentos enviados e planilhas importadas',
+  },
   {
     method: 'GET',
     path: `${API_V1_PREFIX}/documents/{id}`,
@@ -402,6 +408,11 @@ export interface ApiV1Dependencies {
   documentsRepository?: DocumentsRepository;
   /** Testes/dev: substitui o Supabase Storage (ex.: createInMemoryDocumentStorage). */
   documentStorage?: DocumentStorage;
+  /**
+   * Testes/dev: substitui a leitura do bucket da importação de dados, que alimenta a parte
+   * "planilhas importadas" do arquivo da organização (docs/DOCUMENTS.md §8).
+   */
+  importDocumentStorage?: DocumentStorage;
   /** Substitui o provider de sugestões (padrão: manual — ajuste A5). */
   metricExtractionProvider?: MetricExtractionProvider;
   /** Testes: substitui a extração de texto. */
@@ -576,6 +587,14 @@ export function createApiV1Router(deps: ApiV1Dependencies): Router {
     storage:
       deps.documentStorage ??
       createSupabaseDocumentStorage({ getClient: () => deps.supabase.getAdmin() }),
+    importStorage:
+      deps.importDocumentStorage ??
+      createSupabaseDocumentStorage({
+        getClient: () => deps.supabase.getAdmin(),
+        bucket: IMPORTS_BUCKET,
+        // O bucket é do módulo de importação: aqui só se lê, nunca se cria.
+        createBucketIfMissing: false,
+      }),
     textExtractor: deps.textExtractor ?? createTextExtractor(),
     provider: deps.metricExtractionProvider ?? createManualMetricExtractionProvider(),
   });

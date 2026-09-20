@@ -19,7 +19,10 @@ const DOC_A: UploadedDocument = {
   kind: 'pdf',
   sizeBytes: 2048,
   status: 'uploaded',
-  uploadedBy: 'user-1',
+  origin: 'upload',
+  importJobId: null,
+  uploadedBy: '11111111-1111-4111-8111-111111111111',
+  uploadedByEmail: 'ana@exemplo.test',
   hasExtractedText: false,
   extractedTextPreview: null,
   extractionError: null,
@@ -40,6 +43,20 @@ const DOC_B: UploadedDocument = {
   extractedTextPreview:
     'Manual de KPI da GlobalSys.\nO tempo medio de resolucao nao pode passar de 8 horas.',
   extractedAt: '2026-09-19T12:05:00.000Z',
+};
+
+/** Planilha que a importação de dados guardou no arquivo (origin = 'import'). */
+const DOC_IMPORTADO: UploadedDocument = {
+  ...DOC_A,
+  id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+  fileName: 'clientes-2026-07.xlsx',
+  mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  kind: 'xlsx',
+  sizeBytes: 40_960,
+  origin: 'import',
+  importJobId: '99999999-9999-4999-8999-999999999999',
+  uploadedBy: null,
+  uploadedByEmail: null,
 };
 
 const SUGGESTION: MetricSuggestion = {
@@ -138,7 +155,7 @@ describe('feature documents', () => {
           : undefined;
       renderAt('/documents');
 
-      const table = await screen.findByRole('table', { name: 'Documentos enviados' });
+      const table = await screen.findByRole('table', { name: 'Documentos guardados' });
       const rows = within(table).getAllByRole('row').slice(1);
       expect(rows).toHaveLength(2);
       expect(within(rows[0]!).getByRole('link', { name: 'manual-kpi.docx' })).toHaveAttribute(
@@ -149,7 +166,82 @@ describe('feature documents', () => {
       expect(within(rows[0]!).getByText('1,4 MB')).toBeInTheDocument();
       expect(within(rows[0]!).getByText('Texto extraído')).toBeInTheDocument();
       expect(within(rows[1]!).getByText('Enviado')).toBeInTheDocument();
-      expect(screen.getByText('Documentos enviados (2)')).toBeInTheDocument();
+      expect(screen.getByText('Documentos guardados (2)')).toBeInTheDocument();
+    });
+
+    it('mostra a planilha vinda da importação com a origem no lugar de quem enviou', async () => {
+      handler = (url) =>
+        url.pathname === '/api/v1/documents'
+          ? jsonResponse(200, {
+              items: [DOC_IMPORTADO, DOC_A],
+              page: 1,
+              pageSize: 20,
+              total: 2,
+            })
+          : undefined;
+      renderAt('/documents');
+
+      const table = await screen.findByRole('table', { name: 'Documentos guardados' });
+      const rows = within(table).getAllByRole('row').slice(1);
+      expect(within(rows[0]!).getByText('clientes-2026-07.xlsx')).toBeInTheDocument();
+      expect(within(rows[0]!).getByText('Importação de dados')).toBeInTheDocument();
+      expect(within(rows[1]!).getByText('Enviado aqui')).toBeInTheDocument();
+    });
+
+    it('filtra por tipo, por origem e por nome, e limpa os filtros', async () => {
+      const requests: string[] = [];
+      handler = (url) => {
+        if (url.pathname !== '/api/v1/documents') return undefined;
+        requests.push(url.search);
+        const kind = url.searchParams.get('kind');
+        const origin = url.searchParams.get('origin');
+        const search = url.searchParams.get('search');
+        let items = [DOC_IMPORTADO, DOC_B, DOC_A];
+        if (kind !== null) items = items.filter((d) => d.kind === kind);
+        if (origin !== null) items = items.filter((d) => d.origin === origin);
+        if (search !== null) {
+          items = items.filter((d) => d.fileName.includes(search.toLowerCase()));
+        }
+        return jsonResponse(200, { items, page: 1, pageSize: 20, total: items.length });
+      };
+      renderAt('/documents');
+      await screen.findByText('Documentos guardados (3)');
+
+      await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'xlsx');
+      expect(await screen.findByText('Documentos guardados (1)')).toBeInTheDocument();
+      expect(requests.at(-1)).toContain('kind=xlsx');
+
+      await userEvent.selectOptions(screen.getByLabelText('Tipo'), '');
+      await userEvent.selectOptions(screen.getByLabelText('Origem'), 'import');
+      expect(await screen.findByText('Documentos guardados (1)')).toBeInTheDocument();
+      expect(requests.at(-1)).toContain('origin=import');
+      expect(requests.at(-1)).not.toContain('kind=');
+
+      await userEvent.selectOptions(screen.getByLabelText('Origem'), '');
+      await userEvent.type(screen.getByLabelText('Buscar por nome do arquivo'), 'manual');
+      expect(await screen.findByText('Documentos guardados (1)')).toBeInTheDocument();
+      expect(requests.at(-1)).toContain('search=manual');
+      expect(await screen.findByRole('link', { name: 'manual-kpi.docx' })).toBeInTheDocument();
+    });
+
+    it('filtro sem resultado oferece limpar os filtros', async () => {
+      handler = (url) => {
+        if (url.pathname !== '/api/v1/documents') return undefined;
+        const isFiltered = url.searchParams.has('kind') || url.searchParams.has('search');
+        return jsonResponse(200, {
+          items: isFiltered ? [] : [DOC_A],
+          page: 1,
+          pageSize: 20,
+          total: isFiltered ? 0 : 1,
+        });
+      };
+      renderAt('/documents');
+      await screen.findByText('Documentos guardados (1)');
+
+      await userEvent.selectOptions(screen.getByLabelText('Tipo'), 'json');
+      expect(await screen.findByText('Nenhum documento com esses filtros')).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Limpar filtros' }));
+      expect(await screen.findByText('Documentos guardados (1)')).toBeInTheDocument();
     });
 
     it('mostra o estado vazio com os tipos aceitos', async () => {
@@ -158,7 +250,7 @@ describe('feature documents', () => {
           ? jsonResponse(200, { items: [], page: 1, pageSize: 20, total: 0 })
           : undefined;
       renderAt('/documents');
-      expect(await screen.findByText('Nenhum documento enviado')).toBeInTheDocument();
+      expect(await screen.findByText('O arquivo ainda está vazio')).toBeInTheDocument();
       expect(screen.getByText(/PDF, DOCX, XLSX, CSV, JSON, MD ou TXT/)).toBeInTheDocument();
       expect(screen.getByText(/Aceitos: PDF, DOCX, XLSX, CSV, JSON, MD, TXT/)).toBeInTheDocument();
     });
@@ -182,7 +274,7 @@ describe('feature documents', () => {
           ? jsonResponse(200, { items: [], page: 1, pageSize: 20, total: 0 })
           : undefined;
       renderAt('/documents');
-      await screen.findByText('Nenhum documento enviado');
+      await screen.findByText('O arquivo ainda está vazio');
 
       const input = screen.getByLabelText('Escolher arquivos');
       const exe = new File(['MZ'], 'virus.exe', { type: 'application/octet-stream' });
@@ -191,6 +283,27 @@ describe('feature documents', () => {
       const alert = await screen.findByRole('alert');
       expect(alert).toHaveTextContent('virus.exe');
       expect(alert).toHaveTextContent(/Extensão não aceita/);
+      expect(calls().filter((c) => c.startsWith('POST'))).toEqual([]);
+    });
+
+    it('recusa no navegador um arquivo acima de 10 MB, sem chamar a API', async () => {
+      handler = (url) =>
+        url.pathname === '/api/v1/documents'
+          ? jsonResponse(200, { items: [], page: 1, pageSize: 20, total: 0 })
+          : undefined;
+      renderAt('/documents');
+      await screen.findByText('O arquivo ainda está vazio');
+
+      const oversized = new File(['a'], 'planilha-gigante.xlsx', {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      // O conteúdo não precisa existir de verdade: a tela olha `size` antes de enviar.
+      Object.defineProperty(oversized, 'size', { value: 10 * 1024 * 1024 + 1 });
+      await userEvent.upload(screen.getByLabelText('Escolher arquivos'), oversized);
+
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent('planilha-gigante.xlsx');
+      expect(alert).toHaveTextContent(/o limite é 10 MB/i);
       expect(calls().filter((c) => c.startsWith('POST'))).toEqual([]);
     });
 
@@ -223,7 +336,7 @@ describe('feature documents', () => {
         return undefined;
       };
       renderAt('/documents');
-      await screen.findByText('Nenhum documento enviado');
+      await screen.findByText('O arquivo ainda está vazio');
 
       const csv = new File(['a,b\n1,2\n'], 'relatorio.csv', { type: 'text/csv' });
       await userEvent.upload(screen.getByLabelText('Escolher arquivos'), csv);
@@ -246,7 +359,7 @@ describe('feature documents', () => {
         return undefined;
       };
       renderAt('/documents');
-      await screen.findByText('Nenhum documento enviado');
+      await screen.findByText('O arquivo ainda está vazio');
 
       const pdf = new File(['nada'], 'contrato.pdf', { type: 'application/pdf' });
       await userEvent.upload(screen.getByLabelText('Escolher arquivos'), pdf);
@@ -288,6 +401,32 @@ describe('feature documents', () => {
       );
       expect(await screen.findByText('Nenhuma sugestão ainda')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Extrair texto de novo' })).toBeInTheDocument();
+    });
+
+    it('mostra os metadados do arquivo: tipo, tamanho, quem enviou e quando', async () => {
+      handler = detailHandler();
+      renderAt(`/documents/${DOC_B.id}`);
+
+      await screen.findByRole('heading', { name: 'manual-kpi.docx' });
+      const metadata = screen.getByRole('region', { name: 'Dados do arquivo' });
+      // `exact: false` casaria também com o nome do arquivo (manual-kpi.docx).
+      expect(within(metadata).getByText(/^DOCX/)).toBeInTheDocument();
+      expect(within(metadata).getByText('1,4 MB')).toBeInTheDocument();
+      expect(within(metadata).getByText('Enviado aqui')).toBeInTheDocument();
+      expect(within(metadata).getByText('ana@exemplo.test')).toBeInTheDocument();
+      expect(screen.getByText('Link de download válido por 5 min.')).toBeInTheDocument();
+    });
+
+    it('planilha importada: diz que veio da importação e mostra o job', async () => {
+      handler = detailHandler({ doc: DOC_IMPORTADO });
+      renderAt(`/documents/${DOC_IMPORTADO.id}`);
+
+      await screen.findByRole('heading', { name: 'clientes-2026-07.xlsx' });
+      const metadata = screen.getByRole('region', { name: 'Dados do arquivo' });
+      expect(within(metadata).getAllByText('Importação de dados').length).toBeGreaterThan(0);
+      expect(
+        screen.getByText(`Job de importação ${DOC_IMPORTADO.importJobId}`),
+      ).toBeInTheDocument();
     });
 
     it('documento ainda sem texto: chama a extração e mostra o resultado', async () => {

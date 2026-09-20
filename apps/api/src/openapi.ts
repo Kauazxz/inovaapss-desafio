@@ -512,7 +512,8 @@ export const openapiDocument: OpenAPIV3_1.Document = {
     },
     {
       name: 'documents',
-      description: 'Documentos enviados e descoberta de métricas — fluxo manual (§35, §37, A5)',
+      description:
+        'Arquivo da organização (documentos enviados e planilhas importadas) e descoberta de métricas — fluxo manual (§35, §37, A5)',
     },
     {
       name: 'calibration',
@@ -1175,7 +1176,7 @@ export const openapiDocument: OpenAPIV3_1.Document = {
       },
       get: {
         tags: ['documents'],
-        summary: 'Documentos enviados (paginado, §61)',
+        summary: 'Arquivo da organização: documentos enviados e planilhas importadas (§61)',
         operationId: 'listDocuments',
         parameters: [
           { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
@@ -1192,6 +1193,18 @@ export const openapiDocument: OpenAPIV3_1.Document = {
           },
           { name: 'order', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'] } },
           { name: 'status', in: 'query', schema: { $ref: '#/components/schemas/DocumentStatus' } },
+          {
+            name: 'kind',
+            in: 'query',
+            description: 'Filtra por tipo de arquivo.',
+            schema: { $ref: '#/components/schemas/DocumentKind' },
+          },
+          {
+            name: 'origin',
+            in: 'query',
+            description: 'Filtra por procedência: enviado na tela ou vindo da importação.',
+            schema: { $ref: '#/components/schemas/DocumentOrigin' },
+          },
         ],
         responses: {
           '200': jsonResponse('Página de documentos', 'DocumentPage'),
@@ -2224,6 +2237,16 @@ export const openapiDocument: OpenAPIV3_1.Document = {
         properties: contractWritableProperties,
       },
       DocumentStatus: { type: 'string', enum: ['uploaded', 'extracted', 'failed'] },
+      DocumentKind: {
+        type: 'string',
+        enum: ['pdf', 'docx', 'xlsx', 'csv', 'json', 'markdown', 'text'],
+      },
+      DocumentOrigin: {
+        type: 'string',
+        enum: ['upload', 'import'],
+        description:
+          '`upload`: enviado na tela de documentos. `import`: planilha guardada pela importação de dados (§34).',
+      },
       MetricSuggestionStatus: { type: 'string', enum: ['pending', 'accepted', 'rejected'] },
       UploadedDocument: {
         type: 'object',
@@ -2235,7 +2258,10 @@ export const openapiDocument: OpenAPIV3_1.Document = {
           'kind',
           'sizeBytes',
           'status',
+          'origin',
+          'importJobId',
           'uploadedBy',
+          'uploadedByEmail',
           'hasExtractedText',
           'extractedTextPreview',
           'extractionError',
@@ -2248,13 +2274,21 @@ export const openapiDocument: OpenAPIV3_1.Document = {
           organizationId: { type: 'string', format: 'uuid' },
           fileName: { type: 'string', example: 'politica-de-sla.pdf' },
           mimeType: { type: 'string', example: 'application/pdf' },
-          kind: {
-            type: 'string',
-            enum: ['pdf', 'docx', 'xlsx', 'csv', 'json', 'markdown', 'text'],
-          },
+          kind: { $ref: '#/components/schemas/DocumentKind' },
           sizeBytes: { type: 'integer' },
           status: { $ref: '#/components/schemas/DocumentStatus' },
-          uploadedBy: { type: 'string', format: 'uuid' },
+          origin: { $ref: '#/components/schemas/DocumentOrigin' },
+          importJobId: {
+            type: ['string', 'null'],
+            format: 'uuid',
+            description: 'Job da importação que trouxe o arquivo, quando informado.',
+          },
+          uploadedBy: {
+            type: ['string', 'null'],
+            format: 'uuid',
+            description: 'Nulo quando o arquivo veio da importação de dados.',
+          },
+          uploadedByEmail: { type: ['string', 'null'], format: 'email' },
           hasExtractedText: { type: 'boolean' },
           extractedTextPreview: {
             type: ['string', 'null'],

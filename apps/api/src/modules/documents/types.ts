@@ -1,6 +1,7 @@
 import type { MetricDirection, MetricType } from '@inovaapss/shared';
 import type {
   DocumentKind,
+  DocumentOrigin,
   DocumentStatus,
   MetricSuggestionStatus,
   SuggestedThresholds,
@@ -15,7 +16,14 @@ export interface UploadedDocument {
   kind: DocumentKind;
   sizeBytes: number;
   status: DocumentStatus;
-  uploadedBy: string;
+  /** De onde o arquivo veio: enviado na tela ou trazido pela importação de dados (§34). */
+  origin: DocumentOrigin;
+  /** Job de importação que trouxe o arquivo, quando o módulo de importação informa. */
+  importJobId: string | null;
+  /** Quem enviou (auth.users); nulo quando o arquivo veio da importação. */
+  uploadedBy: string | null;
+  /** E-mail de quem enviou, resolvido em auth.users para a tela não mostrar um id cru. */
+  uploadedByEmail: string | null;
   /** true quando o texto completo já foi extraído e está no storage. */
   hasExtractedText: boolean;
   /** Primeiros 20 kB do texto extraído (null antes da extração). */

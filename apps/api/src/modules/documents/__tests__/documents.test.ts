@@ -86,6 +86,8 @@ const organizationsRepository = () =>
 
 let repository: FakeDocumentsRepository;
 let storage: InMemoryDocumentStorage;
+/** Bucket da importação de dados: o arquivo da organização só lê daqui (import-archive.ts). */
+let importStorage: InMemoryDocumentStorage;
 
 function app(provider?: MetricExtractionProvider) {
   return createApp(env, {
@@ -96,6 +98,7 @@ function app(provider?: MetricExtractionProvider) {
       organizationsRepository: organizationsRepository(),
       documentsRepository: repository,
       documentStorage: storage,
+      importDocumentStorage: importStorage,
       ...(provider ? { metricExtractionProvider: provider } : {}),
     },
   });
@@ -118,6 +121,7 @@ async function uploadCsv(who = 'ana', fileName = 'relatorio.csv') {
 beforeEach(() => {
   repository = createFakeDocumentsRepository();
   storage = createInMemoryDocumentStorage();
+  importStorage = createInMemoryDocumentStorage();
 });
 
 describe('POST /api/v1/documents', () => {
@@ -249,6 +253,35 @@ describe('GET /api/v1/documents e /documents/:id', () => {
     expect(res.body.document.downloadUrlExpiresInSeconds).toBe(300);
   });
 
+  it('filtra por tipo de arquivo e por origem', async () => {
+    await uploadCsv('ana', 'a.csv');
+    await request(app())
+      .post('/api/v1/documents')
+      .set(as('ana'))
+      .attach('file', Buffer.from('# Manual de KPI'), {
+        filename: 'manual.md',
+        contentType: 'text/markdown',
+      });
+
+    const csvOnly = await request(app()).get('/api/v1/documents?kind=csv').set(as('ana'));
+    expect(csvOnly.body.total).toBe(1);
+    expect(csvOnly.body.items[0].fileName).toBe('a.csv');
+
+    const markdownOnly = await request(app()).get('/api/v1/documents?kind=markdown').set(as('ana'));
+    expect(markdownOnly.body.items.map((d: { fileName: string }) => d.fileName)).toEqual([
+      'manual.md',
+    ]);
+
+    const uploaded = await request(app()).get('/api/v1/documents?origin=upload').set(as('ana'));
+    expect(uploaded.body.total).toBe(2);
+    const imported = await request(app()).get('/api/v1/documents?origin=import').set(as('ana'));
+    expect(imported.body.total).toBe(0);
+
+    const invalidKind = await request(app()).get('/api/v1/documents?kind=exe').set(as('ana'));
+    expect(invalidKind.status).toBe(400);
+    expect(invalidKind.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
   it('404 para id inexistente e 400 para id inválido', async () => {
     const missing = await request(app()).get(`/api/v1/documents/${randomUUID()}`).set(as('ana'));
     expect(missing.status).toBe(404);
@@ -293,6 +326,86 @@ describe('isolamento entre organizações', () => {
       ).status,
     ).toBe(404);
     expect(repository.suggestions[0]?.status).toBe('pending');
+  });
+});
+
+describe('arquivo da organização: planilhas da importação de dados', () => {
+  const JOB = '99999999-9999-4999-8999-999999999999';
+  const XLSX_LIKE = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x61, 0x62]);
+
+  const storeInImportBucket = async (
+    path: string,
+    body = XLSX_LIKE,
+    contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ) => importStorage.upload({ path, body, contentType });
+
+  it('lista as planilhas do bucket da importação com origin, tamanho e job', async () => {
+    await storeInImportBucket(`${ORG_A}/${JOB}/clientes.xlsx`);
+    await uploadCsv('ana', 'contrato.csv');
+
+    const res = await request(app()).get('/api/v1/documents').set(as('ana'));
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(2);
+    const spreadsheet = res.body.items.find(
+      (d: { fileName: string }) => d.fileName === 'clientes.xlsx',
+    );
+    expect(spreadsheet).toMatchObject({
+      origin: 'import',
+      importJobId: JOB,
+      kind: 'xlsx',
+      sizeBytes: XLSX_LIKE.length,
+      uploadedBy: null,
+      status: 'uploaded',
+    });
+    expect(
+      res.body.items.find((d: { fileName: string }) => d.fileName === 'contrato.csv'),
+    ).toMatchObject({ origin: 'upload', importJobId: null, uploadedBy: ANA.userId });
+  });
+
+  it('não duplica o que já foi registrado e ignora o que não sabe abrir', async () => {
+    await storeInImportBucket(`${ORG_A}/${JOB}/clientes.xlsx`);
+    await storeInImportBucket(
+      `${ORG_A}/${JOB}/notas.exe`,
+      Buffer.from('MZ'),
+      'application/octet-stream',
+    );
+
+    const first = await request(app()).get('/api/v1/documents').set(as('ana'));
+    expect(first.body.total).toBe(1);
+    // App novo = varredura nova: a segunda leitura não pode criar a mesma linha de novo.
+    const second = await request(app()).get('/api/v1/documents?origin=import').set(as('ana'));
+    expect(second.body.total).toBe(1);
+    expect(repository.documents).toHaveLength(1);
+  });
+
+  it('assina o download da planilha no bucket da importação', async () => {
+    await storeInImportBucket(`${ORG_A}/${JOB}/clientes.xlsx`);
+    const list = await request(app()).get('/api/v1/documents').set(as('ana'));
+    const id = list.body.items[0].id;
+
+    const res = await request(app()).get(`/api/v1/documents/${id}`).set(as('ana'));
+    expect(res.status).toBe(200);
+    expect(res.body.document.downloadUrl).toBe(
+      `memory://${ORG_A}/${JOB}/clientes.xlsx?expires=300`,
+    );
+    expect(res.body.document.origin).toBe('import');
+  });
+
+  it('não mistura organizações: a planilha da Org A não aparece para a Org B', async () => {
+    await storeInImportBucket(`${ORG_A}/${JOB}/clientes.xlsx`);
+    const res = await request(app()).get('/api/v1/documents').set(as('bia'));
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(0);
+  });
+
+  it('bucket da importação indisponível não derruba a listagem', async () => {
+    await uploadCsv('ana', 'contrato.csv');
+    importStorage.list = async () => {
+      throw new Error('bucket fora do ar');
+    };
+    const res = await request(app()).get('/api/v1/documents').set(as('ana'));
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(1);
   });
 });
 

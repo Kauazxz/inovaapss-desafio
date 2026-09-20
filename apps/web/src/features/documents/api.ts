@@ -11,6 +11,7 @@ import type { MetricDirection, MetricType } from '@inovaapss/shared';
 import type {
   CreateMetricSuggestionBody,
   DocumentKind,
+  DocumentOrigin,
   DocumentStatus,
   MetricSuggestionStatus,
   SuggestedThresholds,
@@ -27,7 +28,11 @@ export interface UploadedDocument {
   kind: DocumentKind;
   sizeBytes: number;
   status: DocumentStatus;
-  uploadedBy: string;
+  /** 'upload' (enviado nesta tela) ou 'import' (planilha da importação de dados). */
+  origin: DocumentOrigin;
+  importJobId: string | null;
+  uploadedBy: string | null;
+  uploadedByEmail: string | null;
   hasExtractedText: boolean;
   extractedTextPreview: string | null;
   extractionError: string | null;
@@ -104,6 +109,10 @@ export interface DocumentsQuery {
   page: number;
   pageSize?: number | undefined;
   search?: string | undefined;
+  /** Filtro por tipo de arquivo (PDF, XLSX, ...). */
+  kind?: DocumentKind | undefined;
+  /** Filtro por procedência (enviado aqui ou vindo da importação). */
+  origin?: DocumentOrigin | undefined;
 }
 
 export const documentKeys = {
@@ -117,6 +126,8 @@ export function fetchDocuments(query: DocumentsQuery): Promise<DocumentPage> {
   const params = new URLSearchParams({ page: String(query.page) });
   if (query.pageSize !== undefined) params.set('pageSize', String(query.pageSize));
   if (query.search) params.set('search', query.search);
+  if (query.kind !== undefined) params.set('kind', query.kind);
+  if (query.origin !== undefined) params.set('origin', query.origin);
   return apiFetch<DocumentPage>(`/api/v1/documents?${params.toString()}`);
 }
 

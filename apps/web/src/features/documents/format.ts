@@ -1,6 +1,11 @@
 /** Rótulos e formatos da feature de documentos (pt-BR). */
 import type { MetricDirection, MetricType } from '@inovaapss/shared';
-import type { DocumentKind, DocumentStatus, MetricSuggestionStatus } from '@inovaapss/validation';
+import type {
+  DocumentKind,
+  DocumentOrigin,
+  DocumentStatus,
+  MetricSuggestionStatus,
+} from '@inovaapss/validation';
 
 export const DOCUMENT_STATUS_LABELS: Readonly<Record<DocumentStatus, string>> = {
   uploaded: 'Enviado',
@@ -16,6 +21,17 @@ export const DOCUMENT_KIND_LABELS: Readonly<Record<DocumentKind, string>> = {
   json: 'JSON',
   markdown: 'Markdown',
   text: 'Texto',
+};
+
+/** Procedência do arquivo no arquivo da organização (§35). */
+export const DOCUMENT_ORIGIN_LABELS: Readonly<Record<DocumentOrigin, string>> = {
+  upload: 'Enviado aqui',
+  import: 'Importação de dados',
+};
+
+export const DOCUMENT_ORIGIN_DESCRIPTIONS: Readonly<Record<DocumentOrigin, string>> = {
+  upload: 'Arquivo enviado nesta tela (contrato, manual de KPI, política de SLA, relatório).',
+  import: 'Planilha enviada na importação de dados e guardada no arquivo.',
 };
 
 export const SUGGESTION_STATUS_LABELS: Readonly<Record<MetricSuggestionStatus, string>> = {

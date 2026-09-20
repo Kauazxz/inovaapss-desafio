@@ -14,7 +14,9 @@
  */
 import { sanitizeFileName } from '../../infrastructure/storage/document-storage.js';
 
-export const IMPORTS_BUCKET = 'imports';
+// O nome do bucket vive na infraestrutura porque o arquivo da organização (§35) também
+// precisa dele para ler, só leitura, as planilhas que a importação guardou aqui.
+export { IMPORTS_BUCKET } from '../../infrastructure/storage/supabase-storage.js';
 
 export function buildImportObjectPath(
   organizationId: string,

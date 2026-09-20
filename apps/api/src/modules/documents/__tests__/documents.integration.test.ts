@@ -34,12 +34,17 @@ let tablesReady = false;
 if (hasEnv) {
   db = createDbClient(env.DATABASE_URL);
   try {
-    const rows = await db
-      .getDb()
-      .execute<{ ok: string | null }>(
-        sql`select to_regclass('public.metric_extraction_suggestions')::text as ok`,
-      );
-    tablesReady = Array.from(rows)[0]?.ok !== null;
+    // Além das tabelas, a coluna `origin` (arquivo da organização) precisa estar aplicada.
+    const rows = await db.getDb().execute<{ ok: string | null; origem: number }>(
+      sql`select to_regclass('public.metric_extraction_suggestions')::text as ok,
+                 count(*)::int as origem
+            from information_schema.columns
+           where table_schema = 'public'
+             and table_name = 'uploaded_documents'
+             and column_name = 'origin'`,
+    );
+    const row = Array.from(rows)[0];
+    tablesReady = row?.ok !== null && row?.ok !== undefined && row.origem > 0;
   } catch {
     tablesReady = false;
   }
@@ -49,7 +54,7 @@ const enabled = hasEnv && tablesReady;
 if (!enabled) {
   const motivo = !hasEnv
     ? 'faltam DATABASE_URL/SUPABASE_* no ambiente'
-    : 'as migrations da Etapa 11 (uploaded_documents) ainda não foram aplicadas no banco';
+    : 'as migrations da Etapa 11 (uploaded_documents, incluindo a coluna origin) ainda não foram aplicadas no banco';
   console.warn(`[documents.integration] suíte ignorada: ${motivo}.`);
   if (db) await db.close();
 }

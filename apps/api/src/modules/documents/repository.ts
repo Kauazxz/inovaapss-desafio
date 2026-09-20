@@ -4,11 +4,13 @@
  * Toda consulta recebe o organization_id do tenant e filtra por ele (§5). O repositório em
  * memória dos testes (__tests__/fake-repository.ts) implementa a mesma interface.
  */
-import { and, asc, count, desc, eq, ilike } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, or, sql } from 'drizzle-orm';
 
 import { type MetricDirection, type MetricType } from '@inovaapss/shared';
 import {
+  type DocumentKind,
   type DocumentListQuery,
+  type DocumentOrigin,
   fileExtensionOf,
   type MetricSuggestionStatus,
   type SuggestedThresholds,
@@ -27,7 +29,11 @@ export interface NewDocumentInput {
   fileName: string;
   mimeType: string;
   sizeBytes: number;
-  uploadedBy: string;
+  /** Nulo quando o arquivo não veio de uma pessoa (importação de dados). */
+  uploadedBy: string | null;
+  origin?: DocumentOrigin | undefined;
+  importJobId?: string | null | undefined;
+  createdAt?: Date | undefined;
 }
 
 export interface DocumentPatch {
@@ -67,6 +73,11 @@ export interface DocumentsRepository {
     id: string,
     patch: DocumentPatch,
   ): Promise<UploadedDocumentRecord | null>;
+  /**
+   * Registra arquivos que já existem no bucket da importação. É idempotente: a chave
+   * (organization_id, storage_path) descarta o que já estava guardado.
+   */
+  registerImportedDocuments(inputs: readonly NewDocumentInput[]): Promise<number>;
   deleteDocument(organizationId: string, id: string): Promise<void>;
   createSuggestions(inputs: readonly NewSuggestionInput[]): Promise<MetricSuggestion[]>;
   listSuggestions(organizationId: string, documentId: string): Promise<MetricSuggestion[]>;
@@ -83,6 +94,13 @@ export function documentKindOf(fileName: string): UploadedDocument['kind'] {
   return UPLOAD_EXTENSIONS[fileExtensionOf(fileName)]?.kind ?? 'text';
 }
 
+/** Extensões que respondem por um tipo lógico (o filtro por tipo vira busca pelo sufixo). */
+export function extensionsOfKind(kind: DocumentKind): string[] {
+  return Object.entries(UPLOAD_EXTENSIONS)
+    .filter(([, entry]) => entry.kind === kind)
+    .map(([extension]) => extension);
+}
+
 type DocumentRow = typeof uploadedDocuments.$inferSelect;
 type SuggestionRow = typeof metricExtractionSuggestions.$inferSelect;
 
@@ -95,7 +113,10 @@ export function toDocumentRecord(row: DocumentRow): UploadedDocumentRecord {
     kind: documentKindOf(row.fileName),
     sizeBytes: row.sizeBytes,
     status: row.status,
+    origin: (row.origin === 'import' ? 'import' : 'upload') as DocumentOrigin,
+    importJobId: row.importJobId,
     uploadedBy: row.uploadedBy,
+    uploadedByEmail: null,
     hasExtractedText: row.extractedTextPath !== null,
     extractedTextPreview: row.extractedTextPreview,
     extractionError: row.extractionError,
@@ -148,6 +169,34 @@ const SORTABLE_COLUMNS = {
   sizeBytes: uploadedDocuments.sizeBytes,
 } as const;
 
+/**
+ * O e-mail de quem enviou mora em auth.users (schema do Supabase, fora do Drizzle). Uma consulta
+ * só, pelos ids já carregados; se ela falhar, a lista continua sem o e-mail em vez de quebrar.
+ */
+async function attachUploaderEmails<T extends UploadedDocument>(
+  getDb: () => Database,
+  records: readonly T[],
+): Promise<T[]> {
+  const ids = [...new Set(records.map((r) => r.uploadedBy).filter((id) => id !== null))];
+  if (ids.length === 0) return records.map((record) => ({ ...record }));
+  let emails = new Map<string, string | null>();
+  try {
+    const rows = await getDb().execute<{ id: string; email: string | null }>(
+      sql`select id::text as id, email from auth.users where id in (${sql.join(
+        ids.map((id) => sql`${id}::uuid`),
+        sql`, `,
+      )})`,
+    );
+    emails = new Map(Array.from(rows).map((row) => [row.id, row.email]));
+  } catch {
+    return records.map((record) => ({ ...record }));
+  }
+  return records.map((record) => ({
+    ...record,
+    uploadedByEmail: record.uploadedBy === null ? null : (emails.get(record.uploadedBy) ?? null),
+  }));
+}
+
 export function createDocumentsRepository(getDb: () => Database): DocumentsRepository {
   const repository: DocumentsRepository = {
     async createDocument(input) {
@@ -166,12 +215,23 @@ export function createDocumentsRepository(getDb: () => Database): DocumentsRepos
         )
         .limit(1);
       const row = rows[0];
-      return row === undefined ? null : toDocumentRecord(row);
+      if (row === undefined) return null;
+      const [record] = await attachUploaderEmails(getDb, [toDocumentRecord(row)]);
+      return record ?? toDocumentRecord(row);
     },
 
     async listDocuments(organizationId, query) {
       const conditions = [eq(uploadedDocuments.organizationId, organizationId)];
       if (query.status !== undefined) conditions.push(eq(uploadedDocuments.status, query.status));
+      if (query.origin !== undefined) conditions.push(eq(uploadedDocuments.origin, query.origin));
+      if (query.kind !== undefined) {
+        // O tipo lógico vem da extensão do nome gravado; o filtro vira busca pelo sufixo.
+        const byExtension = extensionsOfKind(query.kind).map((extension) =>
+          ilike(uploadedDocuments.fileName, `%${extension}`),
+        );
+        const matchesKind = byExtension.length === 1 ? byExtension[0] : or(...byExtension);
+        if (matchesKind !== undefined) conditions.push(matchesKind);
+      }
       if (query.search !== undefined && query.search !== '') {
         conditions.push(ilike(uploadedDocuments.fileName, `%${query.search}%`));
       }
@@ -194,7 +254,10 @@ export function createDocumentsRepository(getDb: () => Database): DocumentsRepos
         db.select({ total: count() }).from(uploadedDocuments).where(where),
       ]);
       return {
-        items: rows.map((row) => toPublicDocument(toDocumentRecord(row))),
+        items: await attachUploaderEmails(
+          getDb,
+          rows.map((row) => toPublicDocument(toDocumentRecord(row))),
+        ),
         total: totals[0]?.total ?? 0,
       };
     },
@@ -209,6 +272,31 @@ export function createDocumentsRepository(getDb: () => Database): DocumentsRepos
         .returning();
       const row = rows[0];
       return row === undefined ? null : toDocumentRecord(row);
+    },
+
+    async registerImportedDocuments(inputs) {
+      if (inputs.length === 0) return 0;
+      const rows = await getDb()
+        .insert(uploadedDocuments)
+        .values(
+          inputs.map((input) => ({
+            id: input.id,
+            organizationId: input.organizationId,
+            storagePath: input.storagePath,
+            fileName: input.fileName,
+            mimeType: input.mimeType,
+            sizeBytes: input.sizeBytes,
+            uploadedBy: input.uploadedBy,
+            origin: input.origin ?? 'import',
+            importJobId: input.importJobId ?? null,
+            ...(input.createdAt === undefined ? {} : { createdAt: input.createdAt }),
+          })),
+        )
+        .onConflictDoNothing({
+          target: [uploadedDocuments.organizationId, uploadedDocuments.storagePath],
+        })
+        .returning({ id: uploadedDocuments.id });
+      return rows.length;
     },
 
     async deleteDocument(organizationId, id) {

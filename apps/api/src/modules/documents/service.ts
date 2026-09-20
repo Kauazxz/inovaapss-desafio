@@ -18,6 +18,7 @@ import {
   resolveUploadType,
 } from '@inovaapss/validation';
 
+import { createSyncClock, toImportedDocumentInputs } from './import-archive.js';
 import { toPublicDocument } from './repository.js';
 import {
   buildDocumentObjectPath,
@@ -82,9 +83,16 @@ export interface DocumentsServiceDependencies {
   storage: DocumentStorage;
   textExtractor: TextExtractor;
   provider: MetricExtractionProvider;
+  /**
+   * Bucket da importação de dados (§34), só para leitura: é o que faz as planilhas importadas
+   * aparecerem no arquivo da organização (import-archive.ts). Ausente = só os uploads.
+   */
+  importStorage?: DocumentStorage | undefined;
   /** Relógio injetável para os testes. */
   now?: () => Date;
   signedUrlTtlSeconds?: number;
+  /** Intervalo mínimo entre duas varreduras do bucket da importação (ms). */
+  importSyncTtlMs?: number;
 }
 
 export interface DocumentsService {
@@ -212,6 +220,29 @@ export function createDocumentsService(deps: DocumentsServiceDependencies): Docu
   const { repository, storage, textExtractor, provider } = deps;
   const now = deps.now ?? (() => new Date());
   const signedUrlTtl = deps.signedUrlTtlSeconds ?? SIGNED_URL_TTL_SECONDS;
+  const importStorage = deps.importStorage;
+  const syncClock = createSyncClock(deps.importSyncTtlMs);
+
+  /** O arquivo vive no bucket de quem o gravou: documentos aqui, planilhas na importação. */
+  const storageOf = (record: UploadedDocumentRecord): DocumentStorage =>
+    record.origin === 'import' && importStorage !== undefined ? importStorage : storage;
+
+  /**
+   * Traz para a lista o que a importação de dados gravou no bucket dela. Falha de rede,
+   * bucket inexistente ou permissão negada não podem derrubar o arquivo da organização:
+   * a varredura é silenciosa e a listagem segue com o que já está no banco.
+   */
+  const syncImportedDocuments = async (organizationId: string): Promise<void> => {
+    if (importStorage === undefined || !syncClock.due(organizationId)) return;
+    syncClock.touch(organizationId);
+    try {
+      const objects = await importStorage.list(`${organizationId}/`);
+      const inputs = toImportedDocumentInputs(organizationId, objects);
+      if (inputs.length > 0) await repository.registerImportedDocuments(inputs);
+    } catch {
+      // Silencioso de propósito: o arquivo mostra o que tem.
+    }
+  };
 
   const requireDocument = async (
     tenant: TenantContext,
@@ -257,6 +288,7 @@ export function createDocumentsService(deps: DocumentsServiceDependencies): Docu
           mimeType: resolved.mimeType,
           sizeBytes: input.buffer.length,
           uploadedBy: tenant.userId,
+          origin: 'upload',
         });
         return toPublicDocument(record);
       } catch (err) {
@@ -267,13 +299,14 @@ export function createDocumentsService(deps: DocumentsServiceDependencies): Docu
     },
 
     async list(tenant, query) {
+      await syncImportedDocuments(tenant.organizationId);
       const { items, total } = await repository.listDocuments(tenant.organizationId, query);
       return { items, page: query.page, pageSize: query.pageSize, total };
     },
 
     async get(tenant, id) {
       const record = await requireDocument(tenant, id);
-      const downloadUrl = await storage.createSignedUrl(record.storagePath, signedUrlTtl);
+      const downloadUrl = await storageOf(record).createSignedUrl(record.storagePath, signedUrlTtl);
       return {
         ...toPublicDocument(record),
         downloadUrl,
@@ -283,7 +316,8 @@ export function createDocumentsService(deps: DocumentsServiceDependencies): Docu
 
     async extractMetrics(tenant, id) {
       const record = await requireDocument(tenant, id);
-      const buffer = await storage.download(record.storagePath);
+      // Lê do bucket de origem, mas grava o texto extraído sempre no bucket dos documentos.
+      const buffer = await storageOf(record).download(record.storagePath);
 
       let extracted: ExtractedText;
       try {
