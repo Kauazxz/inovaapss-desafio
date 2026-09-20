@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -75,8 +76,13 @@ describe('App', () => {
 
     expect(await screen.findByRole('tab', { name: 'Em risco' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Geral' })).toBeInTheDocument();
+
+    // Organização e e-mail ficam no menu da conta, no canto direito da barra.
+    await userEvent.click(screen.getByRole('button', { name: 'Conta e organização' }));
     expect(screen.getByTestId('organization-name')).toHaveTextContent('GlobalSys');
     expect(screen.getByText('ana@example.com')).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+
     // O gráfico carrega num chunk separado (lazy): espera ele aparecer. O timeout é folgado
     // porque, no turbo, os testes dos pacotes rodam em paralelo e o primeiro import demora mais.
     expect(
