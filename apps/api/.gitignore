@@ -1,0 +1,6 @@
+.vercel
+.env*
+
+# Saida de build da funcao serverless (nunca versionar)
+api/*.js
+api/*.d.ts
