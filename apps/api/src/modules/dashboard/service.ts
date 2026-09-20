@@ -126,6 +126,9 @@ export function createDashboardService(repository: DashboardRepository): Dashboa
       let generatedAt = '';
 
       for (const client of clients) {
+        // "Com quem falar hoje" é lista de ação: quem já cancelou não entra (fica no histórico,
+        // na aba Geral e na calibração). Arquivado e inativo também não são acionáveis.
+        if (client.status !== 'active') continue;
         const history = byClient.get(client.id) ?? [];
         if (history.length === 0) continue;
         const latest = history[history.length - 1] as SnapshotRow;
@@ -191,12 +194,23 @@ export function createDashboardService(repository: DashboardRepository): Dashboa
         if (latest.periodEnd > generatedAt) generatedAt = latest.periodEnd;
       }
 
-      rows.sort((a, b) => b.priorityScore - a.priorityScore);
-      rows.forEach((row, index) => {
+      /**
+       * A aba lista quem precisa de atenção, não a carteira inteira (§39):
+       *   - quem já está em Risco ou Crítico hoje; e
+       *   - quem está saudável mas a tendência leva para Risco/Crítico no próximo período
+       *     (é o alerta antecipado, o motivo de existir o gráfico de projeção).
+       * Quem está Normal ou em Atenção estável fica de fora — aparece na aba Geral.
+       */
+      const precisaAtencao = (row: RankingRow): boolean =>
+        row.currentClass === 'RISK' || row.currentClass === 'CRITICAL' || row.crossesDown;
+
+      const emRisco = rows.filter(precisaAtencao);
+      emRisco.sort((a, b) => b.priorityScore - a.priorityScore);
+      emRisco.forEach((row, index) => {
         row.position = index + 1;
       });
 
-      const crossingCount = rows.filter((row) => row.crossesDown).length;
+      const crossingCount = emRisco.filter((row) => row.crossesDown).length;
 
       return {
         kpis: {
@@ -210,7 +224,7 @@ export function createDashboardService(repository: DashboardRepository): Dashboa
           currency,
         },
         forecast: {
-          rows,
+          rows: emRisco,
           thresholds: {
             // As faixas vêm da lista oficial (§7): Normal ≥ 80, Atenção ≥ 60, Risco ≥ 40.
             attention: minOfClass('NORMAL'),
@@ -222,7 +236,8 @@ export function createDashboardService(repository: DashboardRepository): Dashboa
           crossingCount,
         },
         priorityWeights: DEFAULT_PRIORITY_WEIGHTS,
-        ranking: rows,
+        ranking: emRisco,
+        // Distribuição de TODOS os clientes ativos, para a tela dizer "N de M".
         classCounts,
         generatedAt: generatedAt || new Date(0).toISOString(),
       };
