@@ -181,6 +181,23 @@ describe.skipIf(!enabled)('clientes, planos e contratos — integração com o S
     expect(first.body.contract).toMatchObject({ status: 'ended', endDate: '2026-06-01' });
   });
 
+  /**
+   * Este caso existe porque o dublê nunca pegaria: a consulta montava SELECT DISTINCT em status
+   * e ordenava por status::text, e o Postgres recusa a consulta inteira quando a expressão
+   * ordenada não está na seleção. Nos testes com repositório em memória passava; na tela de
+   * Clientes dava 500 e os filtros não abriam. Só o banco de verdade denuncia isso.
+   */
+  it('os filtros da tela de clientes vêm do banco sem quebrar a consulta', async () => {
+    const res = await request(app).get('/api/v1/clients/filter-options').set(bearer(ana));
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.segments)).toBe(true);
+    expect(Array.isArray(res.body.sizes)).toBe(true);
+    expect(Array.isArray(res.body.plans)).toBe(true);
+    expect(Array.isArray(res.body.statuses)).toBe(true);
+    // status é enum: a lista vem em ordem alfabética, não na ordem de declaração.
+    expect([...res.body.statuses]).toEqual([...res.body.statuses].sort());
+  });
+
   it('usuário da organização B não vê nem edita clientes da A', async () => {
     const mine = await request(app).get(`/api/v1/clients?search=test-${run}`).set(bearer(ana));
     const clientId = mine.body.items[0].id as string;

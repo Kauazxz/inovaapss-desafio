@@ -267,7 +267,14 @@ export function createPortfolioClientsRepository(
           .where(eq(plans.organizationId, organizationId))
           .orderBy(asc(plans.name)),
         db
-          .selectDistinct({ value: portfolioClients.status })
+          /**
+           * O status é enum. Ordenar por `status::text` com SELECT DISTINCT faz o Postgres
+           * recusar a consulta inteira ("ORDER BY expressions must appear in select list"),
+           * porque a expressão ordenada não é a mesma que está sendo selecionada. Por isso a
+           * conversão entra NOS DOIS lados: a tela quer a lista em ordem alfabética, não na
+           * ordem em que o enum foi declarado.
+           */
+          .selectDistinct({ value: sql<string>`${portfolioClients.status}::text` })
           .from(portfolioClients)
           .where(eq(portfolioClients.organizationId, organizationId))
           .orderBy(asc(sql`${portfolioClients.status}::text`)),
