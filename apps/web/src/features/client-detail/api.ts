@@ -16,6 +16,7 @@ import type {
   ClientScoresResponse,
 } from '@inovaapss/shared';
 
+import { ApiError, apiFetch } from '@/lib/api';
 import {
   buildMockClientEvidence,
   buildMockClientHistory,
@@ -24,8 +25,22 @@ import {
   buildMockClientScores,
 } from '@/lib/mock/client-detail';
 
-/** De onde os dados vêm hoje. A tela mostra uma pílula enquanto for 'mock'. */
-export const CLIENT_DETAIL_DATA_SOURCE: 'mock' | 'api' = 'mock';
+/**
+ * De onde os dados vêm. Controlado por VITE_DATA_SOURCE (padrão 'api'); com 'mock' a tela usa
+ * os dados de exemplo e mostra uma pílula avisando.
+ */
+export const CLIENT_DETAIL_DATA_SOURCE: 'mock' | 'api' =
+  import.meta.env.VITE_DATA_SOURCE === 'mock' ? 'mock' : 'api';
+
+/** Chama a API e traduz o 404 da API no erro que a tela já sabe mostrar. */
+async function buscar<T>(clientId: string, caminho: string): Promise<T> {
+  try {
+    return await apiFetch<T>(`/api/v1/clients/${encodeURIComponent(clientId)}/${caminho}`);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) throw new ClientNotFoundError(clientId);
+    throw err;
+  }
+}
 
 /** Erro de "cliente não encontrado": a tela mostra o estado vazio com o link de volta. */
 export class ClientNotFoundError extends Error {
@@ -43,19 +58,25 @@ function orNotFound<T>(clientId: string, value: T | null): T {
 }
 
 export async function fetchClientOverview(clientId: string): Promise<ClientHealthOverview> {
-  // API real: return apiFetch<ClientHealthOverview>(`/api/v1/clients/${encodeURIComponent(clientId)}`);
+  if (CLIENT_DETAIL_DATA_SOURCE === 'api') {
+    return buscar<ClientHealthOverview>(clientId, 'overview');
+  }
   await Promise.resolve();
   return orNotFound(clientId, buildMockClientOverview(clientId));
 }
 
 export async function fetchClientScores(clientId: string): Promise<ClientScoresResponse> {
-  // API real: return apiFetch<ClientScoresResponse>(`/api/v1/clients/${encodeURIComponent(clientId)}/scores`);
+  if (CLIENT_DETAIL_DATA_SOURCE === 'api') {
+    return buscar<ClientScoresResponse>(clientId, 'scores');
+  }
   await Promise.resolve();
   return orNotFound(clientId, buildMockClientScores(clientId));
 }
 
 export async function fetchClientEvidence(clientId: string): Promise<ClientEvidenceResponse> {
-  // API real: return apiFetch<ClientEvidenceResponse>(`/api/v1/clients/${encodeURIComponent(clientId)}/evidence`);
+  if (CLIENT_DETAIL_DATA_SOURCE === 'api') {
+    return buscar<ClientEvidenceResponse>(clientId, 'evidence');
+  }
   await Promise.resolve();
   return orNotFound(clientId, buildMockClientEvidence(clientId));
 }
@@ -63,13 +84,17 @@ export async function fetchClientEvidence(clientId: string): Promise<ClientEvide
 export async function fetchClientRecommendations(
   clientId: string,
 ): Promise<ClientRecommendationsResponse> {
-  // API real: return apiFetch<ClientRecommendationsResponse>(`/api/v1/clients/${encodeURIComponent(clientId)}/recommendations`);
+  if (CLIENT_DETAIL_DATA_SOURCE === 'api') {
+    return buscar<ClientRecommendationsResponse>(clientId, 'recommendations');
+  }
   await Promise.resolve();
   return orNotFound(clientId, buildMockClientRecommendations(clientId));
 }
 
 export async function fetchClientHistory(clientId: string): Promise<ClientHistoryResponse> {
-  // API real: return apiFetch<ClientHistoryResponse>(`/api/v1/clients/${encodeURIComponent(clientId)}/history`);
+  if (CLIENT_DETAIL_DATA_SOURCE === 'api') {
+    return buscar<ClientHistoryResponse>(clientId, 'history');
+  }
   await Promise.resolve();
   return orNotFound(clientId, buildMockClientHistory(clientId));
 }
