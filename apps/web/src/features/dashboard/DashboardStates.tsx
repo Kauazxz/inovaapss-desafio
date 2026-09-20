@@ -46,9 +46,9 @@ export function DashboardEmpty({
   onClearFilters,
 }: {
   filtered: boolean;
-  onClearFilters: () => void;
+  onClearFilters?: () => void;
 }) {
-  if (filtered) {
+  if (filtered && onClearFilters) {
     return (
       <EmptyState
         icon={Inbox}

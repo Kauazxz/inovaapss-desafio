@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -126,25 +126,15 @@ describe('aba Em risco', () => {
   );
 
   it(
-    'filtra o gráfico e a tabela pela busca e pela classe de saúde',
+    'não oferece busca nem filtros: a lista é fixa',
     async () => {
       renderWithProviders(<RiskTab />);
       await screen.findByRole('list', { name: /clientes ordenados por prioridade/i }, LAZY_TIMEOUT);
 
-      await userEvent.type(screen.getByLabelText('Buscar cliente'), 'beta');
-      expect(
-        await screen.findByRole('listitem', { name: /^#1 Beta Logística/ }),
-      ).toBeInTheDocument();
-      expect(tableClientRows()).toHaveLength(1);
-      expect(tableClientRows()[0]).toHaveTextContent('Beta Logística S.A.');
-
-      await userEvent.click(screen.getByRole('button', { name: 'Limpar filtros' }));
-      await userEvent.selectOptions(screen.getByLabelText('Classe de saúde'), 'CRITICAL');
-
-      const expected = mock.classCounts.CRITICAL;
-      expect(expected).toBeGreaterThan(0);
-      await waitFor(() => expect(tableClientRows()).toHaveLength(expected));
-      tableClientRows().forEach((row) => expect(row).toHaveTextContent('Crítico'));
+      expect(screen.queryByLabelText('Buscar cliente')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Classe de saúde')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Limpar filtros' })).not.toBeInTheDocument();
+      expect(tableClientRows()).toHaveLength(mock.ranking.length);
     },
     TEST_TIMEOUT,
   );
@@ -170,40 +160,20 @@ describe('textos derivados da configuração (§7, §28, §65)', () => {
 describe('tabela de ranking', () => {
   const mock = buildMockRiskDashboard();
 
-  it(
-    'nasce ordenada por prioridade e reordena pelos cabeçalhos',
-    async () => {
-      render(<RankingTable rows={mock.ranking} onSelect={() => {}} />);
+  it('é uma lista fixa na ordem de prioridade, sem reordenar pelos cabeçalhos', () => {
+    render(<RankingTable rows={mock.ranking} onSelect={() => {}} />);
 
-      expect(tableClientRows()[0]).toHaveTextContent(mock.ranking[0]!.clientName);
-      expect(screen.getByRole('columnheader', { name: /prioridade/i })).toHaveAttribute(
-        'aria-sort',
-        'ascending',
-      );
+    const names = tableClientRows().map((row) => row.getAttribute('data-client-id'));
+    expect(names).toEqual(mock.ranking.map((row) => row.clientId));
+    expect(tableClientRows()[0]).toHaveTextContent(mock.ranking[0]!.clientName);
 
-      await userEvent.click(screen.getByRole('button', { name: 'Cliente' }));
-      const alphabetical = [...mock.ranking].sort((a, b) =>
-        a.clientName.localeCompare(b.clientName),
-      );
-      expect(tableClientRows()[0]).toHaveTextContent(alphabetical[0]!.clientName);
-      expect(screen.getByRole('columnheader', { name: /cliente/i })).toHaveAttribute(
-        'aria-sort',
-        'ascending',
-      );
-
-      await userEvent.click(screen.getByRole('button', { name: 'Valor mensal' }));
-      // Ordena pela receita em risco (valor × risco), não pelo valor bruto do contrato.
-      const exposed = [...mock.ranking].sort(
-        (a, b) => (b.mrr * b.riskScore) / 100 - (a.mrr * a.riskScore) / 100,
-      )[0]!;
-      expect(tableClientRows()[0]).toHaveTextContent(exposed.clientName);
-      expect(screen.getByRole('columnheader', { name: /valor mensal/i })).toHaveAttribute(
-        'aria-sort',
-        'descending',
-      );
-    },
-    TEST_TIMEOUT,
-  );
+    // Cabeçalhos são só texto: nada de botão de ordenação.
+    expect(screen.queryByRole('button', { name: 'Valor mensal' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cliente' })).not.toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /valor mensal/i })).not.toHaveAttribute(
+      'aria-sort',
+    );
+  });
 
   it('mostra health com número e classe escrita, confiança e a ação sugerida', () => {
     render(<RankingTable rows={mock.ranking.slice(0, 1)} onSelect={() => {}} />);

@@ -1,13 +1,9 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router';
-
-import { isEmptyDashboardFilters, type DashboardFilters } from '@inovaapss/shared';
 
 import { ForecastDumbbellChart } from '@/components/charts/forecast-dumbbell-chart';
 import { formatCompactCurrency, formatInteger } from '@/lib/format';
 
-import { useDashboardFilterOptions, useRiskDashboard } from './api';
-import { DashboardFilterBar } from './DashboardFilterBar';
+import { useRiskDashboard, type RiskDashboardQuery } from './api';
 import { DashboardEmpty, DashboardError, DashboardLoading } from './DashboardStates';
 import {
   criticalBandHint,
@@ -19,30 +15,24 @@ import {
 import { KpiRow } from './KpiRow';
 import { RankingTable } from './RankingTable';
 
+/** Sem filtros nem busca: a carteira inteira, sempre na mesma ordem de prioridade. */
+const FIXED_QUERY: RiskDashboardQuery = { filters: {}, search: '' };
+
 /**
  * Aba "Em risco" (§39): responde com quem falar, por quê, em que ordem e o que fazer.
- * KPIs em texto → gráfico de forecast priorizado (A2) → tabela de ranking, tudo sob o mesmo filtro.
+ * KPIs em texto → gráfico de forecast priorizado (A2) → tabela de ranking. Sem filtros: é uma lista fixa para o representante.
  */
 export function RiskTab() {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<DashboardFilters>({});
-  const [search, setSearch] = useState('');
-  const query = useRiskDashboard({ filters, search });
-  const options = useDashboardFilterOptions();
+  const query = useRiskDashboard(FIXED_QUERY);
 
-  const clearFilters = () => {
-    setFilters({});
-    setSearch('');
-  };
   const openClient = (clientId: string) => navigate(`/clients/${clientId}`);
-  const isFiltered = !isEmptyDashboardFilters(filters) || search !== '';
 
   if (query.isPending) return <DashboardLoading label="Carregando a aba Em risco" />;
   if (query.isError)
     return <DashboardError error={query.error} onRetry={() => void query.refetch()} />;
 
   const data = query.data;
-  const reloading = query.isFetching && query.isPlaceholderData;
   const { kpis } = data;
   // Faixas e pesos vêm do payload (configuração da organização), nunca de números fixos (§65).
   const { thresholds } = data.forecast;
@@ -78,19 +68,11 @@ export function RiskTab() {
         ]}
       />
 
-      <DashboardFilterBar
-        filters={filters}
-        onFiltersChange={setFilters}
-        options={options.data}
-        search={search}
-        onSearchChange={setSearch}
-      />
-
       {data.ranking.length === 0 ? (
-        <DashboardEmpty filtered={isFiltered} onClearFilters={clearFilters} />
+        <DashboardEmpty filtered={false} />
       ) : (
         <>
-          <ForecastDumbbellChart data={data.forecast} onSelect={openClient} reloading={reloading} />
+          <ForecastDumbbellChart data={data.forecast} onSelect={openClient} />
 
           <section aria-labelledby="ranking-title" className="space-y-3">
             <div>
@@ -98,16 +80,11 @@ export function RiskTab() {
                 Ranking por prioridade
               </h3>
               <p className="text-[13px] text-muted-foreground">
-                {priorityFormulaText(data.priorityWeights)} (§28). Clique num cabeçalho para
-                reordenar; "Analisar" abre o cliente.
+                {priorityFormulaText(data.priorityWeights)} (§28). A lista é fixa: o primeiro da
+                fila é quem tem a maior prioridade; "Analisar" abre o cliente.
               </p>
             </div>
-            <div
-              style={reloading ? { opacity: 0.6 } : undefined}
-              aria-busy={reloading || undefined}
-            >
-              <RankingTable rows={data.ranking} onSelect={openClient} />
-            </div>
+            <RankingTable rows={data.ranking} onSelect={openClient} />
           </section>
         </>
       )}

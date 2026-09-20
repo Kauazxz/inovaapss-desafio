@@ -1,5 +1,4 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, Minus, TrendingDown, TrendingUp } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
 
 import {
   HEALTH_CLASS_LABELS,
@@ -23,34 +22,20 @@ import { cn } from '@/lib/utils';
 import { HealthPill, PriorityPill } from './HealthPill';
 
 export interface RankingTableProps {
-  /** Já ordenado por prioridade pela API; a tabela reordena localmente ao clicar no cabeçalho. */
+  /** Já ordenado por prioridade pela API; a tabela mostra a lista na ordem recebida. */
   rows: RankingRow[];
   /** CTA "Analisar" → /clients/:id. */
   onSelect: (clientId: string) => void;
 }
 
-type SortKey =
-  | 'position'
-  | 'clientName'
-  | 'healthCurrent'
-  | 'healthProjected'
-  | 'riskScore'
-  | 'confidence'
-  | 'mrr';
-
-interface SortState {
-  key: SortKey;
-  direction: 'asc' | 'desc';
-}
-
-const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
-  { key: 'position', label: 'Prioridade' },
-  { key: 'clientName', label: 'Cliente' },
-  { key: 'healthCurrent', label: 'Health', numeric: true },
-  { key: 'healthProjected', label: 'Health projetado', numeric: true },
-  { key: 'riskScore', label: 'Risco', numeric: true },
-  { key: 'confidence', label: 'Confiança', numeric: true },
-  { key: 'mrr', label: 'Valor mensal', numeric: true },
+const COLUMNS: { label: string; numeric?: boolean }[] = [
+  { label: 'Prioridade' },
+  { label: 'Cliente' },
+  { label: 'Health', numeric: true },
+  { label: 'Health projetado', numeric: true },
+  { label: 'Risco', numeric: true },
+  { label: 'Confiança', numeric: true },
+  { label: 'Valor mensal', numeric: true },
 ];
 
 const TREND_TEXT: Readonly<Record<HealthTrend, string>> = {
@@ -70,103 +55,47 @@ function TrendIcon({ trend }: { trend: HealthTrend }) {
   );
 }
 
-/**
- * Valor mensal ponderado pelo risco (`mrr × risco / 100`): o quanto da receita está em jogo.
- * É a chave de ordenação da coluna "Valor mensal" — um contrato grande com risco baixo pode
- * pesar mais que um contrato pequeno com risco alto, e vice-versa.
- */
+/** Valor mensal ponderado pelo risco (`mrr × risco / 100`): o quanto da receita está em jogo. */
 function revenueAtRisk(row: RankingRow): number {
   return (row.mrr * row.riskScore) / 100;
-}
-
-function compare(a: RankingRow, b: RankingRow, key: SortKey): number {
-  if (key === 'clientName') return a.clientName.localeCompare(b.clientName);
-  if (key === 'mrr') return revenueAtRisk(a) - revenueAtRisk(b);
-  const left = a[key];
-  const right = b[key];
-  // Sem projeção vai para o fim, em qualquer direção.
-  if (left === null) return right === null ? 0 : 1;
-  if (right === null) return -1;
-  return left - right;
 }
 
 /**
  * Tabela de ranking (§39): Prioridade, Cliente, Health (número + pílula da classe), Health
  * projetado e Confiança da projeção (irmã do gráfico — DATAVIZ.md §5.1), Risco, Confiança,
- * Valor mensal, Principal evidência (com a ação sugerida), Ação. Nasce na ordem de prioridade;
- * "Valor mensal" ordena pela receita em risco (valor × risco), não pelo valor bruto do contrato.
+ * Valor mensal (com a receita em risco), Principal evidência (com a ação sugerida), Ação.
+ * Lista fixa, na ordem de prioridade: o representante não reordena nem filtra.
  */
 export function RankingTable({ rows, onSelect }: RankingTableProps) {
-  const [sort, setSort] = useState<SortState>({ key: 'position', direction: 'asc' });
-
-  const sorted = useMemo(() => {
-    const factor = sort.direction === 'asc' ? 1 : -1;
-    return [...rows].sort((a, b) => {
-      const result = compare(a, b, sort.key);
-      // Nulos ficam no fim independentemente da direção.
-      if (sort.key !== 'clientName' && (a[sort.key] === null || b[sort.key] === null))
-        return result;
-      return result * factor || a.position - b.position;
-    });
-  }, [rows, sort]);
-
-  const toggleSort = (key: SortKey) =>
-    setSort((current) =>
-      current.key === key
-        ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
-        : { key, direction: key === 'position' || key === 'clientName' ? 'asc' : 'desc' },
-    );
-
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          {COLUMNS.map((column) => {
-            const isSorted = sort.key === column.key;
-            const SortIcon = !isSorted
-              ? ArrowUpDown
-              : sort.direction === 'asc'
-                ? ArrowUp
-                : ArrowDown;
-            return (
-              <TableHead
-                key={column.key}
-                scope="col"
-                aria-sort={
-                  isSorted ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'
-                }
-                className={cn(column.numeric && 'text-right')}
-              >
-                <button
-                  type="button"
-                  onClick={() => toggleSort(column.key)}
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-md outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50',
-                    column.numeric && 'flex-row-reverse',
-                  )}
-                >
-                  {column.label}
-                  <SortIcon aria-hidden="true" className="size-3.5 text-muted-foreground" />
-                </button>
-              </TableHead>
-            );
-          })}
+          {COLUMNS.map((column) => (
+            <TableHead
+              key={column.label}
+              scope="col"
+              className={cn(column.numeric && 'text-right')}
+            >
+              {column.label}
+            </TableHead>
+          ))}
           <TableHead scope="col">Principal evidência</TableHead>
           <TableHead scope="col">Ação</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {sorted.length === 0 ? (
+        {rows.length === 0 ? (
           <TableRow>
             <TableCell
               colSpan={COLUMNS.length + 2}
               className="py-8 text-center text-muted-foreground"
             >
-              Nenhum cliente corresponde aos filtros.
+              Nenhum cliente para acompanhar.
             </TableCell>
           </TableRow>
         ) : (
-          sorted.map((row) => (
+          rows.map((row) => (
             <TableRow key={row.clientId} data-client-id={row.clientId}>
               <TableCell>
                 <span className="inline-flex items-center gap-2">
