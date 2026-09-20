@@ -49,6 +49,11 @@ import {
 } from '../modules/documents/repository.js';
 import { createDocumentsRouter } from '../modules/documents/routes.js';
 import { createDocumentsService } from '../modules/documents/service.js';
+import { createImportsController } from '../modules/imports/controller.js';
+import { createImportsRepository, type ImportsRepository } from '../modules/imports/repository.js';
+import { createImportsRouter } from '../modules/imports/routes.js';
+import { createImportsService, type RecalculatePortfolio } from '../modules/imports/service.js';
+import { IMPORTS_BUCKET } from '../modules/imports/storage.js';
 import { createMetricsController } from '../modules/metrics/controller.js';
 import { createMetricsRepository, type MetricsRepository } from '../modules/metrics/repository.js';
 import {
@@ -70,6 +75,7 @@ import {
 } from '../modules/portfolio-clients/repository.js';
 import { createPortfolioClientsRouter } from '../modules/portfolio-clients/routes.js';
 import { createPortfolioClientsService } from '../modules/portfolio-clients/service.js';
+import { recalculateOrganization } from '../modules/scoring/recalculate.js';
 
 import type { ApiEnv } from '../config/env.js';
 import type { DbClient } from '../infrastructure/db/index.js';
@@ -321,6 +327,37 @@ export const ROUTES: readonly RouteDescriptor[] = [
     path: `${API_V1_PREFIX}/metric-suggestions/{id}/reject`,
     description: 'Rejeita a sugestão',
   },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/imports`,
+    description: 'Upload de planilha para importação (XLSX, CSV ou JSON; até 10 MB)',
+  },
+  { method: 'GET', path: `${API_V1_PREFIX}/imports`, description: 'Importações da organização' },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/imports/datasets`,
+    description: 'Datasets e campos que o importador entende',
+  },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/imports/{id}`,
+    description: 'Importação com as tabelas do arquivo e o mapeamento sugerido',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/imports/{id}/preview`,
+    description: 'Prévia: aplica o mapeamento, valida e devolve o relatório sem gravar',
+  },
+  {
+    method: 'POST',
+    path: `${API_V1_PREFIX}/imports/{id}/confirm`,
+    description: 'Confirma: revalida, grava por upsert e dispara o recálculo',
+  },
+  {
+    method: 'GET',
+    path: `${API_V1_PREFIX}/imports/{id}/errors`,
+    description: 'Linhas recusadas da importação, com o motivo',
+  },
 ];
 
 export interface ApiV1Dependencies {
@@ -344,6 +381,12 @@ export interface ApiV1Dependencies {
   contractsRepository?: ContractsRepository;
   /** Testes: substitui a persistência de métricas e modelos. */
   metricsRepository?: MetricsRepository;
+  /** Testes: substitui a persistência de importações e a gravação dos dados importados. */
+  importsRepository?: ImportsRepository;
+  /** Testes/dev: substitui o Supabase Storage do bucket "imports". */
+  importStorage?: DocumentStorage;
+  /** Testes: substitui o recálculo disparado ao confirmar uma importação (§62). */
+  recalculate?: RecalculatePortfolio;
   /** Variáveis para os serviços que dependem de configuração (e-mail, URL do painel). */
   env?: Pick<ApiEnv, 'RESEND_API_KEY' | 'EMAIL_FROM' | 'WEB_BASE_URL'>;
   /** Testes: substitui o envio de e-mail. */
@@ -493,6 +536,32 @@ export function createApiV1Router(deps: ApiV1Dependencies): Router {
       requireAuth,
       resolveTenant,
       controller: createDocumentsController(documentsService),
+    }),
+  );
+
+  // Etapa 7 — importação de planilhas. O arquivo vai para o bucket privado "imports", separado
+  // do de documentos: aqui ele existe para ser relido na prévia e na confirmação.
+  const importsService = createImportsService({
+    repository: deps.importsRepository ?? createImportsRepository(getDb),
+    storage:
+      deps.importStorage ??
+      createSupabaseDocumentStorage({
+        getClient: () => deps.supabase.getAdmin(),
+        bucket: IMPORTS_BUCKET,
+      }),
+    recalculate:
+      deps.recalculate ??
+      (async (organizationId: string) => {
+        const result = await recalculateOrganization(getDb(), { organizationId });
+        return { clients: result.clients };
+      }),
+  });
+  router.use(
+    '/imports',
+    createImportsRouter({
+      requireAuth,
+      resolveTenant,
+      controller: createImportsController(importsService),
     }),
   );
 

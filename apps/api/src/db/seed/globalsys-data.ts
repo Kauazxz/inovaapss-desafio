@@ -27,6 +27,11 @@ import { importGlobalSysWorkbook } from '@inovaapss/importer';
 import { loadEnvFiles, parseApiEnv, requireEnv } from '../../config/env.js';
 import { createDbClient } from '../../infrastructure/db/index.js';
 import {
+  monthBounds,
+  monthlyMetricValues,
+  npsMetricValue,
+} from '../../modules/imports/metric-mapping.js';
+import {
   contracts,
   metricDefinitions,
   metricValues,
@@ -50,21 +55,6 @@ export interface SeedDataResult {
   values: number;
   periods: { first: string; last: string };
   skipped: string[];
-}
-
-/** "2025-01" → { start: "2025-01-01", end: "2025-01-31" }. */
-function monthBounds(period: string): { start: string; end: string } {
-  const [year, month] = period.split('-').map(Number);
-  if (!year || !month) throw new Error(`Período inválido: ${period}`);
-  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const mm = String(month).padStart(2, '0');
-  return { start: `${year}-${mm}-01`, end: `${year}-${mm}-${String(lastDay).padStart(2, '0')}` };
-}
-
-/** Taxa percentual com divisor zero tratado como "não se aplica" (§15 do documento). */
-function rate(numerator: number | null, denominator: number | null): number | null {
-  if (numerator === null || denominator === null || denominator === 0) return null;
-  return Number(((numerator / denominator) * 100).toFixed(4));
 }
 
 async function insertInChunks<T>(
@@ -266,33 +256,18 @@ export async function seedGlobalSysData(): Promise<SeedDataResult> {
       });
     };
 
+    // A tradução coluna → métrica (inclusive as taxas derivadas dos §11 e §15) é a mesma que o
+    // importador da Etapa 7 usa: modules/imports/metric-mapping.ts.
     for (const m of result.monthlyMetrics) {
-      const code = m.external_code;
-      push(code, 'critical_tickets', m.period, m.critical_tickets);
-      push(code, 'open_tickets', m.period, m.open_tickets);
-      push(code, 'resolution_vs_sla', m.period, m.avg_resolution_hours);
-      push(code, 'platform_usage', m.period, m.platform_usage_pct);
-      push(code, 'sla_compliance', m.period, m.sla_compliance_pct);
-      push(code, 'formal_complaints', m.period, m.formal_complaints);
-      push(code, 'payment_delay', m.period, m.payment_delay_days);
-      // Taxas derivadas (§11 e §15 do documento).
-      push(code, 'reopened_tickets', m.period, rate(m.reopened_tickets, m.open_tickets));
-      const missed =
-        m.meetings_planned === null || m.meetings_completed === null
-          ? null
-          : m.meetings_planned - m.meetings_completed;
-      push(code, 'missed_meetings', m.period, rate(missed, m.meetings_planned));
+      for (const draft of monthlyMetricValues(m)) {
+        push(m.external_code, draft.metricSlug, m.period, draft.value);
+      }
     }
 
     // §16: "não respondeu" é observação válida — valor nulo com answered = false.
     for (const n of result.nps) {
-      push(
-        n.external_code,
-        'nps_dissatisfaction',
-        n.period,
-        n.answered ? n.score : null,
-        n.answered,
-      );
+      const draft = npsMetricValue(n);
+      push(n.external_code, draft.metricSlug, n.period, draft.value, draft.answered);
     }
 
     // Reescreve os valores desta organização e insere de novo (idempotente e simples).
