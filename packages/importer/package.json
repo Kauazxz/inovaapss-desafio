@@ -1,0 +1,38 @@
+{
+  "name": "@inovaapss/importer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nucleo puro do importador (XLSX, CSV, JSON): leitura, deteccao de colunas, mapeamento, coercao e validacao - sem banco, sem HTTP",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@inovaapss/shared": "workspace:*",
+    "papaparse": "^5.5.2",
+    "xlsx": "^0.18.5",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@inovaapss/config": "workspace:*",
+    "@types/node": "^22.20.4",
+    "@types/papaparse": "^5.5.2",
+    "@vitest/coverage-v8": "^5.0.1",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.1"
+  }
+}
