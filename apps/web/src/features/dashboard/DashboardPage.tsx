@@ -1,7 +1,10 @@
+import { Upload } from 'lucide-react';
 import { lazy, Suspense } from 'react';
+import { Link } from 'react-router';
 
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { DASHBOARD_DATA_SOURCE } from './api';
@@ -29,6 +32,13 @@ export function DashboardPage() {
         {DASHBOARD_DATA_SOURCE === 'mock' ? (
           <Badge variant="outline">Dados de exemplo (mock)</Badge>
         ) : null}
+        {/* O dashboard é a primeira tela de quem chega: sem dados, a ação é importar (§34). */}
+        <Button asChild variant="outline">
+          <Link to="/import">
+            <Upload data-icon="inline-start" aria-hidden="true" />
+            Importar dados
+          </Link>
+        </Button>
       </PageHeader>
 
       <Tabs defaultValue="risk">
