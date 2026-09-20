@@ -14,7 +14,8 @@ import type { ImportRecalculationDto } from '@inovaapss/shared';
 
 import { API_VERSION } from '../config/version.js';
 import {
-  createManualMetricExtractionProvider,
+  createAiMetricExtractionProvider,
+  createHeuristicMetricExtractionProvider,
   createTextExtractor,
   type MetricExtractionProvider,
   type TextExtractor,
@@ -425,7 +426,7 @@ export interface ApiV1Dependencies {
    * "planilhas importadas" do arquivo da organização (docs/DOCUMENTS.md §8).
    */
   importDocumentStorage?: DocumentStorage;
-  /** Substitui o provider de sugestões (padrão: manual — ajuste A5). */
+  /** Substitui o provider de sugestões automáticas. */
   metricExtractionProvider?: MetricExtractionProvider;
   /** Testes: substitui a extração de texto. */
   textExtractor?: TextExtractor;
@@ -446,7 +447,10 @@ export interface ApiV1Dependencies {
   /** Testes: substitui o recálculo disparado ao confirmar uma importação. */
   importRecalculate?: (organizationId: string) => Promise<ImportRecalculationDto | null>;
   /** Variáveis para os serviços que dependem de configuração (e-mail, URL do painel). */
-  env?: Pick<ApiEnv, 'RESEND_API_KEY' | 'EMAIL_FROM' | 'WEB_BASE_URL'>;
+  env?: Pick<
+    ApiEnv,
+    'RESEND_API_KEY' | 'EMAIL_FROM' | 'WEB_BASE_URL' | 'ANTHROPIC_API_KEY' | 'ANTHROPIC_MODEL'
+  >;
   /** Testes: substitui o envio de e-mail. */
   mailer?: Mailer;
 }
@@ -611,7 +615,14 @@ export function createApiV1Router(deps: ApiV1Dependencies): Router {
         createBucketIfMissing: false,
       }),
     textExtractor: deps.textExtractor ?? createTextExtractor(),
-    provider: deps.metricExtractionProvider ?? createManualMetricExtractionProvider(),
+    provider:
+      deps.metricExtractionProvider ??
+      (deps.env?.ANTHROPIC_API_KEY
+        ? createAiMetricExtractionProvider({
+            apiKey: deps.env.ANTHROPIC_API_KEY,
+            ...(deps.env.ANTHROPIC_MODEL ? { model: deps.env.ANTHROPIC_MODEL } : {}),
+          })
+        : createHeuristicMetricExtractionProvider()),
   });
   router.use(
     createDocumentsRouter({

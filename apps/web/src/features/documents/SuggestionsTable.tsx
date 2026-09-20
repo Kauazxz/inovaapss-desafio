@@ -22,6 +22,28 @@ interface SuggestionsTableProps {
   busyId?: string | null;
 }
 
+function providerLabel(provider: string): string {
+  if (provider === 'manual') return 'Manual';
+  if (provider === 'anthropic') return 'Claude';
+  if (provider === 'automatic-local') return 'Análise local';
+  return provider;
+}
+
+function thresholdLabel(suggestion: MetricSuggestion): string | null {
+  const thresholds = suggestion.suggestedThresholds;
+  if (!thresholds) return null;
+  if (thresholds.strategy === 'THRESHOLD_BANDS' && thresholds.bands) {
+    return `Faixas: ${thresholds.bands
+      .map((band) => `${band.upTo === null ? 'restante' : `até ${band.upTo}`} → ${band.health}`)
+      .join(' · ')}`;
+  }
+  if (typeof thresholds.target === 'number') return `Meta sugerida: ${thresholds.target}`;
+  if (typeof thresholds.min === 'number' || typeof thresholds.max === 'number') {
+    return `Faixa sugerida: ${thresholds.min ?? '—'} a ${thresholds.max ?? '—'}`;
+  }
+  return thresholds.strategy ? `Estratégia: ${thresholds.strategy}` : null;
+}
+
 /**
  * Sugestões do documento (§35: revisão humana). Aceitar leva a /metrics com o payload
  * pré-preenchido; rejeitar só marca. Sugestão aceita continua com "Criar métrica" para o caso
@@ -49,6 +71,7 @@ export function SuggestionsTable({
       <TableBody>
         {suggestions.map((suggestion) => {
           const busy = busyId === suggestion.id;
+          const thresholds = thresholdLabel(suggestion);
           return (
             <TableRow key={suggestion.id} data-suggestion-id={suggestion.id}>
               <TableCell className="max-w-xs align-top">
@@ -66,6 +89,14 @@ export function SuggestionsTable({
                     “{suggestion.sourceExcerpt}”
                   </blockquote>
                 ) : null}
+                {thresholds ? (
+                  <p className="mt-1 text-xs text-muted-foreground">{thresholds}</p>
+                ) : null}
+                {suggestion.suggestedFormula ? (
+                  <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                    Fórmula: {JSON.stringify(suggestion.suggestedFormula)}
+                  </p>
+                ) : null}
               </TableCell>
               <TableCell className="align-top">
                 {METRIC_TYPE_LABELS[suggestion.suggestedType]}
@@ -77,7 +108,12 @@ export function SuggestionsTable({
                 {formatWeight(suggestion.suggestedWeight)}
               </TableCell>
               <TableCell className="align-top text-muted-foreground">
-                {suggestion.provider === 'manual' ? 'Manual' : suggestion.provider}
+                <span>{providerLabel(suggestion.provider)}</span>
+                {suggestion.confidence !== null ? (
+                  <span className="block text-xs tabular-nums">
+                    {Math.round(suggestion.confidence * 100)}% de confiança
+                  </span>
+                ) : null}
               </TableCell>
               <TableCell className="align-top">
                 <SuggestionStatusBadge status={suggestion.status} />

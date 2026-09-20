@@ -32,8 +32,8 @@ export interface UploadObjectInput {
 export interface DocumentStorage {
   upload(input: UploadObjectInput): Promise<StoredObject>;
   download(path: string): Promise<Buffer>;
-  /** URL de download com validade curta (segundos). */
-  createSignedUrl(path: string, expiresInSeconds: number): Promise<string>;
+  /** URL de download com validade curta (segundos), opcionalmente forçando o nome do arquivo. */
+  createSignedUrl(path: string, expiresInSeconds: number, downloadName?: string): Promise<string>;
   remove(paths: readonly string[]): Promise<void>;
   /**
    * Objetos sob um prefixo (`<organizationId>/`), incluindo os de subpastas. É o que permite

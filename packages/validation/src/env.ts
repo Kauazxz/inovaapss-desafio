@@ -39,6 +39,8 @@ export const serverEnvSchema = z.object({
       'DATABASE_URL precisa começar com postgresql://',
     ),
   ANTHROPIC_API_KEY: optionalString,
+  /** Modelo usado para analisar documentos; vazio usa o modelo econômico padrão da API. */
+  ANTHROPIC_MODEL: optionalString,
   SENTRY_DSN: optionalUrl,
 });
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

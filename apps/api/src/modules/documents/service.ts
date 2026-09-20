@@ -1,10 +1,10 @@
 /**
- * Casos de uso de documentos e descoberta de métricas (§35, fluxo manual — ajuste A5).
+ * Casos de uso de documentos e descoberta automática de métricas (§35).
  *
  *   upload → storage privado + linha em uploaded_documents (status uploaded)
  *   extract-metrics → texto (TextExtractor) → storage (extracted.txt) + preview no banco
- *                     → MetricExtractionProvider (manual: nenhuma sugestão automática)
- *   suggestions → uma pessoa cria (validado com Zod + isSafeRule) e revisa (accept/reject)
+ *                     → MetricExtractionProvider → sugestões pendentes para revisão
+ *   suggestions → a pessoa também pode criar uma sugestão manual e revisar (accept/reject)
  *   accept → devolve o payload pronto para POST /metrics; a métrica nasce lá, nunca aqui.
  */
 import { randomUUID } from 'node:crypto';
@@ -306,7 +306,11 @@ export function createDocumentsService(deps: DocumentsServiceDependencies): Docu
 
     async get(tenant, id) {
       const record = await requireDocument(tenant, id);
-      const downloadUrl = await storageOf(record).createSignedUrl(record.storagePath, signedUrlTtl);
+      const downloadUrl = await storageOf(record).createSignedUrl(
+        record.storagePath,
+        signedUrlTtl,
+        record.fileName,
+      );
       return {
         ...toPublicDocument(record),
         downloadUrl,
@@ -356,9 +360,12 @@ export function createDocumentsService(deps: DocumentsServiceDependencies): Docu
         },
         extracted,
       );
-      const suggestions = await repository.createSuggestions(
-        toSuggestionInputs(drafts, document, provider.name),
+      const existing = await repository.listSuggestions(document.organizationId, document.id);
+      const existingNames = new Set(existing.map((item) => slugifyMetricName(item.suggestedName)));
+      const suggestionInputs = toSuggestionInputs(drafts, document, provider.name).filter(
+        (item) => !existingNames.has(slugifyMetricName(item.suggestedName)),
       );
+      const suggestions = await repository.createSuggestions(suggestionInputs);
 
       return {
         document: toPublicDocument(document),

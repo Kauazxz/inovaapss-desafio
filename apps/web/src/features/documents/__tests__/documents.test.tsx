@@ -400,7 +400,9 @@ describe('feature documents', () => {
         'https://storage.example/signed',
       );
       expect(await screen.findByText('Nenhuma sugestão ainda')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Extrair texto de novo' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Analisar documento de novo' }),
+      ).toBeInTheDocument();
     });
 
     it('mostra os metadados do arquivo: tipo, tamanho, quem enviou e quando', async () => {
@@ -443,7 +445,7 @@ describe('feature documents', () => {
               extractedTextPreview: 'Politica de SLA',
             },
             suggestions: [],
-            extraction: { provider: 'manual', chars: 15, truncated: false },
+            extraction: { provider: 'automatic-local', chars: 15, truncated: false },
           });
         }
         if (url.pathname === `/api/v1/documents/${DOC_A.id}` && extracted) {
@@ -463,8 +465,9 @@ describe('feature documents', () => {
       renderAt(`/documents/${DOC_A.id}`);
 
       expect(await screen.findByText(/Ainda não há texto extraído/)).toBeInTheDocument();
-      await userEvent.click(screen.getByRole('button', { name: 'Extrair texto' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Analisar documento' }));
       expect(await screen.findByText('Politica de SLA')).toBeInTheDocument();
+      expect(screen.getByText(/Análise concluída/)).toBeInTheDocument();
       expect(calls()).toContain(`POST /api/v1/documents/${DOC_A.id}/extract-metrics`);
     });
 

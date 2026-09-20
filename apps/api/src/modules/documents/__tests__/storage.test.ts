@@ -156,6 +156,15 @@ describe('storage do Supabase (client dublê)', () => {
     expect(fake.createSignedUrl).toHaveBeenCalledWith('org/doc/a.csv', 300);
   });
 
+  it('força o download com o nome original quando solicitado', async () => {
+    const fake = fakeClient({ bucketExists: true });
+    const storage = createSupabaseDocumentStorage({ getClient: () => fake.client });
+    await storage.createSignedUrl('org/doc/a.csv', 300, 'Relatório mensal.csv');
+    expect(fake.createSignedUrl).toHaveBeenCalledWith('org/doc/a.csv', 300, {
+      download: 'Relatório mensal.csv',
+    });
+  });
+
   it('recusa trabalhar com um bucket público', async () => {
     const fake = fakeClient({ bucketExists: true, bucketPublic: true });
     const storage = createSupabaseDocumentStorage({ getClient: () => fake.client });

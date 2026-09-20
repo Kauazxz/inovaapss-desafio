@@ -102,9 +102,12 @@ export function createSupabaseDocumentStorage(
       return Buffer.from(await data.arrayBuffer());
     },
 
-    async createSignedUrl(path, expiresInSeconds) {
+    async createSignedUrl(path, expiresInSeconds, downloadName) {
       await ensureBucket();
-      const { data, error } = await files().createSignedUrl(path, expiresInSeconds);
+      const signed = downloadName
+        ? await files().createSignedUrl(path, expiresInSeconds, { download: downloadName })
+        : await files().createSignedUrl(path, expiresInSeconds);
+      const { data, error } = signed;
       if (error || !data) {
         throw new StorageError('Não foi possível gerar a URL de download.');
       }

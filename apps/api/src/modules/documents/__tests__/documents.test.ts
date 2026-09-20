@@ -250,6 +250,7 @@ describe('GET /api/v1/documents e /documents/:id', () => {
     const res = await request(app()).get(`/api/v1/documents/${body.document.id}`).set(as('ana'));
     expect(res.status).toBe(200);
     expect(res.body.document.downloadUrl).toMatch(/^memory:\/\//);
+    expect(res.body.document.downloadUrl).toContain('download=relatorio.csv');
     expect(res.body.document.downloadUrlExpiresInSeconds).toBe(300);
   });
 
@@ -386,7 +387,7 @@ describe('arquivo da organização: planilhas da importação de dados', () => {
     const res = await request(app()).get(`/api/v1/documents/${id}`).set(as('ana'));
     expect(res.status).toBe(200);
     expect(res.body.document.downloadUrl).toBe(
-      `memory://${ORG_A}/${JOB}/clientes.xlsx?expires=300`,
+      `memory://${ORG_A}/${JOB}/clientes.xlsx?expires=300&download=clientes.xlsx`,
     );
     expect(res.body.document.origin).toBe('import');
   });
@@ -410,7 +411,7 @@ describe('arquivo da organização: planilhas da importação de dados', () => {
 });
 
 describe('POST /api/v1/documents/:id/extract-metrics', () => {
-  it('extrai o texto, guarda preview e texto completo, marca extracted; manual não sugere', async () => {
+  it('extrai o texto, guarda preview e texto completo e sugere métricas automaticamente', async () => {
     const { body } = await uploadCsv();
     const id: string = body.document.id;
 
@@ -420,8 +421,25 @@ describe('POST /api/v1/documents/:id/extract-metrics', () => {
     expect(res.body.document.extractedTextPreview).toContain('Colunas (4)');
     expect(res.body.document.extractedTextPreview).toContain('cliente_id');
     expect(res.body.document.extractedAt).toEqual(expect.any(String));
-    expect(res.body.suggestions).toEqual([]);
-    expect(res.body.extraction).toMatchObject({ provider: 'manual', truncated: false, rows: 2 });
+    expect(res.body.suggestions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          suggestedName: 'Chamados abertos',
+          provider: 'automatic-local',
+          status: 'pending',
+        }),
+        expect.objectContaining({
+          suggestedName: 'Pct sla cumprido',
+          provider: 'automatic-local',
+          status: 'pending',
+        }),
+      ]),
+    );
+    expect(res.body.extraction).toMatchObject({
+      provider: 'automatic-local',
+      truncated: false,
+      rows: 2,
+    });
 
     expect(storage.objects.has(`${ORG_A}/${id}/extracted.txt`)).toBe(true);
     expect(storage.objects.get(`${ORG_A}/${id}/extracted.txt`)?.contentType).toMatch(/text\/plain/);

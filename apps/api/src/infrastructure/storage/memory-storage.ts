@@ -24,11 +24,12 @@ export function createInMemoryDocumentStorage(): InMemoryDocumentStorage {
       }
       return Buffer.from(found.body);
     },
-    async createSignedUrl(path, expiresInSeconds) {
+    async createSignedUrl(path, expiresInSeconds, downloadName) {
       if (!objects.has(path)) {
         throw new Error(`Objeto não encontrado no armazenamento em memória: ${path}`);
       }
-      return `memory://${path}?expires=${expiresInSeconds}`;
+      const download = downloadName ? `&download=${encodeURIComponent(downloadName)}` : '';
+      return `memory://${path}?expires=${expiresInSeconds}${download}`;
     },
     async remove(paths) {
       for (const path of paths) objects.delete(path);

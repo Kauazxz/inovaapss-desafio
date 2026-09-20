@@ -513,7 +513,7 @@ export const openapiDocument: OpenAPIV3_1.Document = {
     {
       name: 'documents',
       description:
-        'Arquivo da organização (documentos enviados e planilhas importadas) e descoberta de métricas — fluxo manual (§35, §37, A5)',
+        'Arquivo da organização (documentos enviados e planilhas importadas), análise automática e descoberta de métricas com revisão humana (§35, §37)',
     },
     {
       name: 'calibration',
@@ -1270,7 +1270,7 @@ export const openapiDocument: OpenAPIV3_1.Document = {
         summary: 'Extrai o texto e roda o provider de sugestões (owner, admin ou analyst)',
         operationId: 'extractDocumentMetrics',
         description:
-          'Extrai o texto conforme o tipo (PDF, DOCX, XLSX, CSV, JSON, MD/TXT), guarda o texto completo no storage e um preview de até 20 kB no banco, marca o documento como `extracted` e chama o MetricExtractionProvider. Nesta fase o provider é o manual (ajuste A5): não gera sugestões; uma pessoa as cria em POST /documents/{id}/suggestions.',
+          'Extrai o texto conforme o tipo (PDF, DOCX, XLSX, CSV, JSON, MD/TXT), guarda o texto completo no storage e um preview de até 20 kB, executa a análise automática (Claude quando configurado; analisador local sem chave) e grava sugestões pendentes para revisão humana.',
         parameters: [{ $ref: '#/components/parameters/DocumentId' }],
         responses: {
           '200': jsonResponse('Documento atualizado e sugestões geradas', 'ExtractMetricsResult'),

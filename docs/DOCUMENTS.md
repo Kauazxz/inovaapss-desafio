@@ -4,8 +4,8 @@ A tela `/documents` é o **arquivo da organização**: um lugar só para tudo o 
 — contratos, manuais de KPI, políticas de SLA, relatórios **e as planilhas enviadas na importação
 de dados** (§34). Do arquivo sai a **sugestão de métrica** para o modelo da organização. Regras na
 [SPEC.md](SPEC.md) §35 (fluxo), §36 (`uploaded_documents`, `metric_extraction_suggestions`),
-§37 (rotas Documents), §45 (allowlist de MIME e limite de upload) e os ajustes **A4** (DOCX e
-JSON) e **A5** (IA fica para depois).
+§37 (rotas Documents), §45 (allowlist de MIME e limite de upload) e o ajuste **A4** (DOCX e
+JSON). A análise automática funciona localmente e usa Claude quando `ANTHROPIC_API_KEY` existe.
 
 O que o arquivo guarda:
 
@@ -20,7 +20,7 @@ arquivo é a importação.
 
 ---
 
-## 1. O fluxo em uma olhada (§35, modo manual)
+## 1. O fluxo em uma olhada (§35)
 
 ```text
  navegador (apps/web)                 API (apps/api)                         Supabase
@@ -36,8 +36,10 @@ arquivo é a importação.
                                     ──────────────────────────────────────▶ Storage: <org>/<doc>/extracted.txt
                                     ──────────────────────────────────────▶ preview (20 kB), status extracted
                                     MetricExtractionProvider.extract()
-                                      manual → nenhuma sugestão automática
- lê o texto, preenche o formulário ▶ POST /documents/:id/suggestions
+                                      Claude configurado → análise estruturada
+                                      sem chave → análise heurística local
+                                    ──────────────────────────────────────▶ sugestões pending
+ opcional: preenche formulário ───▶ POST /documents/:id/suggestions
                                     Zod + isSafeRule (fórmula)             ▶ metric_extraction_suggestions (pending)
  "Aceitar" ──────────────────────▶ POST /metric-suggestions/:id/accept
                                     status accepted + reviewed_by/at
@@ -81,7 +83,7 @@ que a pessoa vê no navegador é o mesmo que a API daria.
 | -------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `POST /api/v1/documents`                     | owner, admin, analyst | 201 `{ document }` · 413 `FILE_TOO_LARGE` · 415 `UNSUPPORTED_FILE_TYPE` · 400 `FILE_REQUIRED`                        |
 | `GET /api/v1/documents`                      | membro                | `{ items, page, pageSize, total }` — `page`, `pageSize`, `search`, `sort`, `order`, `status`, `kind`, `origin` (§61) |
-| `GET /api/v1/documents/:id`                  | membro                | `{ document }` com `downloadUrl` (assinada, 300 s) · 404                                                             |
+| `GET /api/v1/documents/:id`                  | membro                | `{ document }` com `downloadUrl` privada (assinada por 300 s e com nome original) · 404                              |
 | `POST /api/v1/documents/:id/extract-metrics` | owner, admin, analyst | `{ document, suggestions, extraction }` · 422 `TEXT_EXTRACTION_FAILED` (status `failed`)                             |
 | `GET /api/v1/documents/:id/suggestions`      | membro                | `{ items, total }`                                                                                                   |
 | `POST /api/v1/documents/:id/suggestions`     | owner, admin, analyst | 201 `{ suggestion }` · 400 `VALIDATION_ERROR` / `UNSAFE_FORMULA`                                                     |
@@ -112,7 +114,8 @@ que a pessoa vê no navegador é o mesmo que a API daria.
 }
 ```
 
-`suggestedWeight` é fração 0–1 (§12); a tela pede em % e converte. `suggestedFormula` é JSON
+`suggestedWeight` é fração 0–1 (§12); a tela pede em % e converte. Sugestões automáticas só
+incluem peso ou thresholds quando o documento oferece base objetiva. `suggestedFormula` é JSON
 Logic e passa por `isSafeRule` do engine ([METRICS_ENGINE.md](METRICS_ENGINE.md) §2): operador
 fora da allowlist ou caminho como `constructor` responde `400 UNSAFE_FORMULA`.
 `suggestedThresholds` aceita a estratégia e os campos dela (validação completa fica com a rota de
@@ -191,7 +194,7 @@ integrador depois do merge.
 Trocar de provedor = implementar `DocumentStorage` e passar `documentStorage` em
 `createApiV1Router`.
 
-## 6. Onde a IA entra depois (A5 — a fase manual é a de hoje) — `apps/api/src/infrastructure/extraction/`
+## 6. Análise automática — `apps/api/src/infrastructure/extraction/`
 
 ```ts
 interface MetricExtractionProvider {
@@ -200,23 +203,22 @@ interface MetricExtractionProvider {
 }
 ```
 
-- `manual-provider.ts` — `ManualMetricExtractionProvider`: devolve `[]`. É o padrão.
-- `anthropic-provider.ts` — **só o contrato**: `AiMetricExtractionProviderOptions` (chave, modelo,
-  limite de texto, confiança mínima) e `createAiMetricExtractionProvider()`, que hoje lança
-  `AiProviderNotConfiguredError`. Sem SDK, sem rede.
+- `heuristic-provider.ts` — padrão sem chave. Reconhece colunas conhecidas em planilhas e regras
+  explícitas em texto (prazos, percentuais e frequência), ignorando ids e dimensões.
+- `anthropic-provider.ts` — usa a Messages API com uma ferramenta de saída estruturada. A chave
+  fica só no backend; o conteúdo não é logado; sugestões abaixo da confiança mínima são filtradas.
+- `manual-provider.ts` — permanece disponível para testes e injeções explícitas.
 
-Quando a fase de IA chegar, basta implementar a interface e injetar `metricExtractionProvider`:
-o service já valida cada rascunho com o mesmo Zod + `isSafeRule` da sugestão manual (rascunho
-inválido é descartado, nunca derruba a extração), grava `provider` e `confidence`, e a revisão
-humana continua obrigatória. Regras da §35: chave só no backend, saída estruturada, nada de logar
-o conteúdo do documento.
+Todos os rascunhos passam pelo mesmo Zod + `isSafeRule`; rascunhos inválidos são descartados e a
+revisão humana continua obrigatória. Reanalisar é idempotente por nome: não duplica sugestões que
+já existem para o documento.
 
 ## 7. Telas (apps/web/src/features/documents/)
 
-| Rota             | O que faz                                                                                                                                                                                                                                                                  |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/documents`     | **Arquivo da organização**: área de arrastar/soltar + botão (tipos e limite exibidos; validação local antes de enviar), avisos por arquivo e a lista unificada — filtro por **tipo**, filtro por **origem**, busca pelo nome, status e paginação.                          |
-| `/documents/:id` | Metadados (arquivo, tipo, tamanho, origem, quem enviou, quando), download por URL assinada, botão **Extrair texto**, preview do texto, tabela de sugestões (Aceitar → `/metrics` com `state.prefill`; Rejeitar) e o formulário **Nova sugestão a partir deste documento**. |
+| Rota             | O que faz                                                                                                                                                                                                                                                                                                                               |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/documents`     | **Arquivo da organização**: área de arrastar/soltar + botão (tipos e limite exibidos; validação local antes de enviar), avisos por arquivo e a lista unificada — filtro por **tipo**, filtro por **origem**, busca pelo nome, status e paginação.                                                                                       |
+| `/documents/:id` | Metadados (arquivo, tipo, tamanho, origem, quem enviou, quando), download forçado pelo nome original e URL assinada renovada antes de expirar, botão **Analisar documento**, preview do texto, sugestões automáticas com confiança/evidência/limites (Aceitar → `/metrics` com `state.prefill`; Rejeitar) e formulário manual opcional. |
 
 Estados vazio/carregando/erro em todas as consultas (§57). O upload usa `fetch` direto com
 `FormData` (o `apiFetch` é só para JSON) e o token do `AuthContext`.
@@ -289,7 +291,7 @@ um id que não exista mais no `import_jobs` faria a listagem falhar em vez de mo
   mão; DOCX, XLSX e PDF gerados por `fixtures/generate.ts`).
 - `storage.test.ts` — storage em memória e o do Supabase com client dublê (bucket privado criado
   uma vez, URL assinada, remoção, erro → 502).
-- `providers.test.ts` — manual devolve `[]`; provider de IA recusa ser construído.
+- `providers.test.ts` — análise local de texto/planilha e contrato estruturado da Claude API.
 - `documents.integration.test.ts` — contra o Supabase real; fica _skipped_ com aviso até as
   migrations desta etapa serem aplicadas.
 - `apps/web/src/features/documents/__tests__/documents.test.tsx` — lista com origem, filtros de

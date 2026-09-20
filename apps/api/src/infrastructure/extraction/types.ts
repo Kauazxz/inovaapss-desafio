@@ -2,8 +2,8 @@
  * Contratos da descoberta de métricas em documentos (§35 + ajuste A5).
  *
  * O fluxo é: documento → texto (TextExtractor) → sugestões (MetricExtractionProvider) → revisão
- * humana → ativação. Nesta fase o único provider é o manual (não gera sugestões sozinho); o
- * provider de IA entra depois implementando a MESMA interface, sem refatoração do módulo.
+ * humana → ativação. O provider pode ser o analisador local ou a integração com IA; ambos usam a
+ * mesma interface e nenhuma sugestão é ativada sem revisão.
  */
 import type { MetricDirection, MetricType } from '@inovaapss/shared';
 import type { DocumentKind, SuggestedThresholds } from '@inovaapss/validation';

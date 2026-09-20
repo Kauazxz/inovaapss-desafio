@@ -106,6 +106,8 @@ export function createApp(env: ApiEnv, deps: AppDependencies = {}): Express {
         ...(env.RESEND_API_KEY ? { RESEND_API_KEY: env.RESEND_API_KEY } : {}),
         ...(env.EMAIL_FROM ? { EMAIL_FROM: env.EMAIL_FROM } : {}),
         ...(env.WEB_BASE_URL ? { WEB_BASE_URL: env.WEB_BASE_URL } : {}),
+        ...(env.ANTHROPIC_API_KEY ? { ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY } : {}),
+        ...(env.ANTHROPIC_MODEL ? { ANTHROPIC_MODEL: env.ANTHROPIC_MODEL } : {}),
       },
       ...deps.apiV1,
     }),

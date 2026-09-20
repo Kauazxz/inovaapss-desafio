@@ -97,7 +97,14 @@ export interface DocumentPage {
 export interface ExtractMetricsResult {
   document: UploadedDocument;
   suggestions: MetricSuggestion[];
-  extraction: { provider: string; chars: number; truncated: boolean };
+  extraction: {
+    provider: string;
+    chars: number;
+    truncated: boolean;
+    pages?: number;
+    sheets?: number;
+    rows?: number;
+  };
 }
 
 export interface AcceptSuggestionResult {
@@ -221,7 +228,13 @@ export function useDocuments(query: DocumentsQuery) {
 }
 
 export function useDocument(id: string) {
-  return useQuery({ queryKey: documentKeys.detail(id), queryFn: () => fetchDocument(id) });
+  return useQuery({
+    queryKey: documentKeys.detail(id),
+    queryFn: () => fetchDocument(id),
+    // Renova a URL assinada antes de expirar enquanto a tela estiver aberta.
+    refetchInterval: (query) =>
+      Math.max(30_000, (query.state.data?.downloadUrlExpiresInSeconds ?? 300) * 800),
+  });
 }
 
 export function useSuggestions(id: string) {
@@ -250,7 +263,13 @@ export function useExtractMetrics(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => extractMetrics(id),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: documentKeys.detail(id) }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: documentKeys.detail(id) }),
+        queryClient.invalidateQueries({ queryKey: documentKeys.suggestions(id) }),
+        queryClient.invalidateQueries({ queryKey: documentKeys.all }),
+      ]);
+    },
   });
 }
 

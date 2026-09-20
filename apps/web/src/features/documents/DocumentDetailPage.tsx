@@ -1,8 +1,8 @@
 import {
   ArrowLeft,
+  CircleCheckBig,
   CircleAlert,
   Download,
-  FileSearch,
   Plus,
   RefreshCw,
   Sparkles,
@@ -49,8 +49,8 @@ function MetadataItem({ label, children }: { label: string; children: ReactNode 
 }
 
 /**
- * /documents/:id — metadados, texto extraído, sugestões e o formulário de sugestão manual
- * (§35 fluxo manual). Aceitar uma sugestão leva a /metrics com `state.prefill`.
+ * /documents/:id — metadados, análise automática, sugestões e revisão humana. Aceitar uma
+ * sugestão leva a /metrics com `state.prefill`.
  */
 export function DocumentDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
@@ -147,14 +147,14 @@ export function DocumentDetailPage() {
           type="button"
           disabled={extract.isPending}
           onClick={() => extract.mutate()}
-          aria-label={doc.hasExtractedText ? 'Extrair texto de novo' : 'Extrair texto'}
+          aria-label={doc.hasExtractedText ? 'Analisar documento de novo' : 'Analisar documento'}
         >
-          <FileSearch aria-hidden="true" />
+          <Sparkles aria-hidden="true" />
           {extract.isPending
-            ? 'Extraindo…'
+            ? 'Analisando…'
             : doc.hasExtractedText
-              ? 'Extrair de novo'
-              : 'Extrair texto'}
+              ? 'Analisar de novo'
+              : 'Analisar documento'}
         </Button>
       </PageHeader>
 
@@ -197,8 +197,21 @@ export function DocumentDetailPage() {
 
       {extract.isError ? (
         <p role="alert" className="mb-4 text-sm text-destructive">
-          {errorMessage(extract.error, 'Não foi possível extrair o texto.')}
+          {errorMessage(extract.error, 'Não foi possível analisar o documento.')}
         </p>
+      ) : null}
+      {extract.isSuccess ? (
+        <div
+          role="status"
+          className="mb-4 flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm"
+        >
+          <CircleCheckBig aria-hidden="true" className="mt-0.5 size-4 text-emerald-600" />
+          <span>
+            {extract.data.suggestions.length > 0
+              ? `${extract.data.suggestions.length} sugestão${extract.data.suggestions.length === 1 ? '' : 'ões'} gerada${extract.data.suggestions.length === 1 ? '' : 's'} pela análise automática.`
+              : 'Análise concluída. Nenhuma métrica defensável foi encontrada; você ainda pode registrar uma sugestão manual.'}
+          </span>
+        </div>
       ) : null}
       {doc.status === 'failed' && doc.extractionError ? (
         <p role="alert" className="mb-4 text-sm text-destructive">
@@ -216,8 +229,8 @@ export function DocumentDetailPage() {
           </pre>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Ainda não há texto extraído. Clique em “Extrair texto” para ler o documento; o conteúdo
-            aparece aqui para você anotar as métricas que ele descreve.
+            Ainda não há texto extraído. Clique em “Analisar documento” para ler o conteúdo e gerar
+            sugestões de métricas automaticamente.
           </p>
         )}
       </section>
@@ -229,9 +242,8 @@ export function DocumentDetailPage() {
               Sugestões de métrica
             </h3>
             <p className="text-sm text-muted-foreground">
-              Nesta fase as sugestões são criadas por uma pessoa a partir do texto; a revisão por IA
-              entra depois (ajuste A5). Aceitar leva ao cadastro da métrica — nada é ativado
-              sozinho.
+              A análise automática encontra métricas, limites e evidências no arquivo. Revise antes
+              de aceitar; a métrica só é criada depois da sua confirmação no cadastro.
             </p>
           </div>
           {!showForm ? (
@@ -285,7 +297,7 @@ export function DocumentDetailPage() {
           <EmptyState
             icon={Sparkles}
             title="Nenhuma sugestão ainda"
-            description="Leia o texto extraído e registre as métricas que o documento descreve: nome, tipo, direção e, se houver, peso, fórmula e faixas."
+            description="Analise o documento para buscar métricas automaticamente. Se necessário, você também pode registrar uma sugestão manual."
           />
         ) : (
           <SuggestionsTable
