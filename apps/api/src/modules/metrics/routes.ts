@@ -66,6 +66,7 @@ export function createMetricModelsRouter({
   router.post('/:id/versions', manager, controller.createVersion);
   router.patch('/:id/versions/:version', manager, controller.updateVersion);
   router.post('/:id/versions/:version/activate', manager, controller.activateVersion);
+  router.delete('/:id/versions/:version', manager, controller.discardVersion);
   router.post('/:id/rebalance', controller.rebalance);
 
   return router;

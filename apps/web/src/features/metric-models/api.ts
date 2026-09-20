@@ -102,6 +102,17 @@ export function activateMetricModelVersion({
   });
 }
 
+/**
+ * Joga fora um rascunho. A API só aceita rascunho: a versão em vigor pontua a carteira e a
+ * arquivada é o histórico, então as duas respondem 409 (§31, §41).
+ */
+export function discardMetricModelVersion({
+  modelId,
+  version,
+}: ActivateVersionVars): Promise<void> {
+  return apiFetch(`/api/v1/metric-models/${modelId}/versions/${version}`, { method: 'DELETE' });
+}
+
 export interface RebalanceVars {
   modelId: string;
   body: RebalanceMetricModelBody;
@@ -234,6 +245,14 @@ export function useActivateMetricModelVersion() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: activateMetricModelVersion,
+    onSuccess: invalidator(queryClient),
+  });
+}
+
+export function useDiscardMetricModelVersion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: discardMetricModelVersion,
     onSuccess: invalidator(queryClient),
   });
 }

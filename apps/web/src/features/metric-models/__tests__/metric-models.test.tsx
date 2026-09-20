@@ -255,6 +255,11 @@ function mockApi() {
       );
       return jsonResponse(200, { version: server.versions[1] });
     }
+    if (path === `/api/v1/metric-models/${MODEL_ID}/versions/2` && method === 'DELETE') {
+      server.discarded = 2;
+      server.versions = server.versions.filter((version) => version.version !== 2);
+      return new Response(null, { status: 204 });
+    }
     if (path === `/api/v1/metric-models/${MODEL_ID}/versions/2/activate` && method === 'POST') {
       server.activated = 2;
       server.versions = server.versions.map((version) => ({
@@ -296,6 +301,7 @@ beforeEach(() => {
     calibrationRuns: [{ id: RUN_ID, metricModelVersionId: 'ver-1', status: 'done' }],
     patched: null,
     activated: null,
+    discarded: null,
     rebalanceBody: null,
     previewBody: null,
   };
@@ -457,6 +463,28 @@ describe('MetricModelDetailPage (/metric-models/:id) — pesos', () => {
       expect.objectContaining({ metricDefinitionId: USO_ID, sortOrder: 1 }),
       expect.objectContaining({ metricDefinitionId: SLA_ID, sortOrder: 2 }),
     ]);
+  });
+
+  it('descartar o rascunho pede confirmação e diz o que continua valendo', async () => {
+    const user = userEvent.setup();
+    renderAt(`/metric-models/${MODEL_ID}`);
+    await screen.findByRole('table', { name: 'Métricas do modelo' });
+
+    await user.click(screen.getByRole('button', { name: /Descartar rascunho/ }));
+
+    expect(await screen.findByText(/Descartar o rascunho da versão 2?/)).toBeInTheDocument();
+    expect(screen.getByText(/segue em vigor e pontuando todos os clientes/)).toBeInTheDocument();
+    expect(screen.getByText(/histórico já calculado, intocado/)).toBeInTheDocument();
+
+    // desistir não apaga nada
+    await user.click(screen.getByRole('button', { name: 'Manter o rascunho' }));
+    expect(server.discarded).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: /Descartar rascunho/ }));
+    await user.click(screen.getByRole('button', { name: 'Descartar o rascunho' }));
+    await waitFor(() => {
+      expect(server.discarded).toBe(2);
+    });
   });
 
   it('ativar mostra o que muda para a organização antes de confirmar', async () => {

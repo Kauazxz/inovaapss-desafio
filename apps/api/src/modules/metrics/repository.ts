@@ -10,6 +10,7 @@ import { and, asc, count, desc, eq, ilike, inArray, or, type SQL, sql } from 'dr
 import type { MetricModelVersionStatus } from '@inovaapss/shared';
 
 import {
+  clientScoreSnapshots,
   metricDefinitions,
   metricModelItems,
   metricModels,
@@ -93,6 +94,14 @@ export interface MetricsRepository {
     versionId: string,
     effectiveFrom: string,
   ): Promise<MetricModelVersion | null>;
+  /** Quantas fotos de cliente apontam para esta versão. Zero = nada de histórico depende dela. */
+  countVersionSnapshots(organizationId: string, versionId: string): Promise<number>;
+  /**
+   * Apaga um RASCUNHO e os itens dele. As tabelas que apontam para metric_model_versions têm
+   * exclusão em cascata, por isso o filtro por status 'draft' fica na própria consulta: uma
+   * versão ativa ou arquivada nunca é removida por engano. Devolve false se nada foi apagado.
+   */
+  deleteVersion(organizationId: string, modelId: string, versionId: string): Promise<boolean>;
 }
 
 // ---------------------------------------------------------------------------
@@ -561,6 +570,43 @@ export function createMetricsRepository(getDb: () => Database): MetricsRepositor
             .where(eq(metricModelItems.metricModelVersionId, row.id));
         }
         return toVersion(row, items);
+      });
+    },
+
+    async countVersionSnapshots(organizationId, versionId) {
+      const [row] = await getDb()
+        .select({ total: count() })
+        .from(clientScoreSnapshots)
+        .where(
+          and(
+            eq(clientScoreSnapshots.organizationId, organizationId),
+            eq(clientScoreSnapshots.metricModelVersionId, versionId),
+          ),
+        );
+      return row?.total ?? 0;
+    },
+
+    async deleteVersion(organizationId, modelId, versionId) {
+      return getDb().transaction(async (tx) => {
+        const rows = await tx
+          .delete(metricModelVersions)
+          .where(
+            and(
+              eq(metricModelVersions.organizationId, organizationId),
+              eq(metricModelVersions.metricModelId, modelId),
+              eq(metricModelVersions.id, versionId),
+              eq(metricModelVersions.status, 'draft'),
+            ),
+          )
+          .returning({ id: metricModelVersions.id });
+        if (rows.length === 0) return false;
+        await tx
+          .update(metricModels)
+          .set({ updatedAt: new Date() })
+          .where(
+            and(eq(metricModels.organizationId, organizationId), eq(metricModels.id, modelId)),
+          );
+        return true;
       });
     },
 

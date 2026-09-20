@@ -92,6 +92,8 @@ export interface MetricsService {
     version: number,
     body: ActivateMetricModelVersionBody,
   ): Promise<MetricModelVersion>;
+  /** Joga fora um rascunho. Só rascunho: versão em vigor e arquivada são história. */
+  discardVersion(tenant: TenantContext, modelId: string, version: number): Promise<void>;
   rebalance(
     tenant: TenantContext,
     modelId: string,
@@ -424,6 +426,34 @@ export function createMetricsService(repository: MetricsRepository): MetricsServ
       );
       if (activated === null) throw versionNotFound();
       return activated;
+    },
+
+    async discardVersion(tenant, modelId, version) {
+      await requireModel(tenant, modelId);
+      const current = await requireVersion(tenant, modelId, version);
+      if (current.status === 'active') {
+        throw new ConflictError(
+          'A versão em vigor não pode ser descartada. Ative outra antes.',
+          'VERSION_ACTIVE',
+        );
+      }
+      if (current.status === 'archived') {
+        throw new ConflictError(
+          'Versão arquivada faz parte do histórico e não é descartada.',
+          'VERSION_ARCHIVED',
+        );
+      }
+      // Quem aponta para a versão apaga em cascata. Rascunho não pontua, mas conferimos
+      // assim mesmo: nenhum histórico pode sumir junto com um descarte.
+      const comScore = await repository.countVersionSnapshots(tenant.organizationId, current.id);
+      if (comScore > 0) {
+        throw new ConflictError(
+          'Esta versão já gerou pontuação e por isso faz parte do histórico.',
+          'VERSION_HAS_SCORES',
+        );
+      }
+      const apagada = await repository.deleteVersion(tenant.organizationId, modelId, current.id);
+      if (!apagada) throw versionNotFound();
     },
 
     async rebalance(tenant, modelId, body) {

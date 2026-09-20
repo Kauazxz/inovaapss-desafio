@@ -645,6 +645,105 @@ describe('POST /metrics/:id/preview-score — motor de verdade (§37, §41 Simul
   });
 });
 
+describe('descartar rascunho (§41)', () => {
+  async function rascunho(a: ReturnType<typeof app>): Promise<{ modelId: string; sla: string }> {
+    const sla = await createDefinition(a, 'ana', {
+      name: 'Cumprimento de SLA',
+      slug: 'sla_compliance',
+    });
+    const modelId = await createModel(a, 'ana');
+    const criado = await request(a)
+      .post(`/api/v1/metric-models/${modelId}/versions`)
+      .set(as('ana'))
+      .send({ items: [{ metricDefinitionId: sla, weight: 1, normalization: LINEAR }] });
+    expect(criado.status).toBe(201);
+    expect(criado.body.version.status).toBe('draft');
+    return { modelId, sla };
+  }
+
+  it('apaga o rascunho e ele some da lista de versões', async () => {
+    const a = app();
+    const { modelId } = await rascunho(a);
+
+    const res = await request(a)
+      .delete(`/api/v1/metric-models/${modelId}/versions/1`)
+      .set(as('ana'));
+    expect(res.status).toBe(204);
+
+    const model = await request(a).get(`/api/v1/metric-models/${modelId}`).set(as('ana'));
+    expect(model.body.versions).toHaveLength(0);
+    expect(metrics.versions).toHaveLength(0);
+  });
+
+  it('não descarta a versão em vigor: ela é quem pontua a carteira', async () => {
+    const a = app();
+    const { modelId } = await rascunho(a);
+    const ativada = await request(a)
+      .post(`/api/v1/metric-models/${modelId}/versions/1/activate`)
+      .set(as('ana'));
+    expect(ativada.status).toBe(200);
+
+    const res = await request(a)
+      .delete(`/api/v1/metric-models/${modelId}/versions/1`)
+      .set(as('ana'));
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('VERSION_ACTIVE');
+    expect(metrics.versions).toHaveLength(1);
+  });
+
+  it('não descarta versão arquivada: ela é o histórico', async () => {
+    const a = app();
+    const { modelId, sla } = await rascunho(a);
+    await request(a).post(`/api/v1/metric-models/${modelId}/versions/1/activate`).set(as('ana'));
+    const v2 = await request(a)
+      .post(`/api/v1/metric-models/${modelId}/versions`)
+      .set(as('ana'))
+      .send({ items: [{ metricDefinitionId: sla, weight: 1, normalization: LINEAR }] });
+    expect(v2.status).toBe(201);
+    await request(a).post(`/api/v1/metric-models/${modelId}/versions/2/activate`).set(as('ana'));
+
+    const res = await request(a)
+      .delete(`/api/v1/metric-models/${modelId}/versions/1`)
+      .set(as('ana'));
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('VERSION_ARCHIVED');
+  });
+
+  it('recusa quando a versão já gerou pontuação, para nada do histórico sumir em cascata', async () => {
+    const a = app();
+    const { modelId } = await rascunho(a);
+    const versionId = metrics.versions[0]?.id ?? '';
+    metrics.snapshotsByVersion[versionId] = 3;
+
+    const res = await request(a)
+      .delete(`/api/v1/metric-models/${modelId}/versions/1`)
+      .set(as('ana'));
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('VERSION_HAS_SCORES');
+    expect(metrics.versions).toHaveLength(1);
+  });
+
+  it('a versão de outra organização responde 404, não 403', async () => {
+    const a = app();
+    const { modelId } = await rascunho(a);
+    const res = await request(a)
+      .delete(`/api/v1/metric-models/${modelId}/versions/1`)
+      .set(as('bia'));
+    expect(res.status).toBe(404);
+    expect(metrics.versions).toHaveLength(1);
+  });
+
+  it('quem só lê não descarta', async () => {
+    const a = app();
+    const { modelId } = await rascunho(a);
+    const res = await request(a)
+      .delete(`/api/v1/metric-models/${modelId}/versions/1`)
+      .set(as('caio'));
+    expect(res.status).toBe(403);
+    expect(metrics.versions).toHaveLength(1);
+  });
+});
+
 describe('documentação', () => {
   it('o OpenAPI lista /metrics e /metric-models', async () => {
     const res = await request(app()).get('/api/docs.json');
@@ -654,5 +753,8 @@ describe('documentação', () => {
     expect(res.body.paths).toHaveProperty('/api/v1/metric-models');
     expect(res.body.paths).toHaveProperty('/api/v1/metric-models/{id}/versions/{version}/activate');
     expect(res.body.paths).toHaveProperty('/api/v1/metric-models/{id}/rebalance');
+    expect(res.body.paths['/api/v1/metric-models/{id}/versions/{version}']).toHaveProperty(
+      'delete',
+    );
   });
 });

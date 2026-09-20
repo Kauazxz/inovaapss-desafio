@@ -34,6 +34,7 @@ export interface MetricsController {
   createVersion: RequestHandler;
   updateVersion: RequestHandler;
   activateVersion: RequestHandler;
+  discardVersion: RequestHandler;
   rebalance: RequestHandler;
 }
 
@@ -113,6 +114,13 @@ export function createMetricsController(service: MetricsService): MetricsControl
       const body = activateMetricModelVersionSchema.parse(req.body ?? {});
       const version = await service.activateVersion(getTenant(req), id, number, body);
       res.json({ version });
+    },
+
+    async discardVersion(req, res) {
+      const id = idParamSchema.parse(req.params.id);
+      const number = versionNumberParamSchema.parse(req.params.version);
+      await service.discardVersion(getTenant(req), id, number);
+      res.status(204).end();
     },
 
     async rebalance(req, res) {

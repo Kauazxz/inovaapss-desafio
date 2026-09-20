@@ -903,6 +903,22 @@ export const openapiDocument: OpenAPIV3_1.Document = {
           '409': errorResponse('A versão não é rascunho (VERSION_NOT_EDITABLE)'),
         },
       },
+      delete: {
+        tags: ['metric-models'],
+        summary: 'Descarta um rascunho (owner ou admin)',
+        operationId: 'discardMetricModelVersion',
+        description:
+          'Joga fora um rascunho que não vai ser usado. Só rascunho: a versão em vigor pontua a carteira e a arquivada é o histórico (§31, §41). Recusa também se a versão já tiver gerado pontuação.',
+        responses: {
+          '204': { description: 'Rascunho descartado' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '403': { $ref: '#/components/responses/Forbidden' },
+          '404': { $ref: '#/components/responses/NotFound' },
+          '409': errorResponse(
+            'VERSION_ACTIVE, VERSION_ARCHIVED ou VERSION_HAS_SCORES — a versão faz parte do histórico',
+          ),
+        },
+      },
     },
     '/api/v1/metric-models/{id}/versions/{version}/activate': {
       parameters: [idParam('id', 'Id do modelo'), versionParam],

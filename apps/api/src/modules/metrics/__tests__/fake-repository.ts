@@ -19,6 +19,8 @@ export interface FakeMetricsRepository extends MetricsRepository {
   definitions: MetricDefinition[];
   models: MetricModel[];
   versions: MetricModelVersion[];
+  /** Quantas fotos de cliente existem por versão. O teste enche isto para simular histórico. */
+  snapshotsByVersion: Record<string, number>;
 }
 
 function uniqueViolation(): Error & { code: string } {
@@ -60,6 +62,7 @@ function compareBy<T>(key: keyof T, order: 'asc' | 'desc') {
 }
 
 export function createFakeMetricsRepository(): FakeMetricsRepository {
+  const snapshotsByVersion: Record<string, number> = {};
   const definitions: MetricDefinition[] = [];
   const models: MetricModel[] = [];
   const versions: MetricModelVersion[] = [];
@@ -74,6 +77,7 @@ export function createFakeMetricsRepository(): FakeMetricsRepository {
     definitions,
     models,
     versions,
+    snapshotsByVersion,
 
     async listDefinitions(organizationId, query) {
       let rows = definitions.filter((d) => d.organizationId === organizationId);
@@ -271,6 +275,25 @@ export function createFakeMetricsRepository(): FakeMetricsRepository {
         version.items = sortItems(patch.items.map((item) => toItem(version.id, item)));
       }
       return clone(version);
+    },
+
+    async countVersionSnapshots(_organizationId, versionId) {
+      return snapshotsByVersion[versionId] ?? 0;
+    },
+
+    async deleteVersion(organizationId, modelId, versionId) {
+      const i = versions.findIndex(
+        (v) =>
+          v.organizationId === organizationId &&
+          v.metricModelId === modelId &&
+          v.id === versionId &&
+          v.status === 'draft',
+      );
+      if (i < 0) return false;
+      versions.splice(i, 1);
+      const model = models.find((m) => m.id === modelId);
+      if (model) model.updatedAt = now();
+      return true;
     },
 
     async activateVersion(organizationId, modelId, versionId, effectiveFrom) {

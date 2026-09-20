@@ -10,7 +10,7 @@
  * componente passa uma `key` que muda quando o SERVIDOR muda a versão, e o React remonta com o
  * que foi salvo; um refetch que devolve o mesmo conteúdo não apaga a edição em andamento.
  */
-import { ArrowDown, ArrowUp, Plus, Scale, Settings2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Plus, Scale, Settings2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 
@@ -40,10 +40,12 @@ import { cn } from '@/lib/utils';
 import { ActivateDialog } from './ActivateDialog';
 import {
   useActivateMetricModelVersion,
+  useDiscardMetricModelVersion,
   useRebalanceMetricModel,
   useUpdateMetricModelVersion,
 } from './api';
 import { type CalibrationSuggestions, suggestedWeightNote } from './calibration-suggestions';
+import { DiscardDialog } from './DiscardDialog';
 import {
   applyRebalance,
   compareDraftWithVersion,
@@ -105,6 +107,7 @@ export function VersionEditor({
 }: VersionEditorProps) {
   const updateVersion = useUpdateMetricModelVersion();
   const activateVersion = useActivateMetricModelVersion();
+  const discardVersion = useDiscardMetricModelVersion();
   const rebalance = useRebalanceMetricModel();
 
   const [draft, setDraft] = useState<DraftItem[]>(() => versionToDraft(version));
@@ -114,6 +117,7 @@ export function VersionEditor({
   const [toAdd, setToAdd] = useState('');
   const [proposal, setProposal] = useState<RebalanceProposalDto | null>(null);
   const [activateOpen, setActivateOpen] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
 
   const editable = version.status === 'draft';
   const definitionsById = new Map(definitions.map((definition) => [definition.id, definition]));
@@ -242,6 +246,15 @@ export function VersionEditor({
             onClick={() => setActivateOpen(true)}
           >
             Ativar versão
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={discardVersion.isPending}
+            onClick={() => setDiscardOpen(true)}
+          >
+            <Trash2 aria-hidden="true" />
+            Descartar rascunho
           </Button>
           {dirty ? (
             <span className="text-xs text-muted-foreground">Salve o rascunho antes de ativar.</span>
@@ -441,6 +454,22 @@ export function VersionEditor({
           />
         </div>
       ) : null}
+
+      <DiscardDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        version={version.version}
+        activeVersion={activeVersion?.version ?? null}
+        itemCount={draft.length}
+        isPending={discardVersion.isPending}
+        error={discardVersion.error?.message ?? null}
+        onConfirm={() =>
+          discardVersion.mutate(
+            { modelId, version: version.version },
+            { onSuccess: () => setDiscardOpen(false) },
+          )
+        }
+      />
 
       <ActivateDialog
         open={activateOpen}
