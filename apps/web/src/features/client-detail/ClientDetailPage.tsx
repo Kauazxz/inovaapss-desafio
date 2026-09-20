@@ -87,16 +87,22 @@ export function ClientDetailPage() {
       <ClientHeader overview={overview} />
 
       <Tabs value={activeTab} onValueChange={selectTab}>
-        <TabsList variant="line" aria-label="Seções do cliente" className="flex-wrap">
-          {TABS.map((tab) => (
-            <TabsTrigger key={tab.key} value={tab.key}>
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        {/* Oito abas não cabem num celular: a faixa rola sozinha em vez de quebrar no meio ou
+            estourar a página; o padding em volta deixa passar o sublinhado da aba ativa e o
+            anel de foco. */}
+        <div className="-mx-1 overflow-x-auto px-1 pb-1.5">
+          <TabsList variant="line" aria-label="Seções do cliente">
+            {TABS.map((tab) => (
+              <TabsTrigger key={tab.key} value={tab.key}>
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         {TABS.map((tab) => (
-          <TabsContent key={tab.key} value={tab.key} className="pt-6">
+          // min-w-0: gráfico e tabela largos rolam dentro de si, nunca empurram a página.
+          <TabsContent key={tab.key} value={tab.key} className="min-w-0 pt-6">
             {activeTab === tab.key ? (
               <Suspense fallback={<ClientTabLoading label={`Carregando a aba ${tab.label}`} />}>
                 <tab.Component overview={overview} />

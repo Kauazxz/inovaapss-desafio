@@ -37,8 +37,9 @@ export function DimensionTab({
   const scores = useClientScores(overview.client.id);
   if (scores.isPending) {
     return (
-      <div role="status" aria-label={loadingLabel} className="space-y-6">
-        <Skeleton className="h-5 w-72" />
+      <div role="status" aria-label={loadingLabel} className="space-y-4">
+        <Skeleton className="h-5 w-full max-w-72" />
+        <Skeleton className="h-4 w-full max-w-md" />
         <Skeleton className="h-60 w-full" />
       </div>
     );
@@ -54,8 +55,9 @@ export function DimensionTab({
     scores.data.items.map((score) => [score.metricKey ?? score.metricId, score]),
   );
   return (
-    <div className="space-y-10">
-      <p className="text-sm text-muted-foreground">{intro}</p>
+    // Um gráfico embaixo do outro: o respiro é o que diz onde um acaba e o outro começa.
+    <div className="space-y-8">
+      <p className="max-w-3xl text-sm text-muted-foreground">{intro}</p>
       {charts.map((spec) => {
         const score = byKey.get(spec.metricKey);
         if (!score) return null;

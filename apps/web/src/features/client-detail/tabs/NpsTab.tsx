@@ -15,8 +15,9 @@ export function NpsTab({ overview }: { overview: ClientHealthOverview }) {
   const scores = useClientScores(overview.client.id);
   if (scores.isPending) {
     return (
-      <div role="status" aria-label="Carregando a aba NPS" className="space-y-6">
-        <Skeleton className="h-5 w-72" />
+      <div role="status" aria-label="Carregando a aba NPS" className="space-y-4">
+        <Skeleton className="h-5 w-full max-w-72" />
+        <Skeleton className="h-4 w-full max-w-md" />
         <Skeleton className="h-60 w-full" />
       </div>
     );
@@ -44,7 +45,7 @@ export function NpsTab({ overview }: { overview: ClientHealthOverview }) {
 
   return (
     <div className="space-y-8">
-      <p className="text-sm text-muted-foreground">
+      <p className="max-w-3xl text-sm text-muted-foreground">
         NPS (peso 3 %): nota de 0 a 10 quando o cliente responde; quando não responde, a métrica
         fica N/A, o peso é redistribuído e a confiança cai — a sequência sem resposta é um sinal por
         si só (§22).
@@ -57,13 +58,18 @@ export function NpsTab({ overview }: { overview: ClientHealthOverview }) {
         >
           {npsTitle(quarters)}
         </SectionTitle>
-        <ol aria-label="Respostas por trimestre" className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        {/* Uma nota por linha no celular, duas no tablet, os quatro trimestres em linha no
+            notebook: a nota e o que ela significa ficam sempre juntos. */}
+        <ol
+          aria-label="Respostas por trimestre"
+          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        >
           {quarters.map((quarter) => (
-            <li key={quarter.periodEnd} className="border-l-2 border-border pl-3">
-              <p className="text-sm text-muted-foreground">{quarter.label}</p>
+            <li key={quarter.periodEnd} className="min-w-0 border-l-2 border-border pl-3">
+              <p className="text-xs text-muted-foreground">{quarter.label}</p>
               {quarter.answered && quarter.score !== null ? (
                 <>
-                  <p className="text-2xl font-semibold tracking-tight">
+                  <p className="text-lg font-semibold tracking-tight">
                     {quarter.score}
                     <span className="ml-1 text-sm font-normal text-muted-foreground">/ 10</span>
                   </p>
@@ -76,7 +82,7 @@ export function NpsTab({ overview }: { overview: ClientHealthOverview }) {
                 </>
               ) : (
                 <>
-                  <p className="text-2xl font-semibold tracking-tight text-muted-foreground">—</p>
+                  <p className="text-lg font-semibold tracking-tight text-muted-foreground">—</p>
                   <p className="text-xs text-muted-foreground">não respondeu</p>
                 </>
               )}

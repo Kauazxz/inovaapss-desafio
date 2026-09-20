@@ -66,9 +66,10 @@ export function DocumentDetailPage() {
   if (document.isPending) {
     return (
       <div role="status" aria-label="Carregando documento" className="space-y-6">
-        <Skeleton className="h-8 w-1/2" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-64 w-full" />
+        {/* Mesmo desenho do que vem depois: título, painel de metadados e a lista de sugestões. */}
+        <Skeleton className="h-8 w-2/3 sm:w-1/2" />
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-xl" />
       </div>
     );
   }
@@ -131,16 +132,28 @@ export function DocumentDetailPage() {
         title={doc.fileName}
         description={`${DOCUMENT_KIND_LABELS[doc.kind]} · ${formatFileSize(doc.sizeBytes)} · enviado em ${formatDateTime(doc.createdAt)}`}
       >
-        <Button asChild variant="ghost">
+        {/* No celular só cabe a ação principal escrita: voltar e baixar viram ícone, com o
+            mesmo nome no aria-label e no rótulo que volta a partir de sm. */}
+        <Button
+          asChild
+          variant="ghost"
+          aria-label="Documentos"
+          className="w-9 px-0 sm:w-auto sm:px-3.5"
+        >
           <Link to="/documents">
             <ArrowLeft aria-hidden="true" />
-            Documentos
+            <span className="sr-only sm:not-sr-only">Documentos</span>
           </Link>
         </Button>
-        <Button asChild variant="outline">
+        <Button
+          asChild
+          variant="outline"
+          aria-label="Baixar"
+          className="w-9 px-0 sm:w-auto sm:px-3.5"
+        >
           <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer">
             <Download aria-hidden="true" />
-            Baixar
+            <span className="sr-only sm:not-sr-only">Baixar</span>
           </a>
         </Button>
         <Button
@@ -162,7 +175,7 @@ export function DocumentDetailPage() {
         <h3 id="metadados" className="sr-only">
           Dados do arquivo
         </h3>
-        <dl className="grid grid-cols-2 gap-4 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 sm:grid-cols-3 lg:grid-cols-6">
+        <dl className="grid gap-4 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
           <MetadataItem label="Arquivo">{doc.fileName}</MetadataItem>
           <MetadataItem label="Tipo">
             {DOCUMENT_KIND_LABELS[doc.kind]}{' '}
@@ -179,18 +192,17 @@ export function DocumentDetailPage() {
         </dl>
       </section>
 
-      <div className="mb-6 flex flex-wrap items-center gap-3 text-sm">
+      {/* Linha de apoio: tudo no mesmo tamanho, para o selo de status ser o único destaque. */}
+      <div className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
         <DocumentStatusBadge status={doc.status} />
-        <span className="text-muted-foreground">{DOCUMENT_ORIGIN_DESCRIPTIONS[doc.origin]}</span>
-        {doc.importJobId ? (
-          <span className="text-xs text-muted-foreground">Job de importação {doc.importJobId}</span>
-        ) : null}
+        <span>{DOCUMENT_ORIGIN_DESCRIPTIONS[doc.origin]}</span>
+        {doc.importJobId ? <span>Job de importação {doc.importJobId}</span> : null}
         {doc.extractedAt ? (
-          <span className="text-muted-foreground">
+          <span className="whitespace-nowrap">
             Texto extraído em {formatDateTime(doc.extractedAt)}
           </span>
         ) : null}
-        <span className="text-xs text-muted-foreground">
+        <span>
           Link de download válido por {Math.round(doc.downloadUrlExpiresInSeconds / 60)} min.
         </span>
       </div>
@@ -203,9 +215,9 @@ export function DocumentDetailPage() {
       {extract.isSuccess ? (
         <div
           role="status"
-          className="mb-4 flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm"
+          className="mb-4 flex items-start gap-2 rounded-xl bg-accent p-3 text-sm text-accent-foreground ring-1 ring-foreground/5"
         >
-          <CircleCheckBig aria-hidden="true" className="mt-0.5 size-4 text-emerald-600" />
+          <CircleCheckBig aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           <span>
             {extract.data.suggestions.length > 0
               ? `${extract.data.suggestions.length} sugestão${extract.data.suggestions.length === 1 ? '' : 'ões'} gerada${extract.data.suggestions.length === 1 ? '' : 's'} pela análise automática.`
@@ -219,12 +231,12 @@ export function DocumentDetailPage() {
         </p>
       ) : null}
 
-      <section aria-labelledby="texto-extraido" className="mb-8">
-        <h3 id="texto-extraido" className="mb-2 text-base font-semibold">
+      <section aria-labelledby="texto-extraido" className="mb-6">
+        <h3 id="texto-extraido" className="mb-2 text-base font-medium">
           Texto extraído
         </h3>
         {doc.extractedTextPreview ? (
-          <pre className="max-h-96 overflow-auto rounded-lg border border-border bg-muted/30 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+          <pre className="max-h-96 overflow-auto rounded-xl bg-muted/40 p-4 font-mono text-xs leading-relaxed break-words whitespace-pre-wrap ring-1 ring-foreground/5">
             {doc.extractedTextPreview}
           </pre>
         ) : (
@@ -236,18 +248,23 @@ export function DocumentDetailPage() {
       </section>
 
       <section aria-labelledby="sugestoes" className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 id="sugestoes" className="text-base font-semibold">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h3 id="sugestoes" className="text-base font-medium">
               Sugestões de métrica
             </h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
               A análise automática encontra métricas, limites e evidências no arquivo. Revise antes
               de aceitar; a métrica só é criada depois da sua confirmação no cadastro.
             </p>
           </div>
           {!showForm ? (
-            <Button type="button" variant="outline" onClick={() => setShowForm(true)}>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => setShowForm(true)}
+            >
               <Plus aria-hidden="true" />
               Nova sugestão a partir deste documento
             </Button>
@@ -255,7 +272,7 @@ export function DocumentDetailPage() {
         </div>
 
         {showForm ? (
-          <div className="rounded-xl border border-border p-4">
+          <div className="rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5">
             <SuggestionForm
               submitting={create.isPending}
               serverError={
@@ -280,7 +297,7 @@ export function DocumentDetailPage() {
         ) : null}
 
         {suggestions.isPending ? (
-          <Skeleton className="h-32 w-full" aria-label="Carregando sugestões" />
+          <Skeleton className="h-32 w-full rounded-xl" aria-label="Carregando sugestões" />
         ) : suggestions.isError ? (
           <EmptyState
             icon={CircleAlert}

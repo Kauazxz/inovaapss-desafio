@@ -11,13 +11,15 @@ import { ClientNotFoundError } from './api';
 export function ClientDetailLoading() {
   return (
     <div role="status" aria-label="Carregando o cliente" className="space-y-6">
-      <Skeleton className="h-4 w-56" />
-      <Skeleton className="h-8 w-80" />
-      <div className="grid grid-cols-2 gap-6 border-b border-border pb-6 md:grid-cols-4">
+      {/* O esqueleto tem o formato do que vem: trilha, nome e a grade de números do cabeçalho,
+          com as mesmas quebras de tela — nada de largura fixa estourando o celular. */}
+      <Skeleton className="h-4 w-full max-w-56" />
+      <Skeleton className="h-8 w-full max-w-80" />
+      <div className="grid gap-x-8 gap-y-5 border-b border-border pb-6 sm:grid-cols-2 lg:grid-cols-4">
         {[0, 1, 2, 3].map((index) => (
           <div key={index} className="space-y-2">
             <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-8 w-28" />
+            <Skeleton className="h-8 w-full max-w-28" />
           </div>
         ))}
       </div>
@@ -29,8 +31,9 @@ export function ClientDetailLoading() {
 /** Carregamento de uma aba (o chunk com os gráficos chega separado). */
 export function ClientTabLoading({ label }: { label: string }) {
   return (
-    <div role="status" aria-label={label} className="space-y-4 pt-4">
-      <Skeleton className="h-5 w-72" />
+    <div role="status" aria-label={label} className="space-y-4">
+      <Skeleton className="h-5 w-full max-w-72" />
+      <Skeleton className="h-4 w-full max-w-md" />
       <Skeleton className="h-56 w-full" />
     </div>
   );

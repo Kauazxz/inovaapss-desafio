@@ -82,7 +82,7 @@ export function UploadDropzone({ onAccepted, onRejected, disabled = false }: Upl
       onDragLeave={() => setDragging(false)}
       onDrop={onDrop}
       className={cn(
-        'flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-6 py-10 text-center transition-colors',
+        'flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-4 py-8 text-center transition-colors sm:px-6 sm:py-10',
         dragging ? 'border-primary bg-primary/5' : 'border-border bg-card/40',
         disabled && 'opacity-60',
       )}
@@ -95,8 +95,10 @@ export function UploadDropzone({ onAccepted, onRejected, disabled = false }: Upl
       >
         <Upload className="size-5" aria-hidden="true" />
       </span>
-      <div>
-        <p className="text-sm font-medium">Arraste os arquivos para cá ou escolha no computador</p>
+      <div className="max-w-md">
+        <p className="text-sm font-medium text-balance">
+          Arraste os arquivos para cá ou escolha no computador
+        </p>
         <p className="mt-1 text-xs text-muted-foreground">
           Aceitos:{' '}
           {ALLOWED_UPLOAD_EXTENSIONS.map((ext) => ext.replace('.', '').toUpperCase()).join(', ')}

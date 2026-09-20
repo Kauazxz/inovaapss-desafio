@@ -42,7 +42,9 @@ function HeaderItem({
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="mt-1">
         <span className="flex flex-wrap items-center gap-2">
-          <span className="text-lg font-semibold tracking-tight tabular-nums">{value}</span>
+          {/* Número em texto simples fica com figuras proporcionais; `tabular-nums` é da tabela
+              (DATAVIZ.md §2.2). */}
+          <span className="text-lg font-semibold tracking-tight">{value}</span>
           {children}
         </span>
         {context ? (
@@ -87,23 +89,27 @@ export function ClientHeader({ overview }: ClientHeaderProps) {
         >
           Dashboard
         </Link>
-        <ChevronRight aria-hidden="true" className="size-3.5" />
+        <ChevronRight aria-hidden="true" className="size-3.5 shrink-0" />
         <Link
           to="/clients"
           className="rounded-sm hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           Clientes
         </Link>
-        <ChevronRight aria-hidden="true" className="size-3.5" />
-        <span aria-current="page" className="truncate text-foreground">
+        <ChevronRight aria-hidden="true" className="size-3.5 shrink-0" />
+        {/* min-w-0: no celular é o nome do cliente que encolhe com "…", nunca a trilha inteira. */}
+        <span aria-current="page" className="min-w-0 truncate text-foreground">
           {client.name}
         </span>
       </nav>
 
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-xl font-semibold tracking-tight">{client.name}</h2>
+            {/* Título da tela: o mesmo peso e a mesma fonte do PageHeader das outras telas. */}
+            <h2 className="cn-font-heading text-xl font-semibold tracking-tight text-balance">
+              {client.name}
+            </h2>
             <Badge variant={client.status === 'Cancelado' ? 'destructive' : 'secondary'}>
               {client.status}
             </Badge>
@@ -111,7 +117,7 @@ export function ClientHeader({ overview }: ClientHeaderProps) {
               <Badge variant="outline">Dados de exemplo (mock)</Badge>
             ) : null}
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             {[
               client.segment,
               client.size ? `porte ${client.size.toLowerCase()}` : null,
@@ -124,15 +130,17 @@ export function ClientHeader({ overview }: ClientHeaderProps) {
               : ''}
           </p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={goBack}>
+        <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={goBack}>
           <ArrowLeft aria-hidden="true" />
           Voltar
         </Button>
       </div>
 
+      {/* Cada item leva uma linha de contexto inteira: no celular fica uma coluna (duas cortariam
+          a frase pela metade), duas no tablet e as quatro só no notebook. */}
       <dl
         aria-label="Resumo do cliente"
-        className="grid grid-cols-2 gap-x-8 gap-y-5 border-b border-border pb-6 md:grid-cols-4"
+        className="grid gap-x-8 gap-y-5 border-b border-border pb-6 sm:grid-cols-2 lg:grid-cols-4"
       >
         <HeaderItem
           label="Plano"

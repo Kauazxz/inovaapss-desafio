@@ -51,7 +51,8 @@ function EventItem({
     <li className="relative flex gap-3 pb-6 last:pb-0">
       <span
         className={cn(
-          'mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-background',
+          // O fundo do selo é o da superfície em volta: é ele que "corta" a linha do tempo.
+          'mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-card',
           emphasized && 'border-foreground',
         )}
         aria-hidden="true"
@@ -90,8 +91,9 @@ export function HistoryTab({ overview }: { overview: ClientHealthOverview }) {
   const history = useClientHistory(overview.client.id);
   if (history.isPending) {
     return (
-      <div role="status" aria-label="Carregando a aba Histórico" className="space-y-6">
-        <Skeleton className="h-5 w-72" />
+      <div role="status" aria-label="Carregando a aba Histórico" className="space-y-4">
+        <Skeleton className="h-5 w-full max-w-72" />
+        <Skeleton className="h-4 w-full max-w-md" />
         <Skeleton className="h-60 w-full" />
       </div>
     );
@@ -106,7 +108,8 @@ export function HistoryTab({ overview }: { overview: ClientHealthOverview }) {
   const data = history.data;
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
+      {/* O gráfico fica solto no fundo da página: sem card e sem borda (DATAVIZ.md §1.3). */}
       <HealthTimelineChart
         timeline={{
           portfolio: data.portfolio,
@@ -120,7 +123,7 @@ export function HistoryTab({ overview }: { overview: ClientHealthOverview }) {
         thresholds={data.thresholds}
       />
 
-      <section aria-labelledby="timeline-title" className="space-y-4">
+      <section aria-labelledby="timeline-title" className="space-y-3">
         <SectionTitle
           id="timeline-title"
           hint="Do mais recente ao mais antigo; cada evento mostra o health do momento."
@@ -132,11 +135,18 @@ export function HistoryTab({ overview }: { overview: ClientHealthOverview }) {
             Nenhum evento registrado para este cliente ainda.
           </p>
         ) : (
-          <ol aria-label="Eventos do cliente" className="border-l border-border pl-0 [&>li]:-ml-3">
-            {data.events.map((event) => (
-              <EventItem key={event.id} event={event} thresholds={data.thresholds} />
-            ))}
-          </ol>
+          // A linha do tempo mora numa superfície elevada, como as tabelas do sistema; o título
+          // fica fora dela.
+          <div className="rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5">
+            <ol
+              aria-label="Eventos do cliente"
+              className="border-l border-border pl-0 [&>li]:-ml-3"
+            >
+              {data.events.map((event) => (
+                <EventItem key={event.id} event={event} thresholds={data.thresholds} />
+              ))}
+            </ol>
+          </div>
         )}
       </section>
     </div>

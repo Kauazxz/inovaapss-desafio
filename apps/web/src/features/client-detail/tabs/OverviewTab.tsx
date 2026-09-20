@@ -194,7 +194,7 @@ export function OverviewTab({ overview }: { overview: ClientHealthOverview }) {
   const lines = buildHealthSummaryLines(overview.score, overview.topDrivers);
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       <section aria-labelledby="resumo-title" className="space-y-3">
         <SectionTitle
           id="resumo-title"
@@ -202,14 +202,16 @@ export function OverviewTab({ overview }: { overview: ClientHealthOverview }) {
         >
           Resumo
         </SectionTitle>
-        <div className="grid gap-6 md:grid-cols-[auto_1fr]">
-          <dl className="space-y-1 text-sm">
+        {/* O resumo em texto é o que a tela responde primeiro: fica numa superfície elevada, em
+            coluna no celular e em duas colunas a partir do tablet. */}
+        <div className="grid gap-6 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5 md:grid-cols-[auto_1fr]">
+          <dl className="min-w-0 space-y-1 text-sm">
             <div className="font-medium">{lines.health}</div>
             <div>{lines.risk}</div>
             <div>{lines.priority}</div>
             <div>{lines.confidence}</div>
           </dl>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-medium">Principais drivers</p>
             {lines.drivers.length === 0 ? (
               <p className="text-sm text-muted-foreground">
@@ -255,7 +257,11 @@ export function OverviewTab({ overview }: { overview: ClientHealthOverview }) {
             Não foi possível carregar as evidências.
           </p>
         ) : (
-          <EvidenceList items={evidence.data.items} />
+          // Lista de registros mora numa superfície elevada, com o título fora dela; só os
+          // gráficos ficam soltos no fundo da página.
+          <div className="rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5">
+            <EvidenceList items={evidence.data.items} />
+          </div>
         )}
       </section>
 
@@ -273,7 +279,9 @@ export function OverviewTab({ overview }: { overview: ClientHealthOverview }) {
             Não foi possível carregar as recomendações.
           </p>
         ) : (
-          <RecommendationList items={recommendations.data.items} />
+          <div className="rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5">
+            <RecommendationList items={recommendations.data.items} />
+          </div>
         )}
       </section>
 
@@ -291,7 +299,7 @@ export function OverviewTab({ overview }: { overview: ClientHealthOverview }) {
           <SectionTitle id="contratos-title" hint="Planos, valores e vigências do cliente.">
             Contratos
           </SectionTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="max-w-3xl text-sm text-muted-foreground">
             {overview.contract
               ? `Contrato ${overview.contract.code} · plano ${overview.plan?.name ?? '—'} · ${overview.contract.status.toLowerCase()}. A lista completa de contratos e planos deste cliente entra aqui quando a tela passar a ler a API.`
               : 'Nenhum contrato cadastrado. A lista de contratos e planos entra aqui quando a tela passar a ler a API.'}

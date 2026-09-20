@@ -55,103 +55,111 @@ export function SuggestionsTable({
   onReject,
   busyId,
 }: SuggestionsTableProps) {
+  // No celular ficam as três colunas que decidem: qual métrica, em que pé está e o que fazer.
+  // Tipo, direção, peso e origem voltam conforme a tela cresce.
   return (
-    <Table aria-label="Sugestões de métrica">
-      <TableHeader>
-        <TableRow>
-          <TableHead>Métrica sugerida</TableHead>
-          <TableHead>Tipo</TableHead>
-          <TableHead>Direção</TableHead>
-          <TableHead className="text-right">Peso</TableHead>
-          <TableHead>Origem</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Ações</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {suggestions.map((suggestion) => {
-          const busy = busyId === suggestion.id;
-          const thresholds = thresholdLabel(suggestion);
-          return (
-            <TableRow key={suggestion.id} data-suggestion-id={suggestion.id}>
-              <TableCell className="max-w-xs align-top">
-                <p className="font-medium">
-                  {suggestion.suggestedName}
-                  {suggestion.unit ? (
-                    <span className="ml-1 text-xs text-muted-foreground">({suggestion.unit})</span>
-                  ) : null}
-                </p>
-                {suggestion.description ? (
-                  <p className="mt-0.5 text-xs text-muted-foreground">{suggestion.description}</p>
-                ) : null}
-                {suggestion.sourceExcerpt ? (
-                  <blockquote className="mt-1 border-l-2 border-border pl-2 text-xs text-muted-foreground italic">
-                    “{suggestion.sourceExcerpt}”
-                  </blockquote>
-                ) : null}
-                {thresholds ? (
-                  <p className="mt-1 text-xs text-muted-foreground">{thresholds}</p>
-                ) : null}
-                {suggestion.suggestedFormula ? (
-                  <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
-                    Fórmula: {JSON.stringify(suggestion.suggestedFormula)}
+    <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+      <Table aria-label="Sugestões de métrica">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Métrica sugerida</TableHead>
+            <TableHead className="hidden md:table-cell">Tipo</TableHead>
+            <TableHead className="hidden lg:table-cell">Direção</TableHead>
+            <TableHead className="hidden text-right sm:table-cell">Peso</TableHead>
+            <TableHead className="hidden lg:table-cell">Origem</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Ações</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {suggestions.map((suggestion) => {
+            const busy = busyId === suggestion.id;
+            const thresholds = thresholdLabel(suggestion);
+            return (
+              <TableRow key={suggestion.id} data-suggestion-id={suggestion.id}>
+                {/* A coluna que fica no celular precisa quebrar linha: aqui mora o texto longo. */}
+                <TableCell className="max-w-xs align-top whitespace-normal">
+                  <p className="font-medium">
+                    {suggestion.suggestedName}
+                    {suggestion.unit ? (
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        ({suggestion.unit})
+                      </span>
+                    ) : null}
                   </p>
-                ) : null}
-              </TableCell>
-              <TableCell className="align-top">
-                {METRIC_TYPE_LABELS[suggestion.suggestedType]}
-              </TableCell>
-              <TableCell className="align-top">
-                {METRIC_DIRECTION_LABELS[suggestion.suggestedDirection]}
-              </TableCell>
-              <TableCell className="text-right align-top tabular-nums">
-                {formatWeight(suggestion.suggestedWeight)}
-              </TableCell>
-              <TableCell className="align-top text-muted-foreground">
-                <span>{providerLabel(suggestion.provider)}</span>
-                {suggestion.confidence !== null ? (
-                  <span className="block text-xs tabular-nums">
-                    {Math.round(suggestion.confidence * 100)}% de confiança
-                  </span>
-                ) : null}
-              </TableCell>
-              <TableCell className="align-top">
-                <SuggestionStatusBadge status={suggestion.status} />
-              </TableCell>
-              <TableCell className="text-right align-top">
-                <div className="flex justify-end gap-1">
-                  {suggestion.status !== 'rejected' ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={suggestion.status === 'accepted' ? 'outline' : 'default'}
-                      disabled={busy}
-                      onClick={() => onAccept(suggestion)}
-                      aria-label={`${suggestion.status === 'accepted' ? 'Criar métrica' : 'Aceitar'} ${suggestion.suggestedName}`}
-                    >
-                      <Check aria-hidden="true" />
-                      {suggestion.status === 'accepted' ? 'Criar métrica' : 'Aceitar'}
-                    </Button>
+                  {suggestion.description ? (
+                    <p className="mt-0.5 text-xs text-muted-foreground">{suggestion.description}</p>
                   ) : null}
-                  {suggestion.status === 'pending' ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      disabled={busy}
-                      onClick={() => onReject(suggestion)}
-                      aria-label={`Rejeitar ${suggestion.suggestedName}`}
-                    >
-                      <X aria-hidden="true" />
-                      Rejeitar
-                    </Button>
+                  {suggestion.sourceExcerpt ? (
+                    <blockquote className="mt-1 border-l-2 border-border pl-2 text-xs text-muted-foreground italic">
+                      “{suggestion.sourceExcerpt}”
+                    </blockquote>
                   ) : null}
-                </div>
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+                  {thresholds ? (
+                    <p className="mt-1 text-xs text-muted-foreground">{thresholds}</p>
+                  ) : null}
+                  {suggestion.suggestedFormula ? (
+                    <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                      Fórmula: {JSON.stringify(suggestion.suggestedFormula)}
+                    </p>
+                  ) : null}
+                </TableCell>
+                <TableCell className="hidden align-top md:table-cell">
+                  {METRIC_TYPE_LABELS[suggestion.suggestedType]}
+                </TableCell>
+                <TableCell className="hidden align-top lg:table-cell">
+                  {METRIC_DIRECTION_LABELS[suggestion.suggestedDirection]}
+                </TableCell>
+                <TableCell className="hidden text-right align-top tabular-nums sm:table-cell">
+                  {formatWeight(suggestion.suggestedWeight)}
+                </TableCell>
+                <TableCell className="hidden align-top text-muted-foreground lg:table-cell">
+                  <span>{providerLabel(suggestion.provider)}</span>
+                  {suggestion.confidence !== null ? (
+                    <span className="block text-xs tabular-nums">
+                      {Math.round(suggestion.confidence * 100)}% de confiança
+                    </span>
+                  ) : null}
+                </TableCell>
+                <TableCell className="align-top">
+                  <SuggestionStatusBadge status={suggestion.status} />
+                </TableCell>
+                <TableCell className="text-right align-top">
+                  {/* Duas ações lado a lado; sem espaço, uma cai para baixo da outra. */}
+                  <div className="flex flex-wrap justify-end gap-1">
+                    {suggestion.status !== 'rejected' ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => onAccept(suggestion)}
+                        aria-label={`${suggestion.status === 'accepted' ? 'Criar métrica' : 'Aceitar'} ${suggestion.suggestedName}`}
+                      >
+                        <Check aria-hidden="true" />
+                        {suggestion.status === 'accepted' ? 'Criar métrica' : 'Aceitar'}
+                      </Button>
+                    ) : null}
+                    {suggestion.status === 'pending' ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => onReject(suggestion)}
+                        aria-label={`Rejeitar ${suggestion.suggestedName}`}
+                      >
+                        <X aria-hidden="true" />
+                        Rejeitar
+                      </Button>
+                    ) : null}
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

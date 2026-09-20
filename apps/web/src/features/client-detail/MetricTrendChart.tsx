@@ -147,7 +147,8 @@ export function MetricTrendChart({
               <TableHead>Período</TableHead>
               <TableHead className="text-right">{score.metricName}</TableHead>
               <TableHead className="text-right">Baseline</TableHead>
-              <TableHead className="text-right">Média da carteira</TableHead>
+              {/* No celular sobra o que conta a história: período, valor, baseline e health. */}
+              <TableHead className="hidden text-right md:table-cell">Média da carteira</TableHead>
               <TableHead className="text-right">Health</TableHead>
             </TableRow>
           </TableHeader>
@@ -161,7 +162,7 @@ export function MetricTrendChart({
                 <TableCell className="text-right tabular-nums">
                   {point.baseline === null ? '—' : formatValue(point.baseline)}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell className="hidden text-right tabular-nums md:table-cell">
                   {point.portfolio === null ? '—' : formatValue(point.portfolio)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
@@ -217,7 +218,7 @@ export function MetricTrendChart({
                 const datum = payload?.[0]?.payload as Datum | undefined;
                 if (!active || !datum) return null;
                 return (
-                  <div className="rounded-lg border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-sm">
+                  <div className="rounded-lg border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-popover">
                     <p className="font-medium">{datum.label}</p>
                     <p className="text-muted-foreground">
                       {score.metricName}: {formatValue(datum.value, datum.naReason)}

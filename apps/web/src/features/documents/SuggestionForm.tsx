@@ -34,8 +34,9 @@ const suggestionFormSchema = z.object({
 });
 type SuggestionFormValues = z.infer<typeof suggestionFormSchema>;
 
+/** Mesma pele do <Input>: superfície de card, altura de controle e o anel de foco de sempre. */
 const FIELD_CLASS =
-  'w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive md:text-sm dark:bg-input/30';
+  'w-full min-w-0 rounded-lg border border-input bg-card px-3 py-2 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive md:text-sm dark:bg-input/30';
 
 interface SuggestionFormProps {
   onSubmit(body: CreateMetricSuggestionBody): Promise<unknown>;
@@ -282,7 +283,7 @@ export function SuggestionForm({
         </p>
       ) : null}
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" disabled={isSubmitting || submitting}>
           {submitting ? 'Salvando…' : 'Salvar sugestão'}
         </Button>

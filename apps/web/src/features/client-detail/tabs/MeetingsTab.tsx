@@ -36,8 +36,9 @@ export function MeetingsTab({ overview }: { overview: ClientHealthOverview }) {
   const scores = useClientScores(overview.client.id);
   if (scores.isPending) {
     return (
-      <div role="status" aria-label="Carregando a aba Reuniões" className="space-y-6">
-        <Skeleton className="h-5 w-72" />
+      <div role="status" aria-label="Carregando a aba Reuniões" className="space-y-4">
+        <Skeleton className="h-5 w-full max-w-72" />
+        <Skeleton className="h-4 w-full max-w-md" />
         <Skeleton className="h-60 w-full" />
       </div>
     );
@@ -78,7 +79,7 @@ export function MeetingsTab({ overview }: { overview: ClientHealthOverview }) {
 
   return (
     <div className="space-y-8">
-      <p className="text-sm text-muted-foreground">
+      <p className="max-w-3xl text-sm text-muted-foreground">
         Reuniões não realizadas (peso 5 %): (previstas − realizadas) ÷ previstas. Sem reunião
         prevista não há o que medir: a métrica fica N/A e o peso é redistribuído (§21).
       </p>
@@ -121,22 +122,23 @@ export function MeetingsTab({ overview }: { overview: ClientHealthOverview }) {
           </Table>
         }
       >
-        <ol aria-label="Reuniões previstas e realizadas por período" className="space-y-2">
+        {/* No celular período, barra e contagem ficam um embaixo do outro (em três colunas o
+            texto sairia da tela); do tablet para cima voltam para a mesma linha. */}
+        <ol
+          aria-label="Reuniões previstas e realizadas por período"
+          className="space-y-4 sm:space-y-2"
+        >
           {points.map((point) => (
             <li
               key={point.periodEnd}
-              className="grid grid-cols-[64px_1fr_auto] items-center gap-3 text-sm"
+              className="flex flex-col gap-1 text-sm sm:grid sm:grid-cols-[64px_1fr_auto] sm:items-center sm:gap-3"
             >
               <span className="text-muted-foreground">{point.label}</span>
               {point.planned === 0 ? (
-                <span className="col-span-2 text-muted-foreground">{NA_TEXT}</span>
+                <span className="text-muted-foreground sm:col-span-2">{NA_TEXT}</span>
               ) : (
                 <>
-                  <span
-                    className="relative h-5 w-full"
-                    aria-hidden="true"
-                    style={{ maxWidth: 320 }}
-                  >
+                  <span className="relative h-5 w-full max-w-80" aria-hidden="true">
                     <span
                       className="absolute inset-y-0 left-0 rounded-r-sm"
                       style={{

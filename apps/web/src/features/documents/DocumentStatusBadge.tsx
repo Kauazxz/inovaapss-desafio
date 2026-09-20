@@ -9,17 +9,26 @@ import {
   SUGGESTION_STATUS_LABELS,
 } from './format';
 
-/** Status sempre com o nome escrito; a variante só reforça (DATAVIZ.md §1.4). */
+/**
+ * Status sempre com o nome escrito; a variante só reforça (DATAVIZ.md §1.4). O azul é a cor de
+ * ação (UI.md §1), então nenhum selo de status o usa: sobra o cinza e, só na falha, o vermelho.
+ */
 export function DocumentStatusBadge({ status }: { status: DocumentStatus }) {
   const variant =
-    status === 'failed' ? 'destructive' : status === 'extracted' ? 'default' : 'outline';
+    status === 'failed' ? 'destructive' : status === 'extracted' ? 'secondary' : 'outline';
   return <Badge variant={variant}>{DOCUMENT_STATUS_LABELS[status]}</Badge>;
 }
 
+/** Rejeitar é decisão de quem revisou, não erro: o selo fica quieto em vez de vermelho. */
 export function SuggestionStatusBadge({ status }: { status: MetricSuggestionStatus }) {
-  const variant =
-    status === 'rejected' ? 'destructive' : status === 'accepted' ? 'default' : 'outline';
-  return <Badge variant={variant}>{SUGGESTION_STATUS_LABELS[status]}</Badge>;
+  return (
+    <Badge
+      variant={status === 'accepted' ? 'secondary' : 'outline'}
+      className={status === 'rejected' ? 'text-muted-foreground' : undefined}
+    >
+      {SUGGESTION_STATUS_LABELS[status]}
+    </Badge>
+  );
 }
 
 /** Procedência do arquivo: enviado nesta tela ou vindo da importação de dados (§34). */

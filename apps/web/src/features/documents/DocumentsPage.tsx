@@ -35,8 +35,9 @@ import { type RejectedFile, UploadDropzone } from './UploadDropzone';
 
 const PAGE_SIZE = 20;
 
+// Largura total no celular; a partir de sm o filtro volta a caber pelo conteúdo, lado a lado.
 const SELECT_CLASS =
-  'h-9 rounded-lg border border-input bg-card px-3 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
+  'h-9 w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:w-auto dark:bg-input/30';
 
 interface UploadNotice {
   fileName: string;
@@ -129,7 +130,7 @@ export function DocumentsPage() {
           </p>
         ) : null}
         {notices.length > 0 ? (
-          <ul aria-label="Resultado do envio" className="space-y-1 text-sm">
+          <ul aria-label="Resultado do envio" className="space-y-1 text-sm break-words">
             {notices.map((notice) => (
               <li
                 key={`${notice.fileName}-${notice.kind}-${notice.message}`}
@@ -142,7 +143,7 @@ export function DocumentsPage() {
             <li>
               <button
                 type="button"
-                className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+                className="py-1 text-xs text-muted-foreground underline-offset-4 hover:underline"
                 onClick={() => setNotices([])}
               >
                 Limpar avisos
@@ -153,13 +154,14 @@ export function DocumentsPage() {
       </section>
 
       <section aria-labelledby="lista-titulo" className="space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
           <h3 id="lista-titulo" className="text-base font-medium">
             Documentos guardados{data ? ` (${data.total})` : ''}
           </h3>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <label htmlFor={kindId} className="text-sm text-muted-foreground">
+          {/* No celular cada filtro pega a linha inteira; de sm em diante voltam a caber juntos. */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+            <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
+              <label htmlFor={kindId} className="shrink-0 text-sm text-muted-foreground">
                 Tipo
               </label>
               <select
@@ -179,8 +181,8 @@ export function DocumentsPage() {
                 ))}
               </select>
             </div>
-            <div className="flex items-center gap-2">
-              <label htmlFor={originId} className="text-sm text-muted-foreground">
+            <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
+              <label htmlFor={originId} className="shrink-0 text-sm text-muted-foreground">
                 Origem
               </label>
               <select
@@ -200,7 +202,7 @@ export function DocumentsPage() {
                 ))}
               </select>
             </div>
-            <div className="relative">
+            <div className="relative w-full min-w-0 sm:w-56">
               <Search
                 aria-hidden="true"
                 className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
@@ -210,7 +212,7 @@ export function DocumentsPage() {
                 type="search"
                 aria-label="Buscar por nome do arquivo"
                 placeholder="Buscar por nome"
-                className="w-56 pl-8"
+                className="pl-8"
                 value={search}
                 onChange={(event) => {
                   setSearch(event.target.value);
@@ -222,7 +224,11 @@ export function DocumentsPage() {
         </div>
 
         {documents.isPending ? (
-          <div role="status" aria-label="Carregando documentos" className="space-y-2">
+          <div
+            role="status"
+            aria-label="Carregando documentos"
+            className="space-y-2 rounded-xl bg-card p-5 shadow-soft ring-1 ring-foreground/5"
+          >
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-8 w-full" />
@@ -261,55 +267,66 @@ export function DocumentsPage() {
             }
           />
         ) : data ? (
-          <>
+          // No celular sobram as duas colunas que contam a história: qual arquivo e em que pé
+          // está a extração. Tamanho, data, tipo e origem voltam conforme a tela cresce.
+          <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
             <Table aria-label="Documentos guardados">
               <TableHeader>
                 <TableRow>
                   <TableHead>Arquivo</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Origem</TableHead>
-                  <TableHead className="text-right">Tamanho</TableHead>
+                  <TableHead className="hidden md:table-cell">Tipo</TableHead>
+                  <TableHead className="hidden lg:table-cell">Origem</TableHead>
+                  <TableHead className="hidden text-right sm:table-cell">Tamanho</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Guardado em</TableHead>
+                  <TableHead className="hidden text-right sm:table-cell">Guardado em</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.items.map((doc) => (
                   <TableRow key={doc.id} data-document-id={doc.id}>
                     <TableCell className="font-medium">
+                      {/* Nome comprido corta em vez de empurrar o status para fora da tela. */}
                       <Link
                         to={`/documents/${doc.id}`}
-                        className="underline-offset-4 hover:underline"
+                        className="block max-w-44 truncate underline-offset-4 hover:underline sm:max-w-none"
                       >
                         {doc.fileName}
                       </Link>
                     </TableCell>
-                    <TableCell>{DOCUMENT_KIND_LABELS[doc.kind]}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {DOCUMENT_KIND_LABELS[doc.kind]}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       <DocumentOriginBadge origin={doc.origin} />
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell className="hidden text-right tabular-nums sm:table-cell">
                       {formatFileSize(doc.sizeBytes)}
                     </TableCell>
                     <TableCell>
                       <DocumentStatusBadge status={doc.status} />
                     </TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                    <TableCell className="hidden text-right tabular-nums text-muted-foreground sm:table-cell">
                       {formatDateTime(doc.createdAt)}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+            {/* A paginação fecha a mesma superfície da tabela, separada por uma linha fina. */}
             {totalPages > 1 ? (
-              <nav aria-label="Paginação" className="flex items-center justify-end gap-2 text-sm">
-                <span className="text-muted-foreground">
+              <nav
+                aria-label="Paginação"
+                className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-3 py-3 text-sm"
+              >
+                <span className="mr-auto tabular-nums whitespace-nowrap text-muted-foreground">
                   Página {data.page} de {totalPages}
                 </span>
+                {/* Alvo de toque de 36 px no celular; de sm em diante o botão fica compacto. */}
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="h-9 sm:h-7"
                   disabled={page <= 1}
                   onClick={() => setPage((p) => p - 1)}
                 >
@@ -319,6 +336,7 @@ export function DocumentsPage() {
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="h-9 sm:h-7"
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => p + 1)}
                 >
@@ -326,7 +344,7 @@ export function DocumentsPage() {
                 </Button>
               </nav>
             ) : null}
-          </>
+          </div>
         ) : null}
       </section>
     </>
