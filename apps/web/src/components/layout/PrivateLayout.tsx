@@ -16,8 +16,8 @@ import { isGroupActive, type NavItem, NAV_ENTRIES } from '@/routes/nav';
 
 /** Uma entrada da cápsula: link direto ou gatilho de grupo. Ativa = pílula na cor de ação. */
 const pill =
-  'inline-flex h-9 cursor-default items-center gap-1 rounded-full px-3.5 text-sm font-medium whitespace-nowrap text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50';
-const pillActive = 'bg-accent text-accent-foreground hover:text-accent-foreground';
+  'inline-flex h-10 cursor-default items-center gap-1 rounded-full px-4 text-sm font-medium whitespace-nowrap text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50';
+const pillActive = 'bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground';
 
 /** Item de submenu: ícone, nome e uma linha dizendo o que a tela responde. */
 function MenuLink({ item }: { item: NavItem }) {
@@ -59,7 +59,7 @@ export function PrivateLayout() {
       </a>
 
       <header className="sticky top-0 z-40 bg-linear-to-b from-background via-background/85 to-transparent px-4 pt-3 pb-4 md:px-6">
-        <div className="cn-container flex h-14 items-center gap-2 rounded-full bg-card/90 px-2 shadow-float ring-1 ring-foreground/5 backdrop-blur-lg">
+        <div className="cn-container flex h-16 items-center gap-1 rounded-full bg-card/90 px-2.5 shadow-float ring-1 ring-foreground/5 backdrop-blur-lg">
           <NavLink
             to="/dashboard"
             className="ml-1 flex shrink-0 items-center gap-2 rounded-full py-1 pr-2 pl-1 text-sm font-semibold tracking-tight outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
