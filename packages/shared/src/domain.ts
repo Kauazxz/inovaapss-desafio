@@ -153,3 +153,45 @@ export type AllowedUploadMimeType = (typeof ALLOWED_UPLOAD_MIME_TYPES)[number];
 /** §34 + A4 — formatos que entram no importador de dados tabulares. */
 export const IMPORT_FILE_TYPES = ['XLSX', 'CSV', 'JSON'] as const;
 export type ImportFileType = (typeof IMPORT_FILE_TYPES)[number];
+
+// ---------- §34 + A4 — datasets, estados do job e códigos de erro do importador ----------
+
+/**
+ * As quatro tabelas que o importador entende. Ficam aqui (e não em @inovaapss/importer) porque
+ * API, web e validação precisam do vocabulário sem arrastar os leitores de XLSX/CSV junto;
+ * `@inovaapss/importer` os reexporta como `DATASET_KEYS`/`DatasetKey`.
+ */
+export const IMPORT_DATASET_KEYS = ['clients', 'monthly_metrics', 'nps', 'client_status'] as const;
+export type ImportDatasetKey = (typeof IMPORT_DATASET_KEYS)[number];
+
+/** Códigos de erro de uma linha recusada (§34); a mensagem em português vem junto. */
+export const IMPORT_ERROR_CODES = [
+  'MISSING_REQUIRED',
+  'INVALID_TEXT',
+  'INVALID_NUMBER',
+  'INVALID_INTEGER',
+  'INVALID_PERIOD',
+  'INVALID_DATE',
+  'INVALID_BOOLEAN',
+  'INVALID_ENUM',
+  'OUT_OF_RANGE',
+  'INCONSISTENT',
+  'DUPLICATE',
+  'INVALID_VALUE',
+] as const;
+export type ImportErrorCode = (typeof IMPORT_ERROR_CODES)[number];
+
+/**
+ * Estados de um `import_jobs` (§36). O caminho feliz é
+ * `uploaded → mapped → previewed → importing → done`; `failed` guarda o motivo em
+ * `error_message`. Um job em `done` não volta atrás: reimportar é subir o arquivo de novo.
+ */
+export const IMPORT_JOB_STATUSES = [
+  'uploaded',
+  'mapped',
+  'previewed',
+  'importing',
+  'done',
+  'failed',
+] as const;
+export type ImportJobStatus = (typeof IMPORT_JOB_STATUSES)[number];

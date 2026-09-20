@@ -1,6 +1,17 @@
 /**
  * Tipos do importador (§34, ajuste A4). Tudo aqui é puro: nenhum tipo depende de banco ou HTTP.
+ *
+ * Os vocabulários que a API e a web também usam (datasets e códigos de erro) moram em
+ * `@inovaapss/shared` e são reexportados aqui com os nomes curtos do pacote, para que exista uma
+ * única lista de cada um no monorepo.
  */
+import {
+  IMPORT_DATASET_KEYS,
+  type ImportDatasetKey,
+  type ImportErrorCode,
+} from '@inovaapss/shared';
+
+export { IMPORT_ERROR_CODES, type ImportErrorCode } from '@inovaapss/shared';
 
 // ---------- Leitura ----------
 
@@ -34,8 +45,8 @@ export interface ReadCsvOptions {
 
 // ---------- Catálogo de datasets ----------
 
-export const DATASET_KEYS = ['clients', 'monthly_metrics', 'nps', 'client_status'] as const;
-export type DatasetKey = (typeof DATASET_KEYS)[number];
+export const DATASET_KEYS = IMPORT_DATASET_KEYS;
+export type DatasetKey = ImportDatasetKey;
 
 export const FIELD_TYPES = [
   'text',
@@ -117,22 +128,6 @@ export interface DatasetDetection {
 }
 
 // ---------- Validação e relatório (§34) ----------
-
-export const IMPORT_ERROR_CODES = [
-  'MISSING_REQUIRED',
-  'INVALID_TEXT',
-  'INVALID_NUMBER',
-  'INVALID_INTEGER',
-  'INVALID_PERIOD',
-  'INVALID_DATE',
-  'INVALID_BOOLEAN',
-  'INVALID_ENUM',
-  'OUT_OF_RANGE',
-  'INCONSISTENT',
-  'DUPLICATE',
-  'INVALID_VALUE',
-] as const;
-export type ImportErrorCode = (typeof IMPORT_ERROR_CODES)[number];
 
 export interface ImportRowError {
   /** Posição entre as linhas de dados: a primeira linha depois do cabeçalho é 1. */
