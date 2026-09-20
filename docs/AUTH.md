@@ -52,14 +52,14 @@ O cabeçalho do layout privado mostra a organização, o e-mail do usuário e o 
 
 ## 3. Rotas da API (§37)
 
-| Rota                                       | Guardas                         | Resposta                                                                                      |
-| ------------------------------------------ | ------------------------------- | --------------------------------------------------------------------------------------------- |
-| `GET /api/v1/me`                           | requireAuth, resolveTenant      | `{ user: { id, email }, organization \| null, role \| null }`                                 |
-| `POST /api/v1/organizations`               | requireAuth, resolveTenant      | 201 `{ organization, role: 'owner' }`. 409 `SLUG_TAKEN` / `ALREADY_IN_ORGANIZATION`           |
-| `GET /api/v1/organizations/current`        | + requireTenant                 | `{ organization, role }`. 403 `NO_ORGANIZATION` sem vínculo                                   |
-| `PATCH /api/v1/organizations/current`      | + requireRole('owner', 'admin') | nome e/ou slug. 403 `FORBIDDEN` para analyst/viewer                                           |
-| `GET /api/v1/organizations/current/users`  | + requireTenant                 | `{ items: [{ id, authUserId, email, role, createdAt }], total }`                              |
-| `POST /api/v1/organizations/current/users` | + requireRole('owner', 'admin') | `{ email, role?, password? }` → 201 `{ member, outcome: 'invited' \| 'created' \| 'linked' }` |
+| Rota                                       | Guardas                         | Resposta                                                                               |
+| ------------------------------------------ | ------------------------------- | -------------------------------------------------------------------------------------- |
+| `GET /api/v1/me`                           | requireAuth, resolveTenant      | `{ user: { id, email }, organization \| null, role \| null }`                          |
+| `POST /api/v1/organizations`               | requireAuth, resolveTenant      | 201 `{ organization, role: 'owner' }`. 409 `SLUG_TAKEN` / `ALREADY_IN_ORGANIZATION`    |
+| `GET /api/v1/organizations/current`        | + requireTenant                 | `{ organization, role }`. 403 `NO_ORGANIZATION` sem vínculo                            |
+| `PATCH /api/v1/organizations/current`      | + requireRole('owner', 'admin') | nome e/ou slug. 403 `FORBIDDEN` para analyst/viewer                                    |
+| `GET /api/v1/organizations/current/users`  | + requireTenant                 | `{ items: [{ id, authUserId, email, role, createdAt }], total }`                       |
+| `POST /api/v1/organizations/current/users` | + requireRole('owner', 'admin') | `{ email, role? }` → 201 `{ member }` (a mesma resposta exista ou não a conta no Auth) |
 
 Erros seguem o formato do error-handler: `{ error: { code, message, requestId, details? } }`.
 Documentação viva em `/api/docs` (Swagger UI, fora de produção) e `/api/docs.json`.
@@ -81,7 +81,8 @@ quando houver necessidade.
 
 **Opção A — seed de demonstração (recomendada):** cria a organização `GlobalSys (demo)`
 (`globalsys-demo`) e o usuário owner, já com e-mail confirmado. As credenciais vêm **só do ambiente**
-(nunca de arquivo versionado):
+(nunca de arquivo versionado). Precisa do `.env` da raiz preenchido com `SUPABASE_URL`,
+`SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` e `DATABASE_URL`:
 
 ```powershell
 $env:SEED_DEMO_EMAIL = "demo@exemplo.com"
@@ -89,6 +90,8 @@ $env:SEED_DEMO_PASSWORD = "uma-senha-forte-12+"     # letras, números e símbol
 pnpm --filter @inovaapss/api seed:demo
 ```
 
+O script constrói antes os pacotes internos de que a API depende (`packages/shared`,
+`packages/validation`), então funciona num clone recém-instalado, sem `pnpm build` manual.
 Idempotente: rodar de novo só atualiza a senha e completa o que faltar.
 
 **Opção B — painel do Supabase:** _Authentication → Users → Add user_ (marque "Auto Confirm User").
@@ -96,14 +99,20 @@ Depois faça login no front: sem organização, ele abre o `/onboarding` para vo
 
 ## 6. Como convidar alguém
 
-Com um `owner` ou `admin` logado, `POST /api/v1/organizations/current/users`:
+Com um `owner` ou `admin` logado, `POST /api/v1/organizations/current/users` com
+`{ "email": "ana@empresa.com", "role": "analyst" }`:
 
-- `{ "email": "ana@empresa.com", "role": "analyst" }` → **convite por e-mail**
-  (`auth.admin.inviteUserByEmail`); a pessoa define a senha pelo link.
-- `{ "email": "...", "role": "viewer", "password": "senha-temporaria" }` → **cria já confirmado**
-  (`auth.admin.createUser`) com a senha temporária, que a pessoa troca em "Esqueci a senha".
-- E-mail que já existe no Auth → só registra o vínculo (`outcome: 'linked'`).
+- e-mail **sem conta** no Auth → convite por e-mail (`auth.admin.inviteUserByEmail`); a pessoa
+  prova que o e-mail é dela clicando no link e define a senha;
+- e-mail **com conta** → só registra o vínculo em `organization_users`.
 
+Nos dois casos a resposta é **a mesma**: `201 { member }`. A rota nunca diz se o e-mail já tinha
+conta (isso permitiria a um owner de uma organização enumerar quem usa a plataforma, inclusive
+clientes de outras). Também **não existe "criar com senha"**: ninguém cria uma conta confirmada em
+nome de outra pessoa — `password` no corpo é ignorado. Contas com senha só nascem pelo seed de
+demonstração (seção 5, credenciais no shell) ou pelo painel do Supabase.
+
+Evolução prevista (Etapa 13): convites pendentes que só viram vínculo quando a pessoa aceita.
 A tela de Configurações (`/settings`) para fazer isso pela interface entra numa etapa seguinte.
 
 ## 7. O que o RLS cobre (§5)
@@ -126,18 +135,21 @@ barreira, para quem acessar o banco direto pela API do Supabase com o JWT do usu
 | Variável                                      | Onde             | Uso                                                             |
 | --------------------------------------------- | ---------------- | --------------------------------------------------------------- |
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY`           | API              | validar o JWT (`auth.getUser`)                                  |
-| `SUPABASE_SERVICE_ROLE_KEY`                   | API, **somente** | Admin API (convidar/criar usuário). Nunca no front.             |
+| `SUPABASE_SERVICE_ROLE_KEY`                   | API, **somente** | Admin API (convidar usuário; criar só no seed). Nunca no front. |
 | `DATABASE_URL`                                | API              | organizations / organization_users                              |
 | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | web              | login, sessão, recuperação de senha                             |
 | `VITE_API_URL`                                | web              | endereço da API                                                 |
 | `SEED_DEMO_EMAIL`, `SEED_DEMO_PASSWORD`       | só no shell      | seed de demonstração (`pnpm --filter @inovaapss/api seed:demo`) |
 
 Sem `SUPABASE_*` a API sobe e as rotas autenticadas respondem `503 SUPABASE_NOT_CONFIGURED`; sem
-`VITE_SUPABASE_*` o front mostra "Autenticação não configurada" em vez de quebrar.
+`VITE_SUPABASE_*` (vazias, como no `.env.example`) o front mostra "Autenticação não configurada"
+em vez de quebrar. Um valor preenchido mas errado (placeholder, projeto inexistente) passa na
+validação e o login responde "Não foi possível falar com o serviço de autenticação…".
 
 ## 9. Testes
 
 - `apps/api/src/middleware/__tests__/` — requireAuth (401, cache de 60 s), resolveTenant, requireTenant, requireRole.
 - `apps/api/src/modules/organizations/__tests__/organizations.test.ts` — rotas com dublês (token e repositório em memória): onboarding, validação, RBAC, isolamento, convite.
 - `apps/api/src/modules/organizations/__tests__/organizations.integration.test.ts` — contra o Supabase **real**; roda só com `DATABASE_URL` + `SUPABASE_*` no ambiente e as tabelas aplicadas (cria `test-*` e apaga no fim); senão fica _skipped_ com aviso.
-- `apps/web/src/features/auth/__tests__/` e `apps/web/src/routes/RequireAuth.test.tsx` — formulário de login, redirecionamento sem sessão, onboarding, 401 → sair.
+- `apps/web/src/features/auth/__tests__/` e `apps/web/src/routes/RequireAuth.test.tsx` — formulário de login, falha de rede traduzida, redirecionamento sem sessão, onboarding, 401 → sair.
+- Recuperação de senha ponta a ponta: `ForgotPasswordPage.test.tsx` (`resetPasswordForEmail` com `redirectTo` terminando em `/login`, mensagem neutra) e `LoginPage.test.tsx` › "link de recuperação de senha" (evento `PASSWORD_RECOVERY` abre "Definir nova senha", `updateUser({ password })`, segue para `/dashboard` — nas duas ordens de evento, `PASSWORD_RECOVERY` sozinho ou depois de `SIGNED_IN`; senhas diferentes não salvam).

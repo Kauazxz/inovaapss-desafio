@@ -108,40 +108,20 @@ export function createOrganizationsService({
         throw new ForbiddenError('Somente o owner pode atribuir o papel "owner".');
       }
 
-      const existingUserId = await repository.findAuthUserIdByEmail(input.email);
-      let authUserId: string;
-      let outcome: InviteMemberResult['outcome'];
-
-      if (existingUserId !== null) {
-        authUserId = existingUserId;
-        outcome = 'linked';
-      } else {
-        const admin = supabase.getAdmin().auth.admin;
-        if (input.password !== undefined) {
-          const { data, error } = await admin.createUser({
-            email: input.email,
-            password: input.password,
-            email_confirm: true,
-          });
-          if (error || !data.user) {
-            throw new ConflictError(
-              `Não foi possível criar o usuário no Supabase Auth: ${error?.message ?? 'resposta vazia'}.`,
-              'AUTH_USER_CREATE_FAILED',
-            );
-          }
-          authUserId = data.user.id;
-          outcome = 'created';
-        } else {
-          const { data, error } = await admin.inviteUserByEmail(input.email);
-          if (error || !data.user) {
-            throw new ConflictError(
-              `Não foi possível enviar o convite: ${error?.message ?? 'resposta vazia'}.`,
-              'AUTH_INVITE_FAILED',
-            );
-          }
-          authUserId = data.user.id;
-          outcome = 'invited';
+      // A consulta a auth.users é só interna: o resultado nunca chega à resposta. Conta nova →
+      // convite por e-mail (quem prova posse do e-mail é o link); conta existente → só o vínculo.
+      // Nos dois casos a resposta é a mesma (201 { member }), para a rota não servir de oráculo
+      // de "este e-mail tem conta?" entre organizações. Nunca se cria conta com senha por aqui.
+      let authUserId = await repository.findAuthUserIdByEmail(input.email);
+      if (authUserId === null) {
+        const { data, error } = await supabase.getAdmin().auth.admin.inviteUserByEmail(input.email);
+        if (error || !data.user) {
+          throw new ConflictError(
+            'Não foi possível enviar o convite agora. Tente de novo em instantes.',
+            'AUTH_INVITE_FAILED',
+          );
         }
+        authUserId = data.user.id;
       }
 
       const already = await repository.findMember(tenant.organizationId, authUserId);
@@ -155,7 +135,7 @@ export function createOrganizationsService({
           authUserId,
           role: input.role,
         });
-        return { member, outcome };
+        return { member };
       } catch (err) {
         if (isUniqueViolation(err)) {
           throw new ConflictError('Este usuário já faz parte da organização.', 'ALREADY_MEMBER');

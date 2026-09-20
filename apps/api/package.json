@@ -19,7 +19,7 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
-    "seed:demo": "tsx src/db/seed/demo-auth.ts"
+    "seed:demo": "pnpm -w exec turbo run build --filter=@inovaapss/api... && tsx src/db/seed/demo-auth.ts"
   },
   "dependencies": {
     "@inovaapss/shared": "workspace:*",

@@ -215,10 +215,10 @@ export const openapiDocument: OpenAPIV3_1.Document = {
       },
       post: {
         tags: ['organizations'],
-        summary: 'Convida ou cria um usuário na organização (owner ou admin)',
+        summary: 'Convida um usuário para a organização (owner ou admin)',
         operationId: 'inviteOrganizationUser',
         description:
-          'Sem `password`, envia convite por e-mail (Supabase Auth). Com `password`, cria o usuário já confirmado. Se o e-mail já existir no Auth, apenas registra o vínculo. Somente o owner pode atribuir o papel owner.',
+          'Registra o vínculo e, quando o e-mail ainda não tem conta, envia o convite pelo Supabase Auth (a pessoa define a senha pelo link). A resposta é a mesma exista ou não a conta: a rota não revela quais e-mails já estão na plataforma. Somente o owner pode atribuir o papel owner.',
         requestBody: jsonBody('InviteMember'),
         responses: {
           '201': jsonResponse('Vínculo criado', 'InviteMemberResult'),
@@ -314,20 +314,13 @@ export const openapiDocument: OpenAPIV3_1.Document = {
         properties: {
           email: { type: 'string', format: 'email' },
           role: { type: 'string', enum: ORGANIZATION_ROLES, default: 'viewer' },
-          password: {
-            type: 'string',
-            minLength: 8,
-            maxLength: 72,
-            description: 'Opcional: cria o usuário já confirmado com esta senha temporária.',
-          },
         },
       },
       InviteMemberResult: {
         type: 'object',
-        required: ['member', 'outcome'],
+        required: ['member'],
         properties: {
           member: { $ref: '#/components/schemas/OrganizationMember' },
-          outcome: { type: 'string', enum: ['invited', 'created', 'linked'] },
         },
       },
       ApiIndex: {

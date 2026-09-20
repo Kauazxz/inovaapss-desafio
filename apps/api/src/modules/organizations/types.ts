@@ -31,12 +31,12 @@ export interface UpdateOrganizationInput {
 export interface InviteMemberInput {
   email: string;
   role: OrganizationRole;
-  /** Com senha: cria o usuário já confirmado. Sem senha: envia convite por e-mail. */
-  password?: string | undefined;
 }
 
+/**
+ * Resposta do convite. Propositalmente igual exista ou não a conta no Auth: a rota nunca diz a
+ * um owner/admin quais e-mails já têm conta na plataforma (enumeração entre organizações).
+ */
 export interface InviteMemberResult {
   member: OrganizationMember;
-  /** 'invited' = e-mail de convite enviado; 'created' = criado com senha; 'linked' = já existia no Auth. */
-  outcome: 'invited' | 'created' | 'linked';
 }

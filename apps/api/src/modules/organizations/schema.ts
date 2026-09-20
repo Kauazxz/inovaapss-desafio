@@ -28,13 +28,13 @@ export const updateOrganizationSchema = z
   });
 export type UpdateOrganizationBody = z.infer<typeof updateOrganizationSchema>;
 
+/**
+ * Convite: só e-mail e papel. Não existe "criar com senha": ninguém cria uma conta confirmada em
+ * nome de outra pessoa — quem prova posse do e-mail é o link do convite (§5). Chaves extras no
+ * corpo (ex.: `password`) são descartadas pelo Zod.
+ */
 export const inviteMemberSchema = z.object({
   email: z.email('Informe um e-mail válido.').trim().toLowerCase(),
   role: organizationRoleSchema.default('viewer'),
-  password: z
-    .string()
-    .min(8, 'A senha temporária precisa ter pelo menos 8 caracteres.')
-    .max(72, 'A senha pode ter no máximo 72 caracteres.')
-    .optional(),
 });
 export type InviteMemberBody = z.infer<typeof inviteMemberSchema>;

@@ -43,6 +43,7 @@ const inviteUserByEmail = vi.fn();
 const createUser = vi.fn();
 const supabase: SupabaseClients = {
   isConfigured: true,
+  // `createUser` fica no dublê só para provar que a rota NUNCA o chama.
   getAdmin: () => ({ auth: { admin: { inviteUserByEmail, createUser } } }) as never,
   getAnon: () => {
     throw new Error('não usado: getUser é um dublê');
@@ -239,36 +240,46 @@ describe('POST /api/v1/organizations/current/users', () => {
     return a;
   }
 
-  it('vincula um usuário que já existe no Auth (outcome linked) sem chamar o admin', async () => {
+  it('vincula um usuário que já existe no Auth sem chamar o admin nem dizer que a conta existia', async () => {
     const a = await withOwner();
     const res = await request(a)
       .post('/api/v1/organizations/current/users')
       .set(as('ana'))
       .send({ email: 'BIA@example.com', role: 'analyst' });
     expect(res.status).toBe(201);
-    expect(res.body.outcome).toBe('linked');
     expect(res.body.member).toMatchObject({ authUserId: BIA.userId, role: 'analyst' });
+    expect(res.body).not.toHaveProperty('outcome');
+    expect(Object.keys(res.body)).toEqual(['member']);
     expect(inviteUserByEmail).not.toHaveBeenCalled();
   });
 
-  it('convida por e-mail quando o usuário não existe (outcome invited)', async () => {
+  it('convida por e-mail quando o usuário não existe, com a MESMA resposta do caso anterior', async () => {
     inviteUserByEmail.mockResolvedValue({
       data: { user: { id: '44444444-4444-4444-8444-444444444444' } },
       error: null,
     });
     const a = await withOwner();
-    const res = await request(a)
+    const existing = await request(a)
+      .post('/api/v1/organizations/current/users')
+      .set(as('ana'))
+      .send({ email: 'bia@example.com' });
+    const created = await request(a)
       .post('/api/v1/organizations/current/users')
       .set(as('ana'))
       .send({ email: 'nova@example.com' });
-    expect(res.status).toBe(201);
-    expect(res.body.outcome).toBe('invited');
-    expect(res.body.member.role).toBe('viewer');
+    expect(created.status).toBe(201);
+    expect(created.body.member.role).toBe('viewer');
     expect(inviteUserByEmail).toHaveBeenCalledWith('nova@example.com');
+    // Sem oráculo "este e-mail tem conta?": mesmo status, mesmas chaves, mesma forma do member.
+    expect(created.status).toBe(existing.status);
+    expect(Object.keys(created.body)).toEqual(Object.keys(existing.body));
+    expect(Object.keys(created.body.member).sort()).toEqual(
+      Object.keys(existing.body.member).sort(),
+    );
   });
 
-  it('cria com senha temporária quando ela vem no corpo (outcome created)', async () => {
-    createUser.mockResolvedValue({
+  it('nunca cria conta com senha em nome de outra pessoa: `password` no corpo é ignorado', async () => {
+    inviteUserByEmail.mockResolvedValue({
       data: { user: { id: '55555555-5555-4555-8555-555555555555' } },
       error: null,
     });
@@ -278,12 +289,24 @@ describe('POST /api/v1/organizations/current/users', () => {
       .set(as('ana'))
       .send({ email: 'temp@example.com', role: 'admin', password: 'Senha-temporaria-1' });
     expect(res.status).toBe(201);
-    expect(res.body.outcome).toBe('created');
-    expect(createUser).toHaveBeenCalledWith({
-      email: 'temp@example.com',
-      password: 'Senha-temporaria-1',
-      email_confirm: true,
+    expect(createUser).not.toHaveBeenCalled();
+    expect(inviteUserByEmail).toHaveBeenCalledWith('temp@example.com');
+    expect(res.body).not.toHaveProperty('outcome');
+  });
+
+  it('falha do Auth ao convidar não vaza a mensagem do provedor', async () => {
+    inviteUserByEmail.mockResolvedValue({
+      data: { user: null },
+      error: { message: 'A user with this email address has already been registered' },
     });
+    const a = await withOwner();
+    const res = await request(a)
+      .post('/api/v1/organizations/current/users')
+      .set(as('ana'))
+      .send({ email: 'x@example.com' });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('AUTH_INVITE_FAILED');
+    expect(res.body.error.message).not.toMatch(/already been registered/);
   });
 
   it('responde 409 ALREADY_MEMBER para quem já está na organização', async () => {

@@ -171,13 +171,13 @@ describe.skipIf(!enabled)('organizations — integração com o Supabase real', 
     expect(anaCurrent.body.organization.name).toBe(`Test Alfa ${run}`);
   });
 
-  it('convite de um e-mail já existente no Auth vincula sem criar outro usuário', async () => {
+  it('convite de um e-mail já existente no Auth vincula sem criar outro usuário nem revelar isso', async () => {
     const res = await request(app)
       .post('/api/v1/organizations/current/users')
       .set(bearer(ana))
       .send({ email: bia.email, role: 'analyst' });
     expect(res.status).toBe(201);
-    expect(res.body.outcome).toBe('linked');
+    expect(res.body).not.toHaveProperty('outcome');
     expect(res.body.member).toMatchObject({ authUserId: bia.id, role: 'analyst' });
   });
 });
