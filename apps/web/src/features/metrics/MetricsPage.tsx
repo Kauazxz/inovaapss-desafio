@@ -1,6 +1,21 @@
+/**
+ * §38 /metrics — a tela única das métricas.
+ *
+ * Antes eram duas: /metrics listava o cadastro e /metric-models guardava peso, ordem e
+ * normalização de cada versão. Quem configura não pensa assim — pensa "esta métrica pesa
+ * demais", olhando a linha inteira. Então a tabela do §41 virou o lugar onde se muda tudo:
+ *
+ *   — Ativa, Métrica, Tipo e Direção são o CADASTRO: PATCH /metrics/:id, salva na hora.
+ *   — Ordem, Peso final e Normalização são o MODELO: viram um rascunho local e só passam a
+ *     valer quando alguém publica, porque mudam o score de toda a carteira (§32, §41).
+ *
+ * A faixa do modelo, no alto, é o que sobrou da outra tela: versão em vigor, soma dos pesos e
+ * o botão de publicar. O resto (gatilhos, faixas, histórico de versões, redistribuição) segue
+ * em /metric-models/:id, a um clique de "Configuração avançada".
+ */
 import { Plus, Search, X } from 'lucide-react';
-import { useId, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useId, useState } from 'react';
+import { useNavigate } from 'react-router';
 
 import {
   METRIC_DIRECTION_LABELS,
@@ -9,34 +24,46 @@ import {
   METRIC_SOURCES,
   METRIC_TYPE_LABELS,
   METRIC_TYPES,
-  NORMALIZATION_STRATEGY_LABELS,
-  type MetricDefinitionListItemDto,
+  type MetricModelVersionDto,
 } from '@inovaapss/shared';
 
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useAllMetricDefinitions, useMetricModelsWithVersions } from '@/features/metric-models/api';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  compareDraftWithVersion,
+  draftToItems,
+  versionToDraft,
+  weightsCheck,
+  type DraftItem,
+} from '@/features/metric-models/draft';
 import { cn } from '@/lib/utils';
 
-import { DEFAULT_METRICS_QUERY, type MetricsListQuery, useMetrics } from './api';
-import { pct } from './explain';
+import { DEFAULT_METRICS_QUERY, useMetrics, useUpdateMetric, type MetricsListQuery } from './api';
 import { MetricFormDialog } from './MetricFormDialog';
 import { MetricsEmpty, MetricsError, MetricsLoading } from './MetricsStates';
-import { orderMetricItems } from './order';
+import { MetricsTable } from './MetricsTable';
+import {
+  definitionsById,
+  excludeFromDraft,
+  includeInDraft,
+  moveDraftBy,
+  moveDraftTo,
+  rowsFromDraft,
+  rowsFromPlacement,
+  setDraftStrategy,
+  setDraftWeight,
+} from './model-draft';
+import { ModelBar } from './ModelBar';
 import { PrefillBanner } from './PrefillBanner';
+import { usePublishModelDraft } from './publish';
 
 import type { MetricPrefill } from '@/features/documents/api';
 
+// Largura total no celular; a partir de sm volta a caber pelo conteúdo, lado a lado.
 const selectClassName =
-  'h-9 rounded-lg border border-input bg-card px-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
+  'h-9 w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:w-auto dark:bg-input/30';
 
 function FilterSelect<T extends string>({
   label,
@@ -55,7 +82,7 @@ function FilterSelect<T extends string>({
 }) {
   const id = useId();
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
       <label htmlFor={id} className="sr-only">
         {label}
       </label>
@@ -86,36 +113,16 @@ function isFiltered(query: MetricsListQuery): boolean {
   );
 }
 
-/** Pílula "Sim/Não" para a coluna Ativa: texto sempre, cor nunca sozinha (DATAVIZ.md §1.4). */
-function ActivePill({ active }: { active: boolean }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex h-5 items-center rounded-full border border-border px-2 text-xs font-medium whitespace-nowrap',
-        active ? 'text-foreground' : 'text-muted-foreground',
-      )}
-    >
-      {active ? 'Sim' : 'Não'}
-    </span>
-  );
+/** Identidade do conteúdo da versão no servidor: quando muda, a edição local recomeça dela. */
+function versionSignature(version: MetricModelVersionDto | null): string {
+  if (version === null) return '';
+  return JSON.stringify({
+    id: version.id,
+    status: version.status,
+    items: draftToItems(versionToDraft(version)),
+  });
 }
 
-/**
- * O nome do modelo já costuma trazer a versão do preset ("GlobalSys v1"), então concatenar
- * `v${version}` produzia "GlobalSys v1 v1". A versão do MODELO é dita por extenso.
- */
-function statusOf(row: MetricDefinitionListItemDto): string {
-  if (row.activePlacement !== null) {
-    const { modelName, version } = row.activePlacement;
-    return `No modelo ativo (${modelName} · versão ${version})`;
-  }
-  return row.isActive ? 'Fora do modelo ativo' : 'Desativada';
-}
-
-/**
- * §38 /metrics — tabela do configurador (§41): Ativa, Ordem, Métrica, Tipo, Peso final da versão
- * ativa, Direção, Normalização, Status. Busca e filtros §61. Edição visual chega na Etapa 10.
- */
 export function MetricsPage() {
   const [query, setQuery] = useState<MetricsListQuery>(DEFAULT_METRICS_QUERY);
   const searchId = useId();
@@ -123,6 +130,36 @@ export function MetricsPage() {
   const navigate = useNavigate();
   const [formOpen, setFormOpen] = useState(false);
   const [formPrefill, setFormPrefill] = useState<MetricPrefill | null>(null);
+
+  // O modelo: de onde vêm peso, ordem e normalização.
+  const { list: models, summaries } = useMetricModelsWithVersions();
+  const allDefinitions = useAllMetricDefinitions();
+  const updateMetric = useUpdateMetric();
+  const publish = usePublishModelDraft();
+
+  const [modelId, setModelId] = useState<string | null>(null);
+  const summary =
+    summaries.find((candidate) => candidate.model.id === modelId) ??
+    summaries.find((candidate) => candidate.model.isActive) ??
+    summaries[0] ??
+    null;
+  const versions = summary?.detail?.versions ?? [];
+  const activeVersion = versions.find((version) => version.status === 'active') ?? null;
+  const draftVersion = versions.find((version) => version.status === 'draft') ?? null;
+  /** A versão que a tela edita: o rascunho aberto, se houver; senão a que está em vigor. */
+  const base = draftVersion ?? activeVersion;
+
+  /** `null` = ninguém mexeu em peso, ordem ou normalização; a tabela mostra o que o servidor diz. */
+  const [draft, setDraft] = useState<DraftItem[] | null>(null);
+
+  // Quando o servidor muda de versão (porque publicamos, ou porque outra pessoa salvou), a
+  // edição local recomeça do que está gravado — o mesmo que o configurador avançado faz.
+  const signature = versionSignature(base);
+  const [seenSignature, setSeenSignature] = useState(signature);
+  if (seenSignature !== signature) {
+    setSeenSignature(signature);
+    setDraft(null);
+  }
 
   // Qualquer mudança de filtro volta para a página 1.
   const set = <K extends Exclude<keyof MetricsListQuery, 'page'>>(
@@ -133,14 +170,53 @@ export function MetricsPage() {
   const clear = () => setQuery(DEFAULT_METRICS_QUERY);
 
   const data = result.data;
-  const orderedItems = useMemo(() => orderMetricItems(data?.items ?? []), [data?.items]);
+  const items = data?.items ?? [];
+  const rows = draft === null ? rowsFromPlacement(items) : rowsFromDraft(items, draft);
   const pageCount = data === undefined ? 0 : Math.max(1, Math.ceil(data.total / data.pageSize));
+
+  /** Toda edição de modelo parte da versão gravada — a primeira delas abre o rascunho. */
+  const editDraft = (change: (current: DraftItem[]) => DraftItem[]) => {
+    if (base === null) return;
+    setDraft((current) => change(current ?? versionToDraft(base)));
+  };
+
+  const byId = definitionsById(allDefinitions.data?.items ?? items);
+  const nameOf = (id: string): string => byId.get(id)?.name ?? 'Métrica removida';
+  const edited = draft ?? (base === null ? null : versionToDraft(base));
+  const check = edited === null ? null : weightsCheck(edited, byId);
+  const remaining = check === null ? 0 : 1 - check.total;
+
+  const savedItems = base === null ? [] : draftToItems(versionToDraft(base));
+  const orderChanged =
+    draft !== null &&
+    JSON.stringify(draftToItems(draft).map((item) => item.metricDefinitionId)) !==
+      JSON.stringify(savedItems.map((item) => item.metricDefinitionId));
+  const changes =
+    draft === null
+      ? []
+      : [
+          ...(orderChanged ? ['a ordem das métricas mudou'] : []),
+          ...compareDraftWithVersion(activeVersion, draft, nameOf).map(
+            (change) => `${change.metricName}: ${change.description}`,
+          ),
+        ];
+
+  const canModel = base !== null;
+  const modelHint = models.isPending
+    ? 'Carregando o modelo…'
+    : summary === null
+      ? 'Crie um modelo de métricas para distribuir os pesos.'
+      : 'Este modelo ainda não tem versão.';
+  const canOrder = canModel && !isFiltered(query) && pageCount <= 1;
+  const orderHint = isFiltered(query)
+    ? 'Limpe a busca e os filtros para reordenar.'
+    : 'Reordenar exige a lista inteira na tela.';
 
   return (
     <>
       <PageHeader
         title="Métricas"
-        description="Tudo é métrica: tipo, direção, fonte, normalização e peso de cada indicador da organização."
+        description="Tudo é métrica. Clique em qualquer dado da tabela para mudar; arraste pela alça para mudar a ordem."
       >
         <Button
           type="button"
@@ -155,6 +231,34 @@ export function MetricsPage() {
       </PageHeader>
 
       <div className="space-y-6">
+        <ModelBar
+          models={summaries.map((candidate) => candidate.model)}
+          modelId={summary?.model.id ?? null}
+          onSelectModel={(id) => {
+            setModelId(id);
+            setDraft(null);
+          }}
+          activeVersion={activeVersion?.version ?? null}
+          draftVersion={draftVersion?.version ?? null}
+          check={check}
+          changes={changes}
+          publishing={publish.isPending}
+          error={publish.error?.message ?? null}
+          loading={models.isPending}
+          onPublish={() => {
+            if (summary === null || draft === null) return;
+            publish.mutate(
+              {
+                modelId: summary.model.id,
+                draftVersion: draftVersion?.version ?? null,
+                items: draftToItems(draft),
+              },
+              { onSuccess: () => setDraft(null) },
+            );
+          }}
+          onDiscard={() => setDraft(null)}
+        />
+
         <PrefillBanner
           onReview={(prefill) => {
             setFormPrefill(prefill);
@@ -165,10 +269,10 @@ export function MetricsPage() {
         <form
           role="search"
           aria-label="Buscar e filtrar métricas"
-          className="flex flex-wrap items-end gap-2"
+          className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end"
           onSubmit={(event) => event.preventDefault()}
         >
-          <div className="relative">
+          <div className="relative w-full min-w-0 sm:min-w-56 sm:flex-1 lg:max-w-sm">
             <label htmlFor={searchId} className="sr-only">
               Buscar por nome ou chave
             </label>
@@ -180,7 +284,7 @@ export function MetricsPage() {
               id={searchId}
               type="search"
               placeholder="Buscar por nome ou chave"
-              className="w-64 pl-8"
+              className="pl-8"
               value={query.search}
               onChange={(event) => set('search', event.target.value)}
             />
@@ -218,12 +322,24 @@ export function MetricsPage() {
             labels={{ true: 'Só ativas', false: 'Só inativas' }}
           />
           {isFiltered(query) ? (
-            <Button type="button" variant="ghost" size="sm" onClick={clear}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-9 w-full sm:w-auto"
+              onClick={clear}
+            >
               <X aria-hidden="true" />
               Limpar
             </Button>
           ) : null}
         </form>
+
+        {updateMetric.isError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {updateMetric.error.message}
+          </p>
+        ) : null}
 
         {result.isPending ? (
           <MetricsLoading label="Carregando métricas" />
@@ -236,85 +352,66 @@ export function MetricsPage() {
         ) : data === undefined || data.total === 0 ? (
           <MetricsEmpty filtered={isFiltered(query)} onClearFilters={clear} />
         ) : (
-          <div className={cn(result.isFetching && 'opacity-60 transition-opacity')}>
-            <p className="mb-3 text-sm text-muted-foreground">
-              Ordem fixa: métricas do modelo ativo aparecem primeiro, na ordem configurada; as
-              demais vêm em ordem alfabética.
+          <div className={cn('space-y-3', result.isFetching && 'opacity-60 transition-opacity')}>
+            {/* Legenda fora da superfície: a tabela mora numa superfície elevada só dela. */}
+            <p className="text-sm text-muted-foreground">
+              O cadastro (ativa, nome, tipo, direção) salva na hora. Ordem, peso e normalização são
+              do modelo: mudam aqui e só valem quando você publicar.
             </p>
-            <Table aria-label="Métricas da organização">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Ativa</TableHead>
-                  <TableHead className="text-right">Ordem</TableHead>
-                  <TableHead>Métrica</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Peso final</TableHead>
-                  <TableHead>Direção</TableHead>
-                  <TableHead>Normalização</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orderedItems.map((row) => (
-                  <TableRow key={row.id} data-metric-id={row.id}>
-                    <TableCell>
-                      <ActivePill active={row.isActive} />
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {row.activePlacement?.sortOrder ?? '—'}
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        to={`/metrics/${row.id}`}
-                        className="font-medium underline-offset-4 hover:underline"
-                      >
-                        {row.name}
-                      </Link>
-                      <span className="block text-xs text-muted-foreground">{row.slug}</span>
-                    </TableCell>
-                    <TableCell>{METRIC_TYPE_LABELS[row.metricType]}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {row.activePlacement === null ? '—' : pct(row.activePlacement.weight)}
-                    </TableCell>
-                    <TableCell>{METRIC_DIRECTION_LABELS[row.direction]}</TableCell>
-                    <TableCell>
-                      {row.activePlacement === null
-                        ? '—'
-                        : NORMALIZATION_STRATEGY_LABELS[row.activePlacement.normalizationStrategy]}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{statusOf(row)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="overflow-hidden rounded-xl bg-card shadow-soft ring-1 ring-foreground/5">
+              <MetricsTable
+                rows={rows}
+                canModel={canModel}
+                modelHint={modelHint}
+                canOrder={canOrder}
+                orderHint={orderHint}
+                remaining={remaining}
+                editing={draft !== null}
+                savingId={updateMetric.isPending ? (updateMetric.variables?.id ?? null) : null}
+                actions={{
+                  onDefinition: (id, patch) => updateMetric.mutate({ id, body: patch }),
+                  onWeight: (id, weight) =>
+                    editDraft((current) => setDraftWeight(current, id, weight)),
+                  onInclude: (id, weight) =>
+                    editDraft((current) => includeInDraft(current, id, weight)),
+                  onExclude: (id) => editDraft((current) => excludeFromDraft(current, id)),
+                  onStrategy: (id, strategy) =>
+                    editDraft((current) => setDraftStrategy(current, id, strategy)),
+                  onMoveTo: (fromId, toId) =>
+                    editDraft((current) => moveDraftTo(current, fromId, toId)),
+                  onMoveBy: (id, delta) => editDraft((current) => moveDraftBy(current, id, delta)),
+                }}
+              />
 
-            <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
-              <span>
-                {data.total} {data.total === 1 ? 'métrica' : 'métricas'}
-                {pageCount > 1 ? ` · página ${data.page} de ${pageCount}` : ''}
-              </span>
-              {pageCount > 1 ? (
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={data.page <= 1}
-                    onClick={() => goToPage(data.page - 1)}
-                  >
-                    Anterior
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={data.page >= pageCount}
-                    onClick={() => goToPage(data.page + 1)}
-                  >
-                    Próxima
-                  </Button>
-                </div>
-              ) : null}
+              {/* O rodapé fecha a mesma superfície da tabela, separado por uma linha fina. */}
+              <div className="flex flex-col gap-2 border-t border-border px-3 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  {data.total} {data.total === 1 ? 'métrica' : 'métricas'}
+                  {pageCount > 1 ? ` · página ${data.page} de ${pageCount}` : ''}
+                </span>
+                {pageCount > 1 ? (
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={data.page <= 1}
+                      onClick={() => goToPage(data.page - 1)}
+                    >
+                      Anterior
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={data.page >= pageCount}
+                      onClick={() => goToPage(data.page + 1)}
+                    >
+                      Próxima
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         )}

@@ -4,12 +4,20 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { MetricDefinitionDetailDto, MetricDefinitionListItemDto } from '@inovaapss/shared';
+import type {
+  MetricDefinitionDetailDto,
+  MetricDefinitionListItemDto,
+  MetricModelDto,
+  MetricModelItemDto,
+  MetricModelVersionDto,
+} from '@inovaapss/shared';
 
 import { jsonResponse } from '@/features/auth/__tests__/fake-supabase';
+import { newDraftItem } from '@/features/metric-models/draft';
 
 import { MetricDetailPage } from '../MetricDetailPage';
 import { MetricsPage } from '../MetricsPage';
+import { moveDraftBy, rowsFromDraft } from '../model-draft';
 import { orderMetricItems } from '../order';
 import { parseSeriesText } from '../parse-series';
 import { suggestSlug } from '../slug';
@@ -261,7 +269,7 @@ describe('MetricsPage (/metrics)', () => {
     expect(rows).toHaveLength(2);
 
     const sla = within(rows[0]!);
-    expect(sla.getByRole('link', { name: 'Cumprimento de SLA' })).toHaveAttribute(
+    expect(sla.getByRole('link', { name: 'Abrir Cumprimento de SLA' })).toHaveAttribute(
       'href',
       `/metrics/${SLA_ID}`,
     );
@@ -275,7 +283,7 @@ describe('MetricsPage (/metrics)', () => {
 
     const uso = within(rows[1]!);
     expect(uso.getByText('Não')).toBeInTheDocument();
-    expect(uso.getByText('Desativada')).toBeInTheDocument();
+    expect(uso.getByText('Desativada — fora do cálculo')).toBeInTheDocument();
     expect(uso.getAllByText('—').length).toBeGreaterThanOrEqual(2);
 
     expect(screen.getByText('2 métricas')).toBeInTheDocument();
@@ -292,7 +300,9 @@ describe('MetricsPage (/metrics)', () => {
       expect(requestedUrls().some((url) => url.includes('search=uso'))).toBe(true);
     });
     await waitFor(() => {
-      expect(screen.queryByRole('link', { name: 'Cumprimento de SLA' })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('link', { name: 'Abrir Cumprimento de SLA' }),
+      ).not.toBeInTheDocument();
     });
 
     await user.selectOptions(screen.getByLabelText('Situação'), 'true');
@@ -302,7 +312,9 @@ describe('MetricsPage (/metrics)', () => {
     expect(await screen.findByText('Nenhuma métrica corresponde aos filtros')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Limpar filtros' }));
-    expect(await screen.findByRole('link', { name: 'Cumprimento de SLA' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('link', { name: 'Abrir Cumprimento de SLA' }),
+    ).toBeInTheDocument();
   });
 
   it('mostra o estado de erro com a mensagem da API e permite tentar de novo', async () => {
@@ -319,6 +331,187 @@ describe('MetricsPage (/metrics)', () => {
     );
     renderAt('/metrics');
     expect(await screen.findByText('Nenhuma métrica definida')).toBeInTheDocument();
+  });
+});
+
+describe('edição em linha (/metrics)', () => {
+  it('clicar no tipo abre o bloquinho com as opções e salva a escolhida', async () => {
+    mockApi();
+    const user = userEvent.setup();
+    renderAt('/metrics');
+    await screen.findByRole('table', { name: 'Métricas da organização' });
+
+    await user.click(
+      screen.getByRole('button', { name: /editar o tipo de Cumprimento de SLA/i }),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Quantidade' }));
+
+    await waitFor(() => {
+      expect(patchedMetric).toEqual({ metricType: 'QUANTITY' });
+    });
+  });
+
+  it('a ordem do modelo é a do rascunho, e as setas movem a métrica', () => {
+    const draft = [SLA_ID, USO_ID, NEW_ID].map((id) => newDraftItem(id));
+
+    const rows = rowsFromDraft(
+      [definition({ id: USO_ID, name: 'Uso', slug: 'uso' }), definition({ ...ROWS[0]! })],
+      draft,
+    );
+    expect(rows.map((row) => [row.definition.id, row.position])).toEqual([
+      [SLA_ID, 1],
+      [USO_ID, 2],
+    ]);
+
+    const movido = moveDraftBy(draft, USO_ID, -1);
+    expect(movido.map((item) => item.metricDefinitionId)).toEqual([USO_ID, SLA_ID, NEW_ID]);
+    // No topo, subir de novo não faz nada — e nada se perde.
+    expect(moveDraftBy(movido, USO_ID, -1)).toEqual(movido);
+  });
+});
+
+describe('peso e ordem na tabela (/metrics + modelo)', () => {
+  const MODEL_ID = '44444444-4444-4444-8444-444444444444';
+
+  const MODEL: MetricModelDto = {
+    id: MODEL_ID,
+    organizationId: 'org',
+    name: 'GlobalSys v1',
+    mode: 'MANUAL',
+    isActive: true,
+    createdAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-09-01T00:00:00.000Z',
+  };
+
+  function modelItem(metricDefinitionId: string, weight: number, sortOrder: number): MetricModelItemDto {
+    return {
+      id: `ver-1-${metricDefinitionId}`,
+      metricModelVersionId: 'ver-1',
+      metricDefinitionId,
+      weight,
+      currentWeight: 0.45,
+      trendWeight: 0.35,
+      persistenceWeight: 0.2,
+      normalizationStrategy: 'LINEAR_RANGE',
+      normalizationConfig: { strategy: 'LINEAR_RANGE', min: 0, max: 100 },
+      thresholdConfig: null,
+      criticalTriggerConfig: null,
+      formulaConfig: null,
+      sortOrder,
+    };
+  }
+
+  const ACTIVE: MetricModelVersionDto = {
+    id: 'ver-1',
+    metricModelId: MODEL_ID,
+    organizationId: 'org',
+    version: 1,
+    status: 'active',
+    effectiveFrom: '2026-03-01T00:00:00.000Z',
+    createdAt: '2026-03-01T00:00:00.000Z',
+    items: [modelItem(SLA_ID, 0.6, 1), modelItem(USO_ID, 0.4, 2)],
+  };
+
+  function placement(weight: number, sortOrder: number) {
+    return {
+      modelId: MODEL_ID,
+      modelName: MODEL.name,
+      version: 1,
+      weight,
+      sortOrder,
+      normalizationStrategy: 'LINEAR_RANGE' as const,
+    };
+  }
+
+  const MODEL_ROWS: MetricDefinitionListItemDto[] = [
+    definition({
+      id: SLA_ID,
+      name: 'Cumprimento de SLA',
+      slug: 'sla_compliance',
+      activePlacement: placement(0.6, 1),
+    }),
+    definition({
+      id: USO_ID,
+      name: 'Uso da plataforma',
+      slug: 'platform_usage',
+      activePlacement: placement(0.4, 2),
+    }),
+  ];
+
+  interface Saved {
+    items: { metricDefinitionId: string; weight: number; sortOrder: number }[];
+  }
+  let saved: Saved | null = null;
+  let activated: number | null = null;
+
+  function mockModelApi() {
+    saved = null;
+    activated = null;
+    fetchMock.mockImplementation(async (input, init) => {
+      const url = new URL(String(input));
+      const method = init?.method ?? 'GET';
+      const draft = { ...ACTIVE, id: 'ver-2', version: 2, status: 'draft' as const, effectiveFrom: null };
+
+      if (url.pathname === '/api/v1/metrics') {
+        return jsonResponse(200, { items: MODEL_ROWS, total: 2, page: 1, pageSize: 100 });
+      }
+      if (url.pathname === '/api/v1/metric-models') {
+        return jsonResponse(200, { items: [MODEL], total: 1, page: 1, pageSize: 50 });
+      }
+      if (url.pathname === `/api/v1/metric-models/${MODEL_ID}`) {
+        return jsonResponse(200, { model: MODEL, versions: [ACTIVE] });
+      }
+      if (url.pathname === `/api/v1/metric-models/${MODEL_ID}/versions` && method === 'POST') {
+        return jsonResponse(201, { version: draft });
+      }
+      if (url.pathname === `/api/v1/metric-models/${MODEL_ID}/versions/2` && method === 'PATCH') {
+        saved = JSON.parse(String(init?.body)) as Saved;
+        return jsonResponse(200, { version: draft });
+      }
+      if (
+        url.pathname === `/api/v1/metric-models/${MODEL_ID}/versions/2/activate` &&
+        method === 'POST'
+      ) {
+        activated = 2;
+        return jsonResponse(200, { version: { ...draft, status: 'active' as const } });
+      }
+      return jsonResponse(404, { error: { code: 'NOT_FOUND', message: url.pathname } });
+    });
+  }
+
+  it('o campo de peso nasce vazio, a faixa conta o que mudou e Publicar grava e ativa', async () => {
+    mockModelApi();
+    const user = userEvent.setup();
+    renderAt('/metrics');
+    await screen.findByRole('table', { name: 'Métricas da organização' });
+    expect(await screen.findByText('versão 1 em vigor')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /editar o peso de Cumprimento de SLA/i }));
+    const campo = await screen.findByLabelText('Novo peso em porcentagem');
+    // Nuvemshop: o campo já vem zerado, com o valor de hoje só como marca-d'água.
+    expect(campo).toHaveValue('');
+    expect(campo).toHaveAttribute('placeholder', '60');
+    await user.type(campo, '50');
+    await user.click(screen.getByRole('button', { name: 'Aplicar' }));
+
+    await user.click(screen.getByRole('button', { name: /editar o peso de Uso da plataforma/i }));
+    await user.type(await screen.findByLabelText('Novo peso em porcentagem'), '50');
+    await user.click(screen.getByRole('button', { name: 'Aplicar' }));
+
+    expect(screen.getByText('2 alterações esperando publicação')).toBeInTheDocument();
+    expect(screen.getByLabelText('Soma dos pesos')).toHaveTextContent('100 %');
+
+    await user.click(screen.getByRole('button', { name: 'Publicar alterações' }));
+
+    await waitFor(() => {
+      expect(activated).toBe(2);
+    });
+    expect(
+      saved?.items.map((item) => [item.metricDefinitionId, item.weight, item.sortOrder]),
+    ).toEqual([
+      [SLA_ID, 0.5, 1],
+      [USO_ID, 0.5, 2],
+    ]);
   });
 });
 

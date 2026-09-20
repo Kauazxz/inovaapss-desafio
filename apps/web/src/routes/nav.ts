@@ -5,7 +5,6 @@ import {
   Gauge,
   LayoutDashboard,
   type LucideIcon,
-  SlidersHorizontal,
   Target,
   Upload,
   Users,
@@ -57,12 +56,12 @@ export const NAV_ENTRIES: readonly NavEntry[] = [
     label: 'Métricas',
     icon: Gauge,
     items: [
-      { to: '/metrics', label: 'Métricas', icon: Gauge, hint: 'O que o sistema mede.' },
       {
-        to: '/metric-models',
-        label: 'Modelos de métricas',
-        icon: SlidersHorizontal,
-        hint: 'Pesos, faixas e gatilhos de cada versão.',
+        to: '/metrics',
+        label: 'Métricas',
+        icon: Gauge,
+        // A tela de modelos virou a faixa do alto de /metrics: uma entrada só na barra.
+        hint: 'O que o sistema mede, com peso e ordem.',
       },
       {
         to: '/calibration',

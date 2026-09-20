@@ -6,7 +6,7 @@
  * versão do modelo: as duas coisas se editam do mesmo jeito, no mesmo lugar.
  */
 import { Check, ChevronDown, Loader2 } from 'lucide-react';
-import { useId, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -39,11 +39,7 @@ export function InlineCell({
 
   if (disabled) {
     return (
-      <span
-        className={cn('inline-block px-2 py-1', right && 'tabular-nums')}
-        title={disabledHint}
-        aria-description={disabledHint}
-      >
+      <span className={cn('inline-block px-2 py-1', right && 'tabular-nums')} title={disabledHint}>
         {children}
       </span>
     );
@@ -54,7 +50,6 @@ export function InlineCell({
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label={`Editar ${label}`}
           data-inline-cell={open ? 'open' : 'closed'}
           className={cn(
             'group/cell -my-1 inline-flex max-w-full items-center gap-1 rounded-md border border-transparent px-2 py-1 text-left outline-none transition-colors hover:border-border hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 data-[inline-cell=open]:border-border data-[inline-cell=open]:bg-muted',
@@ -62,11 +57,16 @@ export function InlineCell({
           )}
         >
           <span className="truncate">{children}</span>
+          {/* O nome do botão é "<valor> — editar <campo>": quem ouve a tabela recebe primeiro
+              o dado e depois a ação, e não perde o valor por causa do clique. */}
+          <span className="sr-only">— editar {label}</span>
           {pending ? (
             <Loader2 className="size-3 shrink-0 animate-spin opacity-60" aria-hidden="true" />
           ) : (
+            /* No celular não existe hover: a setinha fica visível até `md` (§8 do guia), e só a
+               partir daí ela aparece ao passar o mouse. */
             <ChevronDown
-              className="size-3 shrink-0 opacity-0 transition-opacity group-hover/cell:opacity-50 group-focus-visible/cell:opacity-70 group-data-[inline-cell=open]/cell:opacity-70"
+              className="size-3 shrink-0 opacity-50 transition-opacity md:opacity-0 md:group-hover/cell:opacity-50 md:group-focus-visible/cell:opacity-70 md:group-data-[inline-cell=open]/cell:opacity-70"
               aria-hidden="true"
             />
           )}
@@ -135,88 +135,6 @@ export function BlockOptions<T extends string>({
         );
       })}
     </div>
-  );
-}
-
-/**
- * Bloquinho de digitar: o campo começa VAZIO com o valor de hoje só como marca-d'água, então
- * digitar já substitui — não é preciso apagar o número antigo antes.
- */
-export function BlockInput({
-  label,
-  placeholder,
-  suffix,
-  onSubmit,
-  submitLabel = 'Aplicar',
-  extra,
-  inputMode = 'decimal',
-}: {
-  label: string;
-  /** O valor de hoje, como marca-d'água. */
-  placeholder: string;
-  suffix?: string;
-  /** Devolve uma mensagem de erro para segurar o bloquinho aberto, ou `null` quando aplicou. */
-  onSubmit: (typed: string) => string | null;
-  submitLabel?: string;
-  /** Ações extras no rodapé (ex.: tirar do modelo). */
-  extra?: ReactNode;
-  inputMode?: 'decimal' | 'text';
-}) {
-  const id = useId();
-  const [typed, setTyped] = useState('');
-  const [error, setError] = useState<string | null>(null);
-
-  const submit = () => {
-    const message = onSubmit(typed);
-    setError(message);
-  };
-
-  return (
-    <form
-      className="space-y-2"
-      onSubmit={(event) => {
-        event.preventDefault();
-        submit();
-      }}
-    >
-      <label htmlFor={id} className="px-1 text-xs font-medium text-muted-foreground">
-        {label}
-      </label>
-      <div className="flex items-center gap-2">
-        <input
-          id={id}
-          autoFocus
-          type="text"
-          inputMode={inputMode}
-          value={typed}
-          placeholder={placeholder}
-          aria-invalid={error !== null}
-          aria-describedby={error === null ? undefined : `${id}-erro`}
-          onChange={(event) => {
-            setTyped(event.target.value);
-            setError(null);
-          }}
-          className="h-9 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive dark:bg-input/30"
-        />
-        {suffix === undefined ? null : (
-          <span className="text-sm text-muted-foreground">{suffix}</span>
-        )}
-      </div>
-      {error === null ? null : (
-        <p id={`${id}-erro`} role="alert" className="px-1 text-xs text-destructive">
-          {error}
-        </p>
-      )}
-      <div className="flex items-center justify-between gap-2">
-        <div>{extra}</div>
-        <button
-          type="submit"
-          className="h-8 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground outline-none transition-opacity hover:opacity-90 focus-visible:ring-3 focus-visible:ring-ring/50"
-        >
-          {submitLabel}
-        </button>
-      </div>
-    </form>
   );
 }
 

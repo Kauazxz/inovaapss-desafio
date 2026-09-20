@@ -4,7 +4,12 @@
  * A LISTA de métricas (§37 GET /metrics) é o cadastro: nome, tipo, direção, fonte, ativa.
  * Peso, ordem e normalização não moram lá — moram no ITEM da versão do modelo (§31, §41), que é
  * versionada e imutável depois de ativada. A tela mostra as duas coisas na mesma linha, então
- * aqui ficam as funções puras que juntam definição + item e que mexem no rascunho local.
+ * aqui ficam as funções puras que montam a linha e que mexem no rascunho local.
+ *
+ * Enquanto ninguém editou nada, a linha é lida do `activePlacement` que a própria lista já traz:
+ * a tabela aparece completa mesmo antes de o modelo terminar de carregar. Na primeira mudança de
+ * peso, ordem ou normalização a página abre um rascunho a partir da versão do modelo e é ele que
+ * passa a mandar na tabela.
  *
  * Nada aqui fala com a API: quem salva é a página.
  */
@@ -23,17 +28,32 @@ import {
   type DraftItem,
 } from '@/features/metric-models/draft';
 
+import { orderMetricItems } from './order';
+
 /** Uma linha da tabela: o cadastro da métrica + o lugar dela no modelo (quando tem um). */
 export interface MetricRow {
   definition: MetricDefinitionListItemDto;
-  /** Item do rascunho, mesmo quando a métrica está fora do modelo (guarda a configuração). */
-  item: DraftItem | null;
   /** Posição 1..n entre as métricas do modelo; `null` quando está fora dele. */
   position: number | null;
+  /** Fração 0–1; `null` quando a métrica está fora do modelo. */
+  weight: number | null;
+  strategy: NormalizationStrategy | null;
 }
 
-/** Ordem da tela: o modelo primeiro, na ordem configurada; o resto em ordem alfabética. */
-export function buildRows(
+/** Sem edição em curso: a linha é o que a versão em vigor diz — e isso vem junto com a lista. */
+export function rowsFromPlacement(
+  definitions: readonly MetricDefinitionListItemDto[],
+): MetricRow[] {
+  return orderMetricItems(definitions).map((definition) => ({
+    definition,
+    position: definition.activePlacement?.sortOrder ?? null,
+    weight: definition.activePlacement?.weight ?? null,
+    strategy: definition.activePlacement?.normalizationStrategy ?? null,
+  }));
+}
+
+/** Com edição em curso: manda o rascunho — o modelo primeiro, na ordem dele; o resto em A–Z. */
+export function rowsFromDraft(
   definitions: readonly MetricDefinitionListItemDto[],
   draft: readonly DraftItem[],
 ): MetricRow[] {
@@ -57,11 +77,16 @@ export function buildRows(
       if (rightPosition !== undefined) return 1;
       return left.name.localeCompare(right.name, 'pt-BR');
     })
-    .map((definition) => ({
-      definition,
-      item: byId.get(definition.id) ?? null,
-      position: positions.get(definition.id) ?? null,
-    }));
+    .map((definition) => {
+      const item = byId.get(definition.id);
+      const inModel = item !== undefined && item.included;
+      return {
+        definition,
+        position: positions.get(definition.id) ?? null,
+        weight: inModel ? item.weight : null,
+        strategy: inModel ? item.normalization.strategy : null,
+      };
+    });
 }
 
 /** Leva a métrica `fromId` para o lugar de `toId` (o arrastar da coluna Ordem). */
@@ -88,12 +113,23 @@ export function moveDraftBy(
 ): DraftItem[] {
   const included = draft.filter((item) => item.included);
   const index = included.findIndex((item) => item.metricDefinitionId === metricDefinitionId);
-  const neighbour = included[index + delta];
-  if (index < 0 || neighbour === undefined) return [...draft];
+  const neighbour = index < 0 ? undefined : included[index + delta];
+  if (neighbour === undefined) return [...draft];
   return moveDraftTo(draft, metricDefinitionId, neighbour.metricDefinitionId);
 }
 
-/** Entra no modelo (com o peso digitado) ou volta a entrar guardando a configuração de antes. */
+/** Muda o peso de quem já está no modelo. */
+export function setDraftWeight(
+  draft: readonly DraftItem[],
+  metricDefinitionId: string,
+  weight: number,
+): DraftItem[] {
+  return draft.map((item) =>
+    item.metricDefinitionId === metricDefinitionId ? { ...item, weight } : item,
+  );
+}
+
+/** Entra no modelo com o peso digitado; se já esteve lá, volta com a configuração de antes. */
 export function includeInDraft(
   draft: readonly DraftItem[],
   metricDefinitionId: string,
@@ -138,14 +174,17 @@ export const NORMALIZATION_DEFAULTS: Readonly<
   SCORE_MAP: { strategy: 'SCORE_MAP', map: { padrao: 50 }, defaultHealth: 50 },
 };
 
-/** Troca a estratégia mantendo o que já estava configurado quando a estratégia não muda. */
-export function withStrategy(
-  current: NormalizationConfigInput,
+/** Troca a estratégia da métrica, mantendo o que já havia quando a estratégia não muda. */
+export function setDraftStrategy(
+  draft: readonly DraftItem[],
+  metricDefinitionId: string,
   strategy: NormalizationStrategy,
-): NormalizationConfigInput {
-  if (current.strategy === strategy) return current;
-  if (strategy === 'CUSTOM_SAFE_RULE') return current;
-  return NORMALIZATION_DEFAULTS[strategy];
+): DraftItem[] {
+  return draft.map((item) => {
+    if (item.metricDefinitionId !== metricDefinitionId) return item;
+    if (item.normalization.strategy === strategy || strategy === 'CUSTOM_SAFE_RULE') return item;
+    return { ...item, normalization: NORMALIZATION_DEFAULTS[strategy] };
+  });
 }
 
 /** O rascunho mudou em relação ao que está gravado no servidor? */

@@ -5,7 +5,14 @@ Como montar um modelo do zero, versionar, ativar e o que acontece com o históri
 (configurador), e em [DEFINICOES_METRICAS.md](DEFINICOES_METRICAS.md) §25, §28, §31 e §32 — que
 vence em caso de divergência.
 
-Telas: `/metric-models` (lista) e `/metric-models/:id` (configurador).
+Telas: `/metrics` (o dia a dia) e `/metric-models/:id` (a configuração avançada).
+
+Desde 20/09/2026 as duas telas de métrica viraram uma: `/metrics` mostra a tabela do §41 com tudo
+editável no lugar — clicar num dado abre um bloquinho com as opções (ou um campo em branco, para
+nome e peso) e a ordem muda arrastando pela alça. O que é cadastro salva na hora; o que é do
+modelo (ordem, peso, normalização) vira rascunho e só passa a valer no botão **Publicar
+alterações** da faixa do alto, que abre a versão, grava e ativa numa tacada. A lista de modelos
+(`/metric-models`) saiu da barra de navegação e continua acessível para criar um modelo novo.
 
 ---
 
@@ -14,8 +21,8 @@ Telas: `/metric-models` (lista) e `/metric-models/:id` (configurador).
 | Conceito    | O que é                                                                      | Onde se edita                      |
 | ----------- | ---------------------------------------------------------------------------- | ---------------------------------- |
 | **Métrica** | O indicador em si: nome, chave, tipo, unidade, direção, fonte, periodicidade | `/metrics` (Nova métrica / Editar) |
-| **Modelo**  | O conjunto de métricas que calcula a saúde da carteira, com um modo de peso  | `/metric-models` (Novo modelo)     |
-| **Versão**  | Uma fotografia do modelo: quais métricas, com que peso, faixa e gatilho      | `/metric-models/:id`               |
+| **Modelo**  | O conjunto de métricas que calcula a saúde da carteira, com um modo de peso  | faixa do alto de `/metrics`        |
+| **Versão**  | Uma fotografia do modelo: quais métricas, com que peso, faixa e gatilho      | `/metrics` e `/metric-models/:id`  |
 
 A mesma métrica pode valer 18 % numa versão e 12 % na seguinte. Por isso **peso, normalização,
 faixas e gatilhos não ficam no cadastro da métrica**: ficam no item da versão.
@@ -32,7 +39,9 @@ faixas e gatilhos não ficam no cadastro da métrica**: ficam no item da versão
 3. **Crie a versão 1** no configurador. Ela nasce como rascunho vazio (ou como cópia da versão
    ativa, quando já existe uma).
 4. **Adicione as métricas** pelo seletor "Adicionar métrica à versão" e distribua os pesos na
-   coluna **Peso empresa**, digitando em porcentagem.
+   coluna **Peso empresa**, digitando em porcentagem. No dia a dia isso também se faz em
+   `/metrics`: clicar no peso de uma métrica de fora do modelo a inclui, e clicar em **Tirar do
+   modelo** a devolve para fora.
 5. **Configure cada métrica** no botão de engrenagem: normalização, composição do score,
    tendência, persistência e gatilhos. **Simule** ali mesmo com uma série de valores.
 6. **Salve o rascunho** e, com a soma em 100 % exatos, **ative a versão**.
