@@ -21,7 +21,8 @@
     "db:check": "drizzle-kit check",
     "seed:demo": "pnpm -w exec turbo run build --filter=@inovaapss/api... && tsx src/db/seed/demo-auth.ts",
     "seed:globalsys": "pnpm -w exec turbo run build --filter=@inovaapss/api... && tsx src/db/seed/globalsys-preset.ts",
-    "seed:globalsys-data": "pnpm -w exec turbo run build --filter=@inovaapss/api... && tsx src/db/seed/globalsys-data.ts"
+    "seed:globalsys-data": "pnpm -w exec turbo run build --filter=@inovaapss/api... && tsx src/db/seed/globalsys-data.ts",
+    "recalculate": "pnpm -w exec turbo run build --filter=@inovaapss/api... && tsx src/db/seed/recalculate.ts"
   },
   "dependencies": {
     "@inovaapss/engine": "workspace:*",
