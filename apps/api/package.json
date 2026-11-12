@@ -44,7 +44,7 @@
     "swagger-ui-express": "^5.0.1",
     "unpdf": "1.8.1",
     "xlsx": "0.18.5",
-    "zod": "^4.6.5"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@inovaapss/config": "workspace:*",

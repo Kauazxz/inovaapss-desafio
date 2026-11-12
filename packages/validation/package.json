@@ -23,7 +23,7 @@
   "dependencies": {
     "@inovaapss/engine": "workspace:*",
     "@inovaapss/shared": "workspace:*",
-    "zod": "^4.6.5"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@inovaapss/config": "workspace:*",
